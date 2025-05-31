@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import clsx from "clsx";
-import { useNavigate } from "react-router-dom";
-import { BASE_URL, fetchProduct } from "../../utils/api";
+import { useNavigate, Link } from "react-router-dom";
+import { BASE_URL, fetchProduct, isLoggedIn } from "../../utils/api";
 
 // BASE IMAGES
 import baseNecklace from "../../assets/default/basenecklace.png";
@@ -23,7 +23,7 @@ export default function CharmCustomizerFull() {
   const braceletRef = useRef(null);
   const recommendRef = useRef(null);
   const [baseImage, setBaseImage] = useState(baseNecklace);
-  const [charmCount, setCharmCount] = useState(2);
+  const [charmCount, setCharmCount] = useState(2); // keep default as 2 for now
   const [selectedTab, setSelectedTab] = useState(1);
   const [selectedCharms, setSelectedCharms] = useState({});
   const [openCategory, setOpenCategory] = useState(null);
@@ -35,6 +35,8 @@ export default function CharmCustomizerFull() {
   });
   const [error, setError] = useState(null);
   const [selectedBaseProduct, setSelectedBaseProduct] = useState(null);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const [isLoggedInState, setIsLoggedInState] = useState(false);
   const navigate = useNavigate();
 
   // --- Metal sound effect ---
@@ -51,6 +53,18 @@ export default function CharmCustomizerFull() {
       metalAudioRef.current.play();
     }
   };
+
+  // Check login state on mount and when auth changes
+  useEffect(() => {
+    setIsLoggedInState(isLoggedIn());
+    const handleStorageChange = (e) => {
+      if (e.key === 'authData') {
+        setIsLoggedInState(isLoggedIn());
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   // Fetch charms and products data from API
   useEffect(() => {
@@ -271,6 +285,28 @@ export default function CharmCustomizerFull() {
     };
   };
 
+  // --- CHAIN ONLY/0 CHARMS INTEGRATION START ---
+  // Effect: When charmCount is 0, clear selectedCharms and selectedTab
+  useEffect(() => {
+    if (charmCount === 0) {
+      setSelectedCharms({});
+      setSelectedTab(0);
+    } else if (selectedTab < 1 || selectedTab > charmCount) {
+      setSelectedTab(1);
+    }
+  }, [charmCount]); // Only runs when charmCount changes
+  // --- CHAIN ONLY/0 CHARMS INTEGRATION END ---
+
+  const handleAddToCart = () => {
+    if (!isLoggedIn()) {
+      setShowLoginPrompt(true);
+      return;
+    }
+    alert("Added to cart! (Implement actual logic here)");
+  };
+
+  const handleCloseLoginPrompt = () => setShowLoginPrompt(false);
+
   if (loading.charms || loading.products) {
     return (
       <div className="bg-[#f9f5ef] min-h-screen flex justify-center items-center">
@@ -306,10 +342,37 @@ export default function CharmCustomizerFull() {
     return total;
   };
 
-
-
   return (
     <div className="bg-[#f9f5ef] min-h-screen">
+      {/* LOGIN POPUP */}
+      {showLoginPrompt && (
+        <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-4 animate-fadeIn">
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Login Required</h3>
+              <p className="text-gray-600 mb-6">
+                You need to be logged in to add items to your cart.
+              </p>
+              <div className="flex gap-4 justify-center">
+                <button
+                  onClick={handleCloseLoginPrompt}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <Link
+                  to="/login"
+                  className="px-4 py-2 bg-[#e6d4a5] text-gray-800 rounded-md hover:bg-[#d4c191] transition"
+                  onClick={handleCloseLoginPrompt}
+                >
+                  Login
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="font-sans px-6 py-12 max-w-6xl mx-auto">
 
         {/* NECKLACES - Only show if there are necklaces with charms:true */}
@@ -386,6 +449,19 @@ export default function CharmCustomizerFull() {
 
         <h2 className="text-xl font-medium mb-4">Customize Your Charm</h2>
         <div className="flex flex-wrap gap-2 mb-6">
+          {/* --- CHAIN ONLY/0 CHARMS BUTTON START --- */}
+          <button
+            key={0}
+            onClick={() => {
+              setCharmCount(0);
+              setSelectedCharms({});
+              setSelectedTab(0);
+            }}
+            className={clsx("px-4 py-2 border rounded transition", charmCount === 0 ? "bg-[#e6d5a7]" : "bg-white")}
+          >
+            Chain only
+          </button>
+          {/* --- CHAIN ONLY/0 CHARMS BUTTON END --- */}
           {[1, 2, 3, 4, 5].map((num) => (
             <button
               key={num}
@@ -411,30 +487,33 @@ export default function CharmCustomizerFull() {
                   className="absolute w-full h-full object-contain" 
                   style={{ aspectRatio: '1/1' }}
                 />
-                
-                <div className="absolute inset-0 flex items-center justify-center">
-                  {Array.from({ length: charmCount }, (_, i) => (
-                    selectedCharms[i + 1] && (
-                      <div 
-                        key={i}
-                        className="absolute"
-                        style={{
-                          width: '33.33%',
-                          height: '33.33%',
-                          aspectRatio: '1/1',
-                          zIndex: i + 1,
-                          ...getCharmPosition(i, charmCount)
-                        }}
-                      >
-                        <img
-                          src={selectedCharms[i + 1].image}
-                          alt={`Charm ${i + 1}`}
-                          className="w-full h-full object-contain"
-                        />
-                      </div>
-                    )
-                  ))}
-                </div>
+                {/* --- CHAIN ONLY/0 CHARMS CHARMS IMAGE HIDE START --- */}
+                {charmCount > 0 && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    {Array.from({ length: charmCount }, (_, i) => (
+                      selectedCharms[i + 1] && (
+                        <div 
+                          key={i}
+                          className="absolute"
+                          style={{
+                            width: '33.33%',
+                            height: '33.33%',
+                            aspectRatio: '1/1',
+                            zIndex: i + 1,
+                            ...getCharmPosition(i, charmCount)
+                          }}
+                        >
+                          <img
+                            src={selectedCharms[i + 1].image}
+                            alt={`Charm ${i + 1}`}
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                      )
+                    ))}
+                  </div>
+                )}
+                {/* --- CHAIN ONLY/0 CHARMS CHARMS IMAGE HIDE END --- */}
               </div>
             </div>
           </div>
@@ -468,58 +547,76 @@ export default function CharmCustomizerFull() {
               })()}
             </div>
 
-            <div className="flex gap-2 mb-4">
-              {Array.from({ length: charmCount }, (_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setSelectedTab(i + 1)}
-                  className={clsx(
-                    "px-4 py-1 rounded border",
-                    selectedTab === i + 1 ? "bg-[#e6d5a7]" : "bg-white"
-                  )}
-                >
-                  Charm {i + 1}
-                </button>
-              ))}
-            </div>
+            {/* --- CHAIN ONLY/0 CHARMS TABS HIDE START --- */}
+            {charmCount > 0 && (
+              <div className="flex gap-2 mb-4">
+                {Array.from({ length: charmCount }, (_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setSelectedTab(i + 1)}
+                    className={clsx(
+                      "px-4 py-1 rounded border",
+                      selectedTab === i + 1 ? "bg-[#e6d5a7]" : "bg-white"
+                    )}
+                  >
+                    Charm {i + 1}
+                  </button>
+                ))}
+              </div>
+            )}
+            {/* --- CHAIN ONLY/0 CHARMS TABS HIDE END --- */}
 
-            <button className="w-full bg-[#e6d5a7] text-center py-2 rounded mb-4 font-medium">
+            <button
+              className="w-full bg-[#e6d5a7] text-center py-2 rounded mb-4 font-medium"
+              onClick={handleAddToCart}
+            >
               Add to cart
             </button>
 
-            <div className="space-y-4 max-h-[25vw] overflow-y-auto pr-2">
-              {Object.entries(groupedCharms).map(([category, charms]) => (
-                <div key={category} className="mb-2">
-                  <button
-                    onClick={() => setOpenCategory(openCategory === category ? null : category)}
-                    className="w-full flex justify-between items-center py-2 border-b"
-                  >
-                    <span>{category.replace(/_/g, ' ')}</span>
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
-                  {openCategory === category && (
-                    <div className="grid grid-cols-3 gap-2 p-2">
-                      {charms.map((charm) => (
-                        <div 
-                          key={charm.id} 
-                          className="relative cursor-pointer group" 
-                          onClick={() => handleCharmSelect(charm)}
-                        >
-                          <img
-                            src={charm.image}
-                            alt={charm.name}
-                            className="hover:scale-105 transition rounded border p-1 w-full"
-                          />
-                          <div style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }} className="absolute inset-0 opacity-0 group-hover:opacity-100 flex justify-center items-center text-white text-sm font-semibold transition">
-                            {charm.name}
+            {/* --- CHAIN ONLY/0 CHARMS CHARMS PICKER HIDE START --- */}
+            {charmCount > 0 && (
+              <div className="space-y-4 max-h-[25vw] overflow-y-auto pr-2">
+                {Object.entries(groupedCharms).map(([category, charms]) => (
+                  <div key={category} className="mb-2">
+                    <button
+                      onClick={() => setOpenCategory(openCategory === category ? null : category)}
+                      className="w-full flex justify-between items-center py-2 border-b"
+                    >
+                      <span>{category.replace(/_/g, ' ')}</span>
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                    {openCategory === category && (
+                      <div className="grid grid-cols-3 gap-2 p-2">
+                        {charms.map((charm) => (
+                          <div 
+                            key={charm.id} 
+                            className="relative cursor-pointer group" 
+                            onClick={() => handleCharmSelect(charm)}
+                          >
+                            <img
+                              src={charm.image}
+                              alt={charm.name}
+                              className="hover:scale-105 transition rounded border p-1 w-full"
+                            />
+                            <div style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }} className="absolute inset-0 opacity-0 group-hover:opacity-100 flex justify-center items-center text-white text-sm font-semibold transition">
+                              {charm.name}
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>               
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* --- CHAIN ONLY/0 CHARMS CHARMS PICKER HIDE END --- */}
+            {/* --- CHAIN ONLY/0 CHARMS MESSAGE SHOW START --- */}
+            {charmCount === 0 && (
+              <div className="text-gray-500 text-center py-8 italic">
+                Chain only selected. No charms can be picked in this mode.
+              </div>
+            )}
+            {/* --- CHAIN ONLY/0 CHARMS MESSAGE SHOW END --- */}
           </div>
         </div>
 

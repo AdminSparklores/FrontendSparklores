@@ -31,6 +31,17 @@ const ProductDetailCharmBar = () => {
   const [charmsData, setCharmsData] = useState([]);
   const [charmLoading, setCharmLoading] = useState(true);
 
+  // --- CHAIN ONLY/0 CHARMS INTEGRATION START ---
+  useEffect(() => {
+    if (charmCount === 0) {
+      setSelectedCharms({});
+      setSelectedTab(0);
+    } else if (selectedTab < 1 || selectedTab > charmCount) {
+      setSelectedTab(1);
+    }
+  }, [charmCount]);
+  // --- CHAIN ONLY/0 CHARMS INTEGRATION END ---
+
   // Audio ref for metal sound effect
   const metalAudioRef = useRef(null);
   useEffect(() => {
@@ -266,6 +277,22 @@ const ProductDetailCharmBar = () => {
       <div className="font-sans px-6 pt-10 max-w-6xl mx-auto">
         <h2 className="text-2xl font-serif font-semibold mb-4">CUSTOMIZE YOUR CHARM</h2>
         <div className="flex flex-wrap gap-2 mb-6">
+          {/* --- CHAIN ONLY/0 CHARMS BUTTON START --- */}
+          <button
+            key={0}
+            onClick={() => {
+              setCharmCount(0);
+              setSelectedCharms({});
+              setSelectedTab(0);
+            }}
+            className={clsx(
+              "px-4 py-2 border rounded transition",
+              charmCount === 0 ? "bg-[#e6d5a7]" : "bg-white"
+            )}
+          >
+            Chain only
+          </button>
+          {/* --- CHAIN ONLY/0 CHARMS BUTTON END --- */}
           {[1, 2, 3, 4, 5].map((num) => (
             <button
               key={num}
@@ -298,34 +325,37 @@ const ProductDetailCharmBar = () => {
                     e.target.src = '../../assets/default/basenecklace.png';
                   }}
                 />
-
-                <div className="absolute inset-0 flex items-center justify-center">
-                  {Array.from({ length: charmCount }, (_, i) => (
-                    selectedCharms[i + 1] && (
-                      <div
-                        key={i}
-                        className="absolute"
-                        style={{
-                          width: '33.33%',
-                          height: '33.33%',
-                          aspectRatio: '1/1',
-                          zIndex: i + 1,
-                          ...getCharmPosition(i, charmCount)
-                        }}
-                      >
-                        <img
-                          src={selectedCharms[i + 1].image}
-                          alt={`Charm ${i + 1}`}
-                          className="w-full h-full object-contain"
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = '../../assets/default/basenecklace.png';
+                {/* --- CHAIN ONLY/0 CHARMS CHARMS IMAGE HIDE START --- */}
+                {charmCount > 0 && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    {Array.from({ length: charmCount }, (_, i) => (
+                      selectedCharms[i + 1] && (
+                        <div
+                          key={i}
+                          className="absolute"
+                          style={{
+                            width: '33.33%',
+                            height: '33.33%',
+                            aspectRatio: '1/1',
+                            zIndex: i + 1,
+                            ...getCharmPosition(i, charmCount)
                           }}
-                        />
-                      </div>
-                    )
-                  ))}
-                </div>
+                        >
+                          <img
+                            src={selectedCharms[i + 1].image}
+                            alt={`Charm ${i + 1}`}
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = '../../assets/default/basenecklace.png';
+                            }}
+                          />
+                        </div>
+                      )
+                    ))}
+                  </div>
+                )}
+                {/* --- CHAIN ONLY/0 CHARMS CHARMS IMAGE HIDE END --- */}
               </div>
             </div>
           </div>
@@ -335,20 +365,24 @@ const ProductDetailCharmBar = () => {
               {formatIDR(calculateTotalPrice())}
             </div>
 
-            <div className="flex gap-2 mb-4">
-              {Array.from({ length: charmCount }, (_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setSelectedTab(i + 1)}
-                  className={clsx(
-                    "px-4 py-1 rounded border",
-                    selectedTab === i + 1 ? "bg-[#e6d5a7]" : "bg-white"
-                  )}
-                >
-                  Charm {i + 1}
-                </button>
-              ))}
-            </div>
+            {/* --- CHAIN ONLY/0 CHARMS TABS HIDE START --- */}
+            {charmCount > 0 && (
+              <div className="flex gap-2 mb-4">
+                {Array.from({ length: charmCount }, (_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setSelectedTab(i + 1)}
+                    className={clsx(
+                      "px-4 py-1 rounded border",
+                      selectedTab === i + 1 ? "bg-[#e6d5a7]" : "bg-white"
+                    )}
+                  >
+                    Charm {i + 1}
+                  </button>
+                ))}
+              </div>
+            )}
+            {/* --- CHAIN ONLY/0 CHARMS TABS HIDE END --- */}
 
             <button
               className="w-full bg-[#e6d5a7] text-center py-2 rounded mb-4 font-medium"
@@ -357,43 +391,54 @@ const ProductDetailCharmBar = () => {
               Add to cart
             </button>
 
-            <div className="space-y-4 max-h-[25vw] overflow-y-auto pr-2">
-              {Object.entries(groupedCharms).map(([category, charms]) => (
-                <div key={category} className="mb-2">
-                  <button
-                    onClick={() => setOpenCategory(openCategory === category ? null : category)}
-                    className="w-full flex justify-between items-center py-2 border-b"
-                  >
-                    <span>{category.replace(/_/g, ' ')}</span>
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
-                  {openCategory === category && (
-                    <div className="grid grid-cols-3 gap-2 p-2">
-                      {charms.map((charm) => (
-                        <div
-                          key={charm.id}
-                          className="relative cursor-pointer group"
-                          onClick={() => handleCharmSelect(charm)}
-                        >
-                          <img
-                            src={charm.image}
-                            alt={charm.name}
-                            className="hover:scale-105 transition rounded border p-1 w-full"
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = '../../assets/default/basenecklace.png';
-                            }}
-                          />
-                          <div style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }} className="absolute inset-0 opacity-0 group-hover:opacity-100 flex justify-center items-center text-white text-sm font-semibold transition">
-                            {charm.name}
+            {/* --- CHAIN ONLY/0 CHARMS CHARMS PICKER HIDE START --- */}
+            {charmCount > 0 && (
+              <div className="space-y-4 max-h-[25vw] overflow-y-auto pr-2">
+                {Object.entries(groupedCharms).map(([category, charms]) => (
+                  <div key={category} className="mb-2">
+                    <button
+                      onClick={() => setOpenCategory(openCategory === category ? null : category)}
+                      className="w-full flex justify-between items-center py-2 border-b"
+                    >
+                      <span>{category.replace(/_/g, ' ')}</span>
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                    {openCategory === category && (
+                      <div className="grid grid-cols-3 gap-2 p-2">
+                        {charms.map((charm) => (
+                          <div
+                            key={charm.id}
+                            className="relative cursor-pointer group"
+                            onClick={() => handleCharmSelect(charm)}
+                          >
+                            <img
+                              src={charm.image}
+                              alt={charm.name}
+                              className="hover:scale-105 transition rounded border p-1 w-full"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = '../../assets/default/basenecklace.png';
+                              }}
+                            />
+                            <div style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }} className="absolute inset-0 opacity-0 group-hover:opacity-100 flex justify-center items-center text-white text-sm font-semibold transition">
+                              {charm.name}
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* --- CHAIN ONLY/0 CHARMS CHARMS PICKER HIDE END --- */}
+            {/* --- CHAIN ONLY/0 CHARMS MESSAGE SHOW START --- */}
+            {charmCount === 0 && (
+              <div className="text-gray-500 text-center py-8 italic">
+                Chain only selected. No charms can be picked in this mode.
+              </div>
+            )}
+            {/* --- CHAIN ONLY/0 CHARMS MESSAGE SHOW END --- */}
           </div>
         </div>
       </div>
