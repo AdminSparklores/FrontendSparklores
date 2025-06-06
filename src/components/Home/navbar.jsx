@@ -4,8 +4,174 @@ import logo from "../../assets/logo/sparklore_logo.png";
 import { useState, useEffect } from "react";
 import product1 from "../../assets/default/homeproduct1.png";
 import product2 from "../../assets/default/homeproduct2.png";
-import { isLoggedIn, logout, getAuthData, fetchCart, fetchProduct, fetchCharm, updateCartItemQuantity, deleteCartItem, BASE_URL } from "../../utils/api.js";
+import { isLoggedIn, logout, getAuthData, fetchCart, updateCartItemQuantity, deleteCartItem, BASE_URL, fetchAllCharms } from "../../utils/api.js";
 import Snackbar from '../snackbar.jsx';
+const EMPTY_CART_IMAGE = "https://i.pinimg.com/736x/2e/ac/fa/2eacfa305d7715bdcd86bb4956209038.jpg";
+
+const mapCartItemsWithCharms = (cartData, charmMap, discountMap, BASE_URL, product1) => {
+  return cartData.items.map((item) => {
+    // CASE: Charm-only item (no product/gift_set, only one charm)
+    if (
+      !item.product &&
+      !item.gift_set &&
+      Array.isArray(item.charms) &&
+      item.charms.length === 1
+    ) {
+      const charmId = item.charms[0];
+      const charm = charmMap[charmId];
+      let price = charm?.price || 0;
+      let originalPrice = price;
+      let discount = charm?.discount || 0;
+      let discountLabel = "";
+      if (discount > 0) {
+        price = price * (1 - discount / 100);
+        discountLabel = `${discount}% OFF`;
+      }
+      return {
+        id: item.id,
+        name: charm?.name || "Unknown Charm",
+        price,
+        originalPrice: discount > 0 ? originalPrice : null,
+        discount,
+        discountLabel,
+        quantity: item.quantity,
+        selected: false,
+        image: charm?.image,
+        charms: [],
+        message: item.message || "",
+        giftSet: null,
+        description: charm?.description || "",
+        charmId: charmId,
+        category: charm?.category || "",
+        type: "single-charm",
+      };
+    }
+
+    // CASE: Product or GiftSet
+    const product = item.product;
+    const giftSet = item.gift_set;
+    let name = "";
+    let price = 0;
+    let originalPrice = 0;
+    let discount = 0;
+    let discountLabel = "";
+    let image = product1;
+
+    if (product) {
+      name = product.name;
+      originalPrice = parseFloat(product.price);
+      price = originalPrice;
+      image = product.images && product.images.length > 0
+        ? (product.images[0].image_url.startsWith('http')
+          ? product.images[0].image_url
+          : `${BASE_URL.replace(/\/$/, '')}${product.images[0].image_url}`)
+        : product1;
+
+      // Discount/campaign logic for main product
+      const campaignDiscount = discountMap[`${product.id}`];
+      if (campaignDiscount) {
+        const discountType = campaignDiscount.discount_type;
+        const discountValue = parseFloat(campaignDiscount.discount_value || "0");
+        if (discountType === "percent") {
+          price = originalPrice * (1 - discountValue / 100);
+          discount = discountValue;
+          discountLabel = `${discountValue}% OFF`;
+        } else if (discountType === "amount") {
+          price = discountValue;
+          discount = originalPrice > 0 ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
+          discountLabel = `${discount}% OFF`;
+        }
+      } else if (product.discount && parseFloat(product.discount) > 0) {
+        discount = parseFloat(product.discount);
+        price = originalPrice * (1 - discount / 100);
+        discountLabel = `${discount}% OFF`;
+      }
+    } else if (giftSet) {
+      name = giftSet.name;
+      originalPrice = parseFloat(giftSet.price);
+      price = originalPrice;
+      image = giftSet.image_url
+        ? (giftSet.image_url.startsWith('http')
+          ? giftSet.image_url
+          : `${BASE_URL.replace(/\/$/, '')}${giftSet.image_url}`)
+        : product1;
+    }
+
+    // --- PRODUCT & CHARMS: Add all charm prices to product price ---
+    let charmImages = [];
+    let charmsSubtotal = 0;
+    if (product && Array.isArray(item.charms) && item.charms.length > 0) {
+      charmImages = item.charms.map(
+        charmId => charmMap[charmId]?.image
+      ).filter(Boolean);
+
+      // Add up charm prices (with discount if any)
+      charmsSubtotal = item.charms.reduce((sum, charmId) => {
+        const charm = charmMap[charmId];
+        if (!charm) return sum;
+        let charmPrice = charm.price || 0;
+        if (charm.discount && charm.discount > 0) {
+          charmPrice = charmPrice * (1 - charm.discount / 100);
+        }
+        return sum + charmPrice;
+      }, 0);
+
+      // Add charms price to product price!
+      price += charmsSubtotal;
+      // For originalPrice: add *original* charms price (no discount for charms)
+      let originalCharms = item.charms.reduce((sum, charmId) => {
+        const charm = charmMap[charmId];
+        return sum + (charm?.price || 0);
+      }, 0);
+      // If product is discounted, originalPrice is base product price + original charms price
+      originalPrice = (originalPrice || 0) + originalCharms;
+      // If any charm has discount, show discount info
+      const hasCharmDiscount = item.charms.some(
+        charmId => charmMap[charmId]?.discount > 0
+      );
+      if (hasCharmDiscount || discount > 0) {
+        discountLabel = [
+          discount > 0 ? `${discount}% OFF` : null,
+          hasCharmDiscount ? "Charm Discount" : null,
+        ].filter(Boolean).join(" + ");
+      }
+    } else {
+      // For non-product/giftset with charms (e.g., jewel_set, etc):
+      charmImages = (item.charms || []).map(
+        charmId => charmMap[charmId]?.image
+      ).filter(Boolean);
+    }
+
+    return {
+      id: item.id,
+      name,
+      price,
+      originalPrice: price !== originalPrice ? originalPrice : null,
+      discount,
+      discountLabel,
+      quantity: item.quantity,
+      selected: false,
+      image,
+      charms: charmImages,
+      message: item.message || "",
+      giftSet: giftSet
+        ? {
+            id: giftSet.id,
+            name: giftSet.name,
+            image: giftSet.image_url
+              ? (giftSet.image_url.startsWith('http')
+                ? giftSet.image_url
+                : `${BASE_URL.replace(/\/$/, '')}${giftSet.image_url}`)
+              : null,
+            price: giftSet.price,
+            description: giftSet.description,
+            products: giftSet.products
+          }
+        : null,
+      type: "product",
+    };
+  });
+};
 
 const NavBar = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -85,82 +251,28 @@ const NavBar = () => {
           setIsLoadingCart(true);
           setCartError(null);
 
-          // First keep the existing cart items as fallback
-          const existingCartItems = [...cartItems];
+          const cartData = await fetchCart();
+          const allCharms = await fetchAllCharms();
+          const charmMap = {};
+          allCharms.forEach(charm => {
+            charmMap[charm.id] = charm;
+          });
 
-          try {
-            const cartData = await fetchCart();
-
-            // Fetch product details for each item in cart
-            const itemsWithDetails = await Promise.all(
-              cartData.items.map(async (item) => {
-                const product = await fetchProduct(item.product);
-                const charmDetails = item.charms && item.charms.length > 0 
-                  ? await Promise.all(item.charms.map(charmId => fetchCharm(charmId)))
-                  : [];
-
-                // Apply discount logic (campaign > product discount)
-                const originalPrice = parseFloat(product.price);
-                let discount = parseFloat(product.discount || 0);
-                let discountedPrice = originalPrice;
-                let discountLabel = "";
-                let campaignDiscountItem = discountMap[`${product.id}`];
-
-                if (campaignDiscountItem) {
-                  const discountType = campaignDiscountItem.discount_type;
-                  const discountValue = parseFloat(campaignDiscountItem.discount_value || "0");
-                  if (discountType === "percent") {
-                    discountedPrice = originalPrice * (1 - discountValue / 100);
-                    discount = discountValue;
-                    discountLabel = `${discountValue}% OFF`;
-                  } else if (discountType === "amount") {
-                    discountedPrice = discountValue;
-                    discount = originalPrice > 0
-                      ? Math.round(((originalPrice - discountedPrice) / originalPrice) * 100)
-                      : 0;
-                    discountLabel = `${discount}% OFF`;
-                  }
-                } else if (discount > 0) {
-                  discountedPrice = originalPrice * (1 - (discount / 100));
-                  discountLabel = `${discount}% OFF`;
-                }
-
-                return {
-                  id: item.id,
-                  productId: item.product,
-                  name: product.name,
-                  price: discountedPrice, // Always the discounted price if any
-                  originalPrice: discountedPrice !== originalPrice ? originalPrice : null,
-                  discount: discount,
-                  discountLabel,
-                  quantity: item.quantity,
-                  selected: false,
-                  image: (product.images && product.images.length > 0) ? product.images[0].image_url : product1,
-                  charms: charmDetails.map(charm => charm.image),
-                  message: item.message || ""
-                };
-              })
-            );
-
-            setCartItems(itemsWithDetails);
-          } catch (error) {
-            console.error("Error loading cart from API:", error);
-            setCartError("Couldn't load cart data. Displaying cached items.");
-            // Keep the existing cart items if API fails
-            setCartItems(existingCartItems);
-          }
+          const itemsWithDetails = mapCartItemsWithCharms(cartData, charmMap, discountMap, BASE_URL, product1);
+          setCartItems(itemsWithDetails);
         } catch (error) {
-          console.error("Error loading cart:", error);
+          setCartError("Couldn't load cart data.");
+          setCartItems([]);
           setCartError(error.message);
         } finally {
           setIsLoadingCart(false);
         }
       }
-      // eslint-disable-next-line
     };
     loadCartData();
     // eslint-disable-next-line
   }, [drawerCartOpen, isLoggedInState, discountMap]);
+
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -236,16 +348,15 @@ const NavBar = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
+   // --- PATCH: handleQuantityChange uses the same mapping logic as cart loading!
   const handleQuantityChange = async (id, change) => {
     const item = cartItems.find(item => item.id === id);
     if (!item) return;
 
     const newQuantity = item.quantity + change;
 
-    // Prevent negative quantities
-    if (newQuantity < 0) return;
+    if (newQuantity < 0) return; // should never happen
 
-    // Handle quantity 0 (delete item)
     if (newQuantity === 0) {
       setItemToDelete(id);
       setShowDeleteConfirm(true);
@@ -253,100 +364,41 @@ const NavBar = () => {
     }
 
     try {
-      // Optimistically update the UI
-      setCartItems(prevItems =>
-        prevItems.map(item =>
-          item.id === id
-            ? { ...item, quantity: newQuantity }
-            : item
-        )
+      // Optimistically update UI
+      setCartItems(prev =>
+        prev.map(it => it.id === id ? { ...it, quantity: newQuantity } : it)
       );
 
-      // Update quantity on server
       await updateCartItemQuantity(id, newQuantity);
 
-      // Refresh cart data to ensure sync (re-apply discount logic here!)
-      const updatedCart = await fetchCart();
-      const itemsWithDetails = await Promise.all(
-        updatedCart.items.map(async (item) => {
-          const product = await fetchProduct(item.product);
-          const charmDetails = item.charms && item.charms.length > 0 
-            ? await Promise.all(item.charms.map(charmId => fetchCharm(charmId)))
-            : [];
-          // Apply discount campaign logic
-          const originalPrice = parseFloat(product.price);
-          let discount = parseFloat(product.discount || 0);
-          let discountedPrice = originalPrice;
-          let discountLabel = "";
-          let campaignDiscountItem = discountMap[`${product.id}`];
+      // Re-fetch cart to resync WITH charms info
+      const cartData = await fetchCart();
+      const allCharms = await fetchAllCharms();
+      const charmMap = {};
+      allCharms.forEach(charm => {
+        charmMap[charm.id] = charm;
+      });
 
-          if (campaignDiscountItem) {
-            const discountType = campaignDiscountItem.discount_type;
-            const discountValue = parseFloat(campaignDiscountItem.discount_value || "0");
-            if (discountType === "percent") {
-              discountedPrice = originalPrice * (1 - discountValue / 100);
-              discount = discountValue;
-              discountLabel = `${discountValue}% OFF`;
-            } else if (discountType === "amount") {
-              discountedPrice = discountValue;
-              discount = originalPrice > 0
-                ? Math.round(((originalPrice - discountedPrice) / originalPrice) * 100)
-                : 0;
-              discountLabel = `${discount}% OFF`;
-            }
-          } else if (discount > 0) {
-            discountedPrice = originalPrice * (1 - (discount / 100));
-            discountLabel = `${discount}% OFF`;
-          }
-
-          return {
-            id: item.id,
-            productId: item.product,
-            name: product.name,
-            price: discountedPrice, // This is the discounted price
-            originalPrice: discountedPrice !== originalPrice ? originalPrice : null,
-            discount: discount,
-            discountLabel,
-            quantity: item.quantity,
-            selected: item.selected || false,
-            image: (product.images && product.images.length > 0) ? product.images[0].image_url : product1,
-            charms: charmDetails.map(charm => charm.image),
-            message: item.message || ""
-          };
-        })
-      );
+      const itemsWithDetails = mapCartItemsWithCharms(cartData, charmMap, discountMap, BASE_URL, product1);
       setCartItems(itemsWithDetails);
     } catch (error) {
-      console.error("Error updating quantity:", error);
-      // Revert UI if update fails
-      setCartItems(prevItems =>
-        prevItems.map(item =>
-          item.id === id
-            ? { ...item, quantity: item.quantity - change }
-            : item
-        )
-      );
-      setSnackbarMessage('Failed to update quantity');
+      setSnackbarMessage(error.message || 'Failed to update quantity');
       setSnackbarType('error');
       setShowSnackbar(true);
+      // For debugging, also log the error:
+      console.error("Quantity update error:", error);
     }
   };
 
   const handleConfirmDelete = async () => {
     if (!itemToDelete) return;
-
     try {
-      // Delete from server
       await deleteCartItem(itemToDelete);
-
-      // Update UI
       setCartItems(prevItems => prevItems.filter(item => item.id !== itemToDelete));
-
       setSnackbarMessage('Item removed from cart');
       setSnackbarType('success');
       setShowSnackbar(true);
     } catch (error) {
-      console.error("Error deleting item:", error);
       setSnackbarMessage('Failed to remove item');
       setSnackbarType('error');
       setShowSnackbar(true);
@@ -434,10 +486,6 @@ const NavBar = () => {
          <nav className="px-[9rem] pb-[2rem] pt-[1rem] flex items-center justify-between">
           {/* Left Section - Language Toggle */}
           <div className="flex items-center">
-            {/* <button className="flex items-center border rounded-full text-xs font-medium">
-              <span className="px-3 py-1 bg-white rounded-l-full">EN</span>
-              <span className="px-3 py-1 bg-[#e6d4a5] rounded-r-full">ID</span>
-            </button> */}
             <div className="p-[3rem]"></div>
           </div>
 
@@ -516,12 +564,11 @@ const NavBar = () => {
       {drawerCartOpen && (
         <div
           className="fixed inset-0 z-50 bg-black/30 flex justify-end"
-          // New: close drawer if user clicks the backdrop, but NOT if they click inside the drawer
           onClick={() => setDrawerCartOpen(false)}
         >
           <div
             className="bg-[#fdfaf3] sm:w-full md:w-[40%] h-full p-6 overflow-y-auto relative animate-slideInRight shadow-2xl"
-            onClick={e => e.stopPropagation()} // Prevent closing when clicking inside the drawer
+            onClick={e => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex justify-between items-center border-b pb-4 mb-4">
@@ -536,97 +583,144 @@ const NavBar = () => {
 
             {/* Loading and Error States */}
             {isLoadingCart && (
-              <div className="flex justify-center items-center h-32">
+              <div className="flex flex-col justify-center items-center h-32 gap-2">
+                <span role="img" aria-label="Loading" className="text-5xl animate-spin">🛒</span>
                 <p>Loading your cart...</p>
               </div>
             )}
-            
+
             {cartError && (
-              <div className="text-red-500 p-4 text-center">
-                {cartError}
+              <div className="flex flex-col items-center justify-center py-10 gap-4">
+                <img
+                  src={EMPTY_CART_IMAGE}
+                  alt="Empty Cart"
+                  className="w-24 h-24 opacity-60"
+                  style={{ filter: "grayscale(70%)" }}
+                />
+                <span className="text-[#b87777] font-semibold text-lg text-center">
+                  {cartError}
+                </span>
+                {cartError.toLowerCase().includes('load') && (
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="mt-2 px-4 py-2 bg-[#e6d4a5] rounded text-gray-800 font-medium"
+                  >
+                    Retry
+                  </button>
+                )}
               </div>
             )}
 
-            {/* Cart Items */}
-            <div className="space-y-8">
-              {cartItems.map((item) => (
-                <div key={item.id} className="flex flex-col gap-2">
-                  <div className="flex gap-4">
-                    <input 
-                      type="checkbox" 
-                      className="custom-checkbox" 
-                      checked={item.selected}
-                      onChange={() => toggleItemSelection(item.id)}
-                    />
-                    <img 
-                      src={item.image} 
-                      alt={item.name} 
-                      className="w-[6rem] h-[6rem] object-cover rounded-md" 
-                    />
-                    <div className="flex-1">
-                      <div className="flex justify-between">
-                        <h3 className="font-semibold text-gray-800">{item.name}</h3>
-                      </div>
-                      <div className="flex flex-col">
-                        <p className="text-[#b87777] font-semibold">
-                          {formatPrice(item.price * item.quantity)}
-                        </p>
-                        {item.originalPrice && (
-                          <div className="flex gap-2">
-                            <p className="text-gray-400 text-sm line-through">
-                              {formatPrice(item.originalPrice * item.quantity)}
-                            </p>
-                            <span className="text-xs bg-[#c3a46f] text-white px-1 rounded">
-                              {item.discountLabel || `${item.discount}% OFF`}
-                            </span>
+            {!cartError && !isLoadingCart && cartItems.length > 0 && (
+              <div className="space-y-8">
+                {cartItems.map((item) => (
+                  <div key={item.id} className="flex flex-col gap-2">
+                    <div className="flex gap-4">
+                      <input 
+                        type="checkbox" 
+                        className="custom-checkbox" 
+                        checked={item.selected}
+                        onChange={() => toggleItemSelection(item.id)}
+                      />
+                      <img 
+                        src={item.image} 
+                        alt={item.name} 
+                        className="w-[6rem] h-[6rem] object-cover rounded-md" 
+                      />
+                      <div className="flex-1">
+                        <div className="flex justify-between">
+                          <h3 className="font-semibold text-gray-800">{item.name}</h3>
+                        </div>
+                        <div className="flex flex-col">
+                          <p className="text-[#b87777] font-semibold">
+                            {formatPrice(item.price * item.quantity)}
+                          </p>
+                          {item.originalPrice && (
+                            <div className="flex gap-2">
+                              <p className="text-gray-400 text-sm line-through">
+                                {formatPrice(item.originalPrice * item.quantity)}
+                              </p>
+                              <span className="text-xs bg-[#c3a46f] text-white px-1 rounded">
+                                {item.discountLabel || `${item.discount}% OFF`}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        {/* --- Product/GiftSet Unified UI --- */}
+                        {/* If it's a gift set, display like a product */}
+                        {/* {item.giftSet && (
+                          <div className="mt-2 p-2 border rounded bg-[#fbf8ed]">
+                            <div className="flex gap-3 items-center">
+                              {item.giftSet.image && (
+                                <img
+                                  src={item.giftSet.image}
+                                  alt={item.giftSet.name}
+                                  className="w-[4.5rem] h-[4.5rem] object-cover rounded"
+                                />
+                              )}
+                              <div className="flex-1">
+                                <div className="font-semibold text-[#b87777] text-base">{item.giftSet.name}</div>
+                                <div className="text-xs text-gray-500 mb-1">
+                                  {item.giftSet.products && item.giftSet.products.length > 0
+                                    ? "Includes: " + item.giftSet.products.map(p => p.name).join(", ")
+                                    : null}
+                                </div>
+                                <p className="text-gray-800 font-semibold">
+                                  {formatPrice(Number(item.giftSet.price) * item.quantity)}
+                                </p>
+                                {item.giftSet.description && (
+                                  <div className="text-xs text-gray-700 mt-1">{item.giftSet.description}</div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )} */}
+                        {/* --- END Product/GiftSet Unified UI --- */}
+                        {item.charms && item.charms.length > 0 && (
+                          <div className="text-sm mt-2">
+                            <p className="font-medium">Charm Selection</p>
+                            <div className="flex gap-1 mt-1">
+                              {item.charms.map((charm, index) => (
+                                <img 
+                                  key={index} 
+                                  src={charm} 
+                                  className="w-6 h-6 border rounded-sm" 
+                                  alt={`charm ${index}`} 
+                                />
+                              ))}
+                            </div>
                           </div>
                         )}
-                      </div>
-                      
-                      {item.charms && item.charms.length > 0 && (
-                        <div className="text-sm mt-2">
-                          <p className="font-medium">Charm Selection</p>
-                          <div className="flex gap-1 mt-1">
-                            {item.charms.map((charm, index) => (
-                              <img 
-                                key={index} 
-                                src={charm} 
-                                className="w-6 h-6 border rounded-sm" 
-                                alt={`charm ${index}`} 
-                              />
-                            ))}
+                        {item.message && (
+                          <div className="text-sm mt-2">
+                            <p className="font-medium text-start text-gray-600">Special Message</p>
+                            <p className="italic text-sm text-gray-600">"{item.message}"</p>
                           </div>
+                        )}
+                        <div className="flex items-center gap-2 mt-2">
+                          <button 
+                            className="border px-2 rounded text-gray-700"
+                            onClick={() => handleQuantityChange(item.id, -1)}
+                          >
+                            -
+                          </button>
+                          <span>{item.quantity}</span>
+                          <button 
+                            className="border px-2 rounded text-gray-700"
+                            onClick={() => handleQuantityChange(item.id, 1)}
+                          >
+                            +
+                          </button>
                         </div>
-                      )}
-                      {item.message && (
-                        <div className="text-sm mt-2">
-                          <p className="font-medium text-start text-gray-600">Special Message</p>
-                          <p className="italic text-sm text-gray-600">"{item.message}"</p>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2 mt-2">
-                        <button 
-                          className="border px-2 rounded text-gray-700"
-                          onClick={() => handleQuantityChange(item.id, -1)}
-                        >
-                          -
-                        </button>
-                        <span>{item.quantity}</span>
-                        <button 
-                          className="border px-2 rounded text-gray-700"
-                          onClick={() => handleQuantityChange(item.id, 1)}
-                        >
-                          +
-                        </button>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
-            {/* Bottom Section - Only show if cart has items */}
-            {cartItems.length > 0 && (
+            {/* Bottom Section - Only show if cart has items and no error */}
+            {!cartError && cartItems.length > 0 && (
               <>
                 <div className="flex items-center justify-between mt-10 pt-6 border-t">
                   <div className="flex gap-2 items-center">
@@ -645,38 +739,39 @@ const NavBar = () => {
                     </p>
                   </div>
                 </div>
-
-                {/* Buttons */}
-                {/* In the cart drawer buttons section */}
                 <div className="mt-6 space-y-4">
                   <Link 
                     to="/checkout" 
                     state={{ selectedItems: cartItems.filter(item => item.selected) }}
                     className="w-full bg-[#e9d8a6] text-gray-800 font-medium py-3 rounded-lg text-lg tracking-wide hover:opacity-90 transition block text-center"
                     onClick={() => {
-                      // Only allow checkout if at least one item is selected
                       const hasSelectedItems = cartItems.some(item => item.selected);
                       if (!hasSelectedItems) {
                         setSnackbarMessage('Please select at least one item to checkout');
                         setSnackbarType('error');
                         setShowSnackbar(true);
-                        return false; // Prevent navigation
+                        return false;
                       }
                     }}
                   >
                     Checkout
                   </Link>
-                  {/* <button className="w-full bg-[#e4572e] text-white font-medium py-3 rounded-lg text-lg tracking-wide hover:opacity-90 transition">
-                    Shopee Checkout
-                  </button> */}
                 </div>
               </>
             )}
 
-            {/* Empty cart state */}
+            {/* Empty cart state (nice user-friendly) */}
             {!isLoadingCart && cartItems.length === 0 && !cartError && (
-              <div className="text-center py-10">
-                <p>Your cart is empty</p>
+              <div className="flex flex-col items-center justify-center py-10 gap-4">
+                <img
+                  src={EMPTY_CART_IMAGE}
+                  alt="Empty Cart"
+                  className="w-24 h-24 opacity-60"
+                  style={{ filter: "grayscale(70%)" }}
+                />
+                <span className="text-[#b87777] font-semibold text-lg text-center">
+                  Your cart is empty.
+                </span>
               </div>
             )}
           </div>
@@ -741,10 +836,6 @@ const NavBar = () => {
             style={{ animation: 'slideIn 0.3s ease-out' }}
           >
             <div className="flex justify-between items-center mb-8">
-              {/* <button className="flex items-center border rounded-full text-xs font-medium">
-                <span className="px-3 py-1 bg-white rounded-l-full text-black">EN</span>
-                <span className="px-3 py-1 bg-[#e6d4a5] rounded-r-full text-black">ID</span>
-              </button> */}
               <div className="p-[3rem]"></div>
               <button 
                 className="text-gray-700 text-2xl"

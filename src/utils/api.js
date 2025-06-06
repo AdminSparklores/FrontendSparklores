@@ -1,5 +1,5 @@
 // src/api.js
-export const BASE_URL = 'http://192.168.1.4:8000/';
+export const BASE_URL = 'http://192.168.1.3:8000';
 
 // Helper function to store auth data
 const storeAuthData = (data) => {
@@ -91,7 +91,6 @@ export const logout = () => {
 };
 
 
-
 export const fetchCart = async () => {
   const authData = getAuthData();
   if (!authData) throw new Error('Not authenticated');
@@ -105,7 +104,9 @@ export const fetchCart = async () => {
   });
 
   if (!response.ok) {
-    throw new Error('Failed to fetch cart');
+    // Add details to the error message:
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch cart: [${response.status}] ${errorText}`);
   }
 
   return await response.json();
@@ -152,32 +153,44 @@ export const updateCartItemQuantity = async (itemId, quantity, increment = false
   const authData = getAuthData();
   if (!authData) throw new Error('Not authenticated');
 
-  let requestBody = { quantity };
-  
-  if (increment) {
-    // First get current quantity
-    const cartResponse = await fetch(`${BASE_URL}/api/cart/`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authData.token}`
-      }
-    });
-    
-    if (!cartResponse.ok) {
-      throw new Error('Failed to fetch cart');
+  // Fetch the cart to get the current item
+  const cartResponse = await fetch(`${BASE_URL}/api/cart/`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authData.token}`
     }
-    
-    const cartData = await cartResponse.json();
-    const cartItems = cartData.items || [];
-    const item = cartItems.find(i => i.id === itemId);
-    
-    if (!item) {
-      throw new Error('Item not found in cart');
-    }
-    
-    requestBody = { quantity: item.quantity + quantity };
+  });
+  if (!cartResponse.ok) {
+    throw new Error('Failed to fetch cart');
   }
+  const cartData = await cartResponse.json();
+  const cartItems = cartData.items || [];
+  const item = cartItems.find(i => i.id === itemId);
+
+  if (!item) {
+    throw new Error('Item not found in cart');
+  }
+
+  let requestBody = { quantity };
+  if (increment) {
+    requestBody.quantity = item.quantity + quantity;
+  }
+
+  // Always include product/gift_set/charms in PATCH
+  if (item.product && item.product.id) {
+    requestBody.product = item.product.id;
+  }
+  if (item.gift_set && item.gift_set.id) {
+    requestBody.gift_set = item.gift_set.id;
+  }
+  if (item.charms && Array.isArray(item.charms) && item.charms.length > 0) {
+    // The charms field should be a list of charm IDs
+    requestBody.charms = item.charms.map(charm => (charm.id ? charm.id : charm));
+  }
+
+  // DEBUG: Log what you send
+  console.log("PATCH cart update body:", requestBody);
 
   const response = await fetch(`${BASE_URL}/api/cart/${itemId}/update_item/`, {
     method: 'PATCH',
@@ -189,33 +202,13 @@ export const updateCartItemQuantity = async (itemId, quantity, increment = false
   });
 
   if (!response.ok) {
-    throw new Error('Failed to update cart item quantity');
+    let errorText = "";
+    try { errorText = await response.text(); } catch {}
+    console.error("Failed to update cart item quantity. Status:", response.status, "Body:", errorText, "Request:", requestBody);
+    throw new Error(`Failed to update cart item quantity. ${errorText}`);
   }
 
   const updatedItem = await response.json();
-  
-  // Always fetch the full product details to ensure we have discount info
-  const productId = typeof updatedItem.product === 'object' 
-    ? updatedItem.product.id 
-    : updatedItem.product;
-  
-  if (productId) {
-    const product = await fetchProduct(productId);
-    return {
-      ...updatedItem,
-      product: {
-        ...(typeof updatedItem.product === 'object' ? updatedItem.product : {}),
-        id: productId,
-        price: product.price,
-        discount: product.discount
-      },
-      // Calculate and include discounted price
-      discountedPrice: product.discount > 0 
-        ? product.price * (1 - (product.discount / 100))
-        : product.price
-    };
-  }
-
   return updatedItem;
 };
 
@@ -239,55 +232,146 @@ export const deleteCartItem = async (itemId) => {
 
 
 // Add to api.js
+// export const addToCart = async (productId) => {
+//   const authData = getAuthData();
+//   if (!authData) throw new Error('Not authenticated');
+
+//   try {
+//     // First check if product already exists in cart
+//     console.log('Checking if product exists in cart...'); // Debug
+//     const existingItemId = await checkProductInCart(productId);
+//     console.log('Existing item ID:', existingItemId); // Debug
+
+//     if (existingItemId) {
+//       console.log('Product exists, incrementing quantity...'); // Debug
+//       // If exists, increment quantity
+//       const result = await updateCartItemQuantity(existingItemId, 1, true);
+//       console.log('Increment result:', result); // Debug
+//       return result;
+//     } else {
+//       console.log('Product not found, adding new item...'); // Debug
+//       // If doesn't exist, add new item
+//       const response = await fetch(`${BASE_URL}/api/cart/add/`, {
+//         method: 'POST',
+//         headers: {
+//           'Content-Type': 'application/json',
+//           'Authorization': `Bearer ${authData.token}`
+//         },
+//         body: JSON.stringify({
+//           product: productId,
+//           quantity: 1,
+//           charms: []
+//         })
+//       });
+
+//       if (!response.ok) {
+//         const errorData = await response.json();
+//         console.error('Add to cart error:', errorData); // Debug
+//         throw new Error(errorData.message || 'Failed to add item to cart');
+//       }
+
+//       const result = await response.json();
+//       console.log('Add to cart result:', result); // Debug
+//       return result;
+//     }
+//   } catch (error) {
+//     console.error('Error in addToCart:', error); // Debug
+//     throw error;
+//   }
+// };
+
+// Add this new function to check if product exists in cart
+// export const checkProductInCart = async (productId) => {
+//   const authData = getAuthData();
+//   if (!authData) throw new Error('Not authenticated');
+
+//   const response = await fetch(`${BASE_URL}/api/cart/`, {
+//     method: 'GET',
+//     headers: {
+//       'Content-Type': 'application/json',
+//       'Authorization': `Bearer ${authData.token}`
+//     }
+//   });
+
+//   if (!response.ok) {
+//     throw new Error('Failed to fetch cart');
+//   }
+
+//   const cartData = await response.json();
+//   const cartItems = Array.isArray(cartData) ? cartData : cartData.items || [];
+  
+//   const existingItem = cartItems.find(item => {
+//     // Handle both cases where product is an object or just an ID
+//     const itemProductId = typeof item.product === 'object' 
+//       ? item.product.id 
+//       : item.product;
+//     return itemProductId == productId; // Use == for loose comparison (number vs string)
+//   });
+  
+//   return existingItem ? existingItem.id : null;
+// };
+
 export const addToCart = async (productId) => {
+  console.log("ini productid nya yg add to cart: ",productId);
+  if (!productId) throw new Error('No product id specified');
   const authData = getAuthData();
   if (!authData) throw new Error('Not authenticated');
-
-  try {
-    // First check if product already exists in cart
-    console.log('Checking if product exists in cart...'); // Debug
-    const existingItemId = await checkProductInCart(productId);
-    console.log('Existing item ID:', existingItemId); // Debug
-
-    if (existingItemId) {
-      console.log('Product exists, incrementing quantity...'); // Debug
-      // If exists, increment quantity
-      const result = await updateCartItemQuantity(existingItemId, 1, true);
-      console.log('Increment result:', result); // Debug
-      return result;
-    } else {
-      console.log('Product not found, adding new item...'); // Debug
-      // If doesn't exist, add new item
-      const response = await fetch(`${BASE_URL}/api/cart/add/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authData.token}`
-        },
-        body: JSON.stringify({
-          product: productId,
-          quantity: 1,
-          charms: []
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Add to cart error:', errorData); // Debug
-        throw new Error(errorData.message || 'Failed to add item to cart');
-      }
-
-      const result = await response.json();
-      console.log('Add to cart result:', result); // Debug
-      return result;
+  
+  // 1. Check if product exists in cart
+  const response = await fetch(`${BASE_URL}/api/cart/`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authData.token}`
     }
-  } catch (error) {
-    console.error('Error in addToCart:', error); // Debug
-    throw error;
+  });
+  if (!response.ok) throw new Error('Failed to fetch cart');
+  const cartData = await response.json();
+  const cartItems = cartData.items || [];
+  const existingItem = cartItems.find(item => {
+    if (!item.product) return false; // skip charm/giftset-only
+    if (typeof item.product === 'object' && item.product !== null && 'id' in item.product) {
+      return item.product.id == productId;
+    }
+    return item.product == productId;
+  });
+
+  if (existingItem) {
+    // 2. If exists, PATCH to increase quantity
+    const newQty = (existingItem.quantity || 1) + 1;
+    const patchResp = await fetch(`${BASE_URL}/api/cart/${existingItem.id}/update_item/`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authData.token}`
+      },
+      body: JSON.stringify({ quantity: newQty })
+    });
+    if (!patchResp.ok) {
+      let msg = "Failed to update cart";
+      try { msg = await patchResp.text(); } catch {}
+      throw new Error(msg);
+    }
+    return await patchResp.json();
+  } else {
+    // 3. If not exists, POST to add
+    const postResp = await fetch(`${BASE_URL}/api/cart/add/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authData.token}`
+      },
+      body: JSON.stringify({ product: productId, quantity: 1, charms: [] })
+    });
+    if (!postResp.ok) {
+      let msg = "Failed to add item to cart";
+      try { msg = await postResp.text(); } catch {}
+      throw new Error(msg);
+    }
+    return await postResp.json();
   }
 };
 
-// Add this new function to check if product exists in cart
 export const checkProductInCart = async (productId) => {
   const authData = getAuthData();
   if (!authData) throw new Error('Not authenticated');
@@ -308,16 +392,15 @@ export const checkProductInCart = async (productId) => {
   const cartItems = Array.isArray(cartData) ? cartData : cartData.items || [];
   
   const existingItem = cartItems.find(item => {
-    // Handle both cases where product is an object or just an ID
-    const itemProductId = typeof item.product === 'object' 
-      ? item.product.id 
-      : item.product;
-    return itemProductId == productId; // Use == for loose comparison (number vs string)
+    if (!item.product) return false;
+    if (typeof item.product === 'object' && item.product !== null && 'id' in item.product) {
+      return item.product.id == productId;
+    }
+    return item.product == productId;
   });
   
   return existingItem ? existingItem.id : null;
 };
-
 
 export const subscribeToNewsletter = async (email) => {
   try {
