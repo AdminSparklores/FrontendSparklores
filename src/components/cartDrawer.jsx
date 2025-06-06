@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { fetchCart, fetchAllCharms, updateCartItemQuantity, deleteCartItem, BASE_URL } from "../utils/api";
 const EMPTY_CART_IMAGE = "https://i.pinimg.com/736x/2e/ac/fa/2eacfa305d7715bdcd86bb4956209038.jpg";
@@ -179,115 +179,109 @@ const CartDrawer = ({
   const [isLoadingCart, setIsLoadingCart] = useState(false);
   const [cartError, setCartError] = useState(null);
   const [localDiscountMap, setLocalDiscountMap] = useState({});
+  const [discountsLoaded, setDiscountsLoaded] = useState(false); // Only set true ONCE per open
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
-  // Only fetch discounts ONCE per drawer open, if discountMap not provided
+  // Track whether we've already loaded discounts this open cycle
+  const discountsFetchStarted = useRef(false);
+
+  // Fetch discounts only once per drawer open
   useEffect(() => {
-    if (open && isLoggedIn && Object.keys(discountMap).length === 0) {
-      setLocalDiscountMap({}); // reset before fetching
-      (async () => {
-        try {
-          const response = await fetch(`${BASE_URL}/api/discount-campaigns/`);
-          if (!response.ok) throw new Error("Failed to fetch discount campaigns");
-          const campaigns = await response.json();
-          const map = {};
-          campaigns.forEach(campaign => {
-            if (campaign.items && campaign.items.length > 0) {
-              campaign.items.forEach(item => {
-                if (item.product && item.product.id !== undefined && item.product.id !== null) {
-                  map[`${item.product.id}`] = item;
-                }
-              });
-            }
-          });
-          setLocalDiscountMap(map);
-        } catch {
-          setLocalDiscountMap({});
-        }
-      })();
+    if (!open || !isLoggedIn) {
+      setDiscountsLoaded(false);
+      setLocalDiscountMap({});
+      discountsFetchStarted.current = false;
+      return;
     }
-    // eslint-disable-next-line
-  }, [open, isLoggedIn, discountMap]);
 
-  // Only fetch cart after discounts are loaded (or always, if a discountMap is provided)
-  useEffect(() => {
-    const shouldFetchCart =
-      open && isLoggedIn && (
-        Object.keys(discountMap).length > 0 ||
-        Object.keys(localDiscountMap).length > 0 ||
-        (Object.keys(discountMap).length === 0 && Object.keys(localDiscountMap).length === 0)
-      );
-    // The last clause allows cart to load even if there are no discounts at all.
-
-    if (shouldFetchCart) {
-      (async () => {
-        try {
-          setIsLoadingCart(true);
-          setCartError(null);
-
-          const cartData = await fetchCart();
-          const allCharms = await fetchAllCharms();
-          const charmMap = {};
-          allCharms.forEach(charm => {
-            charmMap[charm.id] = charm;
-          });
-
-          const itemsWithDetails = mapCartItemsWithCharms(
-            cartData,
-            charmMap,
-            Object.keys(discountMap).length > 0 ? discountMap : localDiscountMap,
-            BASE_URL,
-            product1
-          );
-          setCartItems(itemsWithDetails);
-        } catch (error) {
-          setCartError("Couldn't load cart data.");
-          setCartItems([]);
-          setCartError(error.message);
-        } finally {
-          setIsLoadingCart(false);
-        }
-      })();
+    // If discountMap is given, mark as loaded
+    if (Object.keys(discountMap).length > 0) {
+      setDiscountsLoaded(true);
+      setLocalDiscountMap({});
+      return;
     }
-    // eslint-disable-next-line
-  }, [open, isLoggedIn, discountMap, localDiscountMap]);
 
-  // Load cart data when drawer opens and user is logged in
-  useEffect(() => {
-    const loadCartData = async () => {
-      if (open && isLoggedIn) {
-        try {
-          setIsLoadingCart(true);
-          setCartError(null);
+    // If already started for this open, do nothing
+    if (discountsFetchStarted.current) return;
+    discountsFetchStarted.current = true;
 
-          const cartData = await fetchCart();
-          const allCharms = await fetchAllCharms();
-          const charmMap = {};
-          allCharms.forEach(charm => {
-            charmMap[charm.id] = charm;
-          });
-
-          const itemsWithDetails = mapCartItemsWithCharms(
-            cartData,
-            charmMap,
-            Object.keys(discountMap).length > 0 ? discountMap : localDiscountMap,
-            BASE_URL,
-            product1
-          );
-          setCartItems(itemsWithDetails);
-        } catch (error) {
-          setCartError("Couldn't load cart data.");
-          setCartItems([]);
-          setCartError(error.message);
-        } finally {
-          setIsLoadingCart(false);
-        }
+    // Otherwise, fetch
+    setDiscountsLoaded(false);
+    setLocalDiscountMap({});
+    (async () => {
+      try {
+        const response = await fetch(`${BASE_URL}/api/discount-campaigns/`);
+        if (!response.ok) throw new Error("Failed to fetch discount campaigns");
+        const campaigns = await response.json();
+        const map = {};
+        campaigns.forEach(campaign => {
+          if (campaign.items && campaign.items.length > 0) {
+            campaign.items.forEach(item => {
+              if (item.product && item.product.id !== undefined && item.product.id !== null) {
+                map[`${item.product.id}`] = item;
+              }
+            });
+          }
+        });
+        setLocalDiscountMap(map);
+      } catch {
+        setLocalDiscountMap({});
+      } finally {
+        setDiscountsLoaded(true); // Now ready!
       }
-    };
-    loadCartData();
-    // eslint-disable-next-line
+    })();
   }, [open, isLoggedIn, discountMap]);
+
+  // Reset the fetch flag when drawer closes
+  useEffect(() => {
+    if (!open) {
+      discountsFetchStarted.current = false;
+      setDiscountsLoaded(false);
+      setLocalDiscountMap({});
+    }
+  }, [open]);
+
+  // Fetch cart only once per open+discountsLoaded
+  const cartFetchedForOpen = useRef(false);
+  useEffect(() => {
+    if (!open || !isLoggedIn || !discountsLoaded) {
+      cartFetchedForOpen.current = false;
+      return;
+    }
+    if (cartFetchedForOpen.current) return;
+    cartFetchedForOpen.current = true;
+
+    (async () => {
+      try {
+        setIsLoadingCart(true);
+        setCartError(null);
+        const cartData = await fetchCart();
+        const allCharms = await fetchAllCharms();
+        const charmMap = {};
+        allCharms.forEach(charm => {
+          charmMap[charm.id] = charm;
+        });
+        const useDiscountMap = Object.keys(discountMap).length > 0 ? discountMap : localDiscountMap;
+        const itemsWithDetails = mapCartItemsWithCharms(
+          cartData,
+          charmMap,
+          useDiscountMap,
+          BASE_URL,
+          product1
+        );
+        setCartItems(itemsWithDetails);
+      } catch (error) {
+        setCartError("Couldn't load cart data.");
+        setCartItems([]);
+        setCartError(error.message);
+      } finally {
+        setIsLoadingCart(false);
+      }
+    })();
+  }, [open, isLoggedIn, discountsLoaded, discountMap, localDiscountMap]);
+
+
 
   // --- Cart handlers ---
   const handleQuantityChange = async (id, change) => {
