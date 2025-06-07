@@ -4,9 +4,9 @@ import logo from "../../assets/logo/sparklore_logo.png";
 import { useState, useEffect } from "react";
 import product1 from "../../assets/default/homeproduct1.png";
 import product2 from "../../assets/default/homeproduct2.png";
-import { isLoggedIn, logout, fetchCart, updateCartItemQuantity, deleteCartItem, BASE_URL, fetchAllCharms, fetchProduct, fetchCharm } from "../../utils/api.js";
+import { isLoggedIn, logout, fetchCart, updateCartItemQuantity, deleteCartItem, BASE_URL, fetchProduct, fetchCharm } from "../../utils/api.js";
 import Snackbar from '../snackbar.jsx';
-const EMPTY_CART_IMAGE = "https://i.pinimg.com/736x/2e/ac/fa/2eacfa305d7715bdcd86bb4956209038.jpg";
+import CartDrawer from '../cartDrawer.jsx';
 
 const fetchGiftSet = async (giftSetId) => {
   const response = await fetch(`${BASE_URL}/api/gift-sets/${giftSetId}/`);
@@ -15,7 +15,6 @@ const fetchGiftSet = async (giftSetId) => {
 };
 
 const mapCartItemsWithDetails = async (cartData, discountMap, BASE_URL, product1) => {
-  // 1. Gather all needed IDs
   const productIds = [];
   const charmIds = [];
   const giftSetIds = [];
@@ -25,7 +24,6 @@ const mapCartItemsWithDetails = async (cartData, discountMap, BASE_URL, product1
     if (item.charms && Array.isArray(item.charms)) charmIds.push(...item.charms);
   });
 
-  // 2. Fetch all unique products, charms, and gift sets in parallel
   const [productsArr, charmsArr, giftSetsArr] = await Promise.all([
     Promise.all([...new Set(productIds)].map(id => fetchProduct(id))),
     Promise.all([...new Set(charmIds)].map(id => fetchCharm(id))),
@@ -38,9 +36,7 @@ const mapCartItemsWithDetails = async (cartData, discountMap, BASE_URL, product1
   const giftSetMap = {};
   giftSetsArr.forEach(gs => { giftSetMap[gs.id] = gs; });
 
-  // 3. Map cart items to display shape
   return cartData.items.map((item) => {
-    // --- Single-charm only (no product/gift_set) ---
     if (
       !item.product &&
       !item.gift_set &&
@@ -77,7 +73,6 @@ const mapCartItemsWithDetails = async (cartData, discountMap, BASE_URL, product1
       };
     }
 
-    // --- Product or GiftSet ---
     const product = item.product ? productMap[item.product] : null;
     const giftSet = item.gift_set ? giftSetMap[item.gift_set] : null;
     let name = "";
@@ -87,7 +82,6 @@ const mapCartItemsWithDetails = async (cartData, discountMap, BASE_URL, product1
     let discountLabel = "";
     let image = product1;
 
-    // --- Product ---
     if (product) {
       name = product.name;
       let productOriginalPrice = Number(product.price) || 0;
@@ -98,7 +92,6 @@ const mapCartItemsWithDetails = async (cartData, discountMap, BASE_URL, product1
           : `${BASE_URL.replace(/\/$/, '')}${product.images[0].image_url}`)
         : product1;
 
-      // Discount/campaign logic for main product
       const campaignDiscount = discountMap[`${product.id}`];
       if (campaignDiscount) {
         const discountType = campaignDiscount.discount_type;
@@ -118,7 +111,6 @@ const mapCartItemsWithDetails = async (cartData, discountMap, BASE_URL, product1
         discountLabel = `${discount}% OFF`;
       }
 
-      // --- Add charms prices (with their discounts) ---
       let charmImages = [];
       let charmsSubtotal = 0;
       let originalCharms = 0;
@@ -148,7 +140,6 @@ const mapCartItemsWithDetails = async (cartData, discountMap, BASE_URL, product1
       price = productPrice + charmsSubtotal;
       originalPrice = productOriginalPrice + originalCharms;
 
-      // If any discounts (product or any charm), show discount label
       if (hasCharmDiscount || discount > 0) {
         discountLabel = [
           discount > 0 ? `${discount}% OFF` : null,
@@ -173,7 +164,6 @@ const mapCartItemsWithDetails = async (cartData, discountMap, BASE_URL, product1
       };
     }
 
-    // --- GiftSet ---
     if (giftSet) {
       name = giftSet.name;
       originalPrice = Number(giftSet.price) || 0;
@@ -183,7 +173,7 @@ const mapCartItemsWithDetails = async (cartData, discountMap, BASE_URL, product1
           ? giftSet.image_url
           : `${BASE_URL.replace(/\/$/, '')}${giftSet.image_url}`)
         : product1;
-      // No charm logic for gift sets for now, but can be added if needed
+
       return {
         id: item.id,
         name,
@@ -212,7 +202,6 @@ const mapCartItemsWithDetails = async (cartData, discountMap, BASE_URL, product1
       };
     }
 
-    // --- Unknown fallback ---
     return {
       id: item.id,
       name: "Unknown Item",
@@ -242,26 +231,7 @@ const NavBar = () => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarType, setSnackbarType] = useState('success');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 1,
-      name: "Charm Link Custom Bracelet",
-      price: 369998,
-      quantity: 1,
-      selected: false,
-      image: product1,
-      charms: [product1, product1, product1, product1, product1],
-      message: "This is for the special message if the user want to send a message to the recipient."
-    },
-    {
-      id: 2,
-      name: "Marbella Ring",
-      price: 99999,
-      quantity: 1,
-      selected: false,
-      image: product2
-    }
-  ]);
+  const [cartItems, setCartItems] = useState([]);
   const [isLoadingCart, setIsLoadingCart] = useState(false);
   const [cartError, setCartError] = useState(null);
 
@@ -269,11 +239,21 @@ const NavBar = () => {
   const location = useLocation();
 
   const [searchQuery, setSearchQuery] = useState("");
-
-  // New state for discount campaign map (productId as string => discountItem)
   const [discountMap, setDiscountMap] = useState({});
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
 
-  // Fetch and build discount map on mount and whenever cart is opened
+  const navItems = [
+    { name: "Charm Bar", path: "/charmbar" },
+    { name: "Charms", path: "/charms" },
+    { name: "Necklaces", path: "/necklaces" },
+    { name: "Bracelets", path: "/bracelets" },
+    { name: "Earrings", path: "/earrings" },
+    { name: "Rings", path: "/rings" },
+    { name: "Anklets", path: "/anklets" },
+    { name: "Gift Sets", path: "/giftsets" },
+  ];
+
   useEffect(() => {
     const fetchDiscountCampaigns = async () => {
       try {
@@ -281,7 +261,6 @@ const NavBar = () => {
         if (!response.ok) throw new Error("Failed to fetch discount campaigns");
         const campaigns = await response.json();
         const map = {};
-        // Flatten all campaign items into productId -> discountItem
         campaigns.forEach(campaign => {
           if (campaign.items && campaign.items.length > 0) {
             campaign.items.forEach(item => {
@@ -293,11 +272,9 @@ const NavBar = () => {
         });
         setDiscountMap(map);
       } catch (err) {
-        // No error thrown, cart can still work without discounts
         setDiscountMap({});
       }
     };
-    // Always fetch new discount map if cart is opened
     if (drawerCartOpen && isLoggedInState) fetchDiscountCampaigns();
   }, [drawerCartOpen, isLoggedInState]);
 
@@ -307,12 +284,8 @@ const NavBar = () => {
         try {
           setIsLoadingCart(true);
           setCartError(null);
-
           const cartData = await fetchCart();
-
-          // fetch all product/charm/gift_set details for all cart items
           const itemsWithDetails = await mapCartItemsWithDetails(cartData, discountMap, BASE_URL, product1);
-
           setCartItems(itemsWithDetails);
         } catch (error) {
           setCartError("Couldn't load cart data.");
@@ -327,6 +300,29 @@ const NavBar = () => {
     // eslint-disable-next-line
   }, [drawerCartOpen, isLoggedInState, discountMap]);
 
+  useEffect(() => {
+    setIsInitialLoad(false);
+    if (location.state?.showLoginSuccess) {
+      setSnackbarMessage('You are logged in');
+      setSnackbarType('success');
+      setShowSnackbar(true);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+    const checkAuth = () => {
+      const loggedIn = isLoggedIn();
+      setIsLoggedInState(loggedIn);
+    };
+    checkAuth();
+    const handleStorageChange = (e) => {
+      if (e.key === 'authData') {
+        checkAuth();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [location.state]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -335,40 +331,6 @@ const NavBar = () => {
       setShowSearchBar(false);
     }
   };
-
-  // Add this useEffect to listen for storage changes
-  useEffect(() => {
-    setIsInitialLoad(false);
-
-    if (location.state?.showLoginSuccess) {
-      setSnackbarMessage('You are logged in');
-      setSnackbarType('success');
-      setShowSnackbar(true);
-      // Clear the state so it doesn't show again on refresh
-      navigate(location.pathname, { replace: true, state: {} });
-    }
-
-    // Initial check
-    const checkAuth = () => {
-      const loggedIn = isLoggedIn();
-      setIsLoggedInState(loggedIn);
-    };
-
-    checkAuth();
-
-    // Listen for storage changes
-    const handleStorageChange = (e) => {
-      if (e.key === 'authData') {
-        checkAuth();
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, [location.state]);
 
   const handleCartClick = () => {
     if (!isLoggedInState) {
@@ -384,57 +346,35 @@ const NavBar = () => {
     setSnackbarMessage('Successfully logged out');
     setSnackbarType('success');
     setShowSnackbar(true);
-    setShowLogoutConfirm(false); // Close the confirmation dialog
+    setShowLogoutConfirm(false);
     navigate('/');
   };
 
-  const navItems = [
-    { name: "Charm Bar", path: "/charmbar" },
-    { name: "Charms", path: "/charms" },
-    { name: "Necklaces", path: "/necklaces" },
-    { name: "Bracelets", path: "/bracelets" },
-    { name: "Earrings", path: "/earrings" },
-    { name: "Rings", path: "/rings" },
-    { name: "Anklets", path: "/anklets" },
-    { name: "Gift Sets", path: "/giftsets" },
-  ];
-
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState(null);
-
-   // --- PATCH: handleQuantityChange uses the same mapping logic as cart loading!
   const handleQuantityChange = async (id, change) => {
-  const item = cartItems.find(item => item.id === id);
-  if (!item) return;
-
-  const newQuantity = item.quantity + change;
-  if (newQuantity < 0) return;
-
-  if (newQuantity === 0) {
-    setItemToDelete(id);
-    setShowDeleteConfirm(true);
-    return;
-  }
-
-  try {
-    // Optimistically update UI
-    setCartItems(prev =>
-      prev.map(it => it.id === id ? { ...it, quantity: newQuantity } : it)
-    );
-
-    await updateCartItemQuantity(id, newQuantity);
-
-    // Re-fetch cart and re-map with correct details
-    const cartData = await fetchCart();
-    const itemsWithDetails = await mapCartItemsWithDetails(cartData, discountMap, BASE_URL, product1);
-    setCartItems(itemsWithDetails);
-  } catch (error) {
-    setSnackbarMessage(error.message || 'Failed to update quantity');
-    setSnackbarType('error');
-    setShowSnackbar(true);
-    console.error("Quantity update error:", error);
-  }
-};
+    const item = cartItems.find(item => item.id === id);
+    if (!item) return;
+    const newQuantity = item.quantity + change;
+    if (newQuantity < 0) return;
+    if (newQuantity === 0) {
+      setItemToDelete(id);
+      setShowDeleteConfirm(true);
+      return;
+    }
+    try {
+      setCartItems(prev =>
+        prev.map(it => it.id === id ? { ...it, quantity: newQuantity } : it)
+      );
+      await updateCartItemQuantity(id, newQuantity);
+      const cartData = await fetchCart();
+      const itemsWithDetails = await mapCartItemsWithDetails(cartData, discountMap, BASE_URL, product1);
+      setCartItems(itemsWithDetails);
+    } catch (error) {
+      setSnackbarMessage(error.message || 'Failed to update quantity');
+      setSnackbarType('error');
+      setShowSnackbar(true);
+      console.error("Quantity update error:", error);
+    }
+  };
 
   const handleConfirmDelete = async () => {
     if (!itemToDelete) return;
@@ -490,7 +430,6 @@ const NavBar = () => {
       minimumFractionDigits: 0
     }).format(price).replace('IDR', 'Rp.');
   };
-
 
   return (
     <div className="bg-[#fdfaf3] shadow-md">
@@ -606,223 +545,28 @@ const NavBar = () => {
 
       </div>
 
-      {/* Shopping Cart Drawer - Updated Section */}
-      {drawerCartOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/30 flex justify-end"
-          onClick={() => setDrawerCartOpen(false)}
-        >
-          <div
-            className="bg-[#fdfaf3] sm:w-full md:w-[40%] h-full p-6 overflow-y-auto relative animate-slideInRight shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex justify-between items-center border-b pb-4 mb-4">
-              <h2 className="text-xl font-semibold tracking-widest text-gray-800">YOUR CART</h2>
-              <button 
-                className="text-2xl text-gray-700" 
-                onClick={() => setDrawerCartOpen(false)}
-              >
-                ✕
-              </button>
-            </div>
+      {/* Shopping Cart Drawer - use new component */}
+      <CartDrawer
+        open={drawerCartOpen}
+        onClose={() => setDrawerCartOpen(false)}
+        cartItems={cartItems}
+        isLoadingCart={isLoadingCart}
+        cartError={cartError}
+        handleQuantityChange={handleQuantityChange}
+        toggleItemSelection={toggleItemSelection}
+        toggleSelectAll={toggleSelectAll}
+        formatPrice={formatPrice}
+        calculateTotal={calculateTotal}
+        showDeleteConfirm={showDeleteConfirm}
+        itemToDelete={itemToDelete}
+        handleConfirmDelete={handleConfirmDelete}
+        setShowDeleteConfirm={setShowDeleteConfirm}
+        setItemToDelete={setItemToDelete}
+        setSnackbarMessage={setSnackbarMessage}
+        setSnackbarType={setSnackbarType}
+        setShowSnackbar={setShowSnackbar}
+      />
 
-            {/* Loading and Error States */}
-            {isLoadingCart && (
-              <div className="flex flex-col justify-center items-center h-32 gap-2">
-                <span role="img" aria-label="Loading" className="text-5xl animate-spin">🛒</span>
-                <p>Loading your cart...</p>
-              </div>
-            )}
-
-            {cartError && (
-              <div className="flex flex-col items-center justify-center py-10 gap-4">
-                <img
-                  src={EMPTY_CART_IMAGE}
-                  alt="Empty Cart"
-                  className="w-24 h-24 opacity-60"
-                  style={{ filter: "grayscale(70%)" }}
-                />
-                <span className="text-[#b87777] font-semibold text-lg text-center">
-                  {cartError}
-                </span>
-                {cartError.toLowerCase().includes('load') && (
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="mt-2 px-4 py-2 bg-[#e6d4a5] rounded text-gray-800 font-medium"
-                  >
-                    Retry
-                  </button>
-                )}
-              </div>
-            )}
-
-            {!cartError && !isLoadingCart && cartItems.length > 0 && (
-              <div className="space-y-8">
-                {cartItems.map((item) => (
-                  <div key={item.id} className="flex flex-col gap-2">
-                    <div className="flex gap-4">
-                      <input 
-                        type="checkbox" 
-                        className="custom-checkbox" 
-                        checked={item.selected}
-                        onChange={() => toggleItemSelection(item.id)}
-                      />
-                      <img 
-                        src={item.image} 
-                        alt={item.name} 
-                        className="w-[6rem] h-[6rem] object-cover rounded-md" 
-                      />
-                      <div className="flex-1">
-                        <div className="flex justify-between">
-                          <h3 className="font-semibold text-gray-800">{item.name}</h3>
-                        </div>
-                        <div className="flex flex-col">
-                          <p className="text-[#b87777] font-semibold">
-                            {formatPrice(item.price * item.quantity)}
-                          </p>
-                          {item.originalPrice && (
-                            <div className="flex gap-2">
-                              <p className="text-gray-400 text-sm line-through">
-                                {formatPrice(item.originalPrice * item.quantity)}
-                              </p>
-                              <span className="text-xs bg-[#c3a46f] text-white px-1 rounded">
-                                {item.discountLabel || `${item.discount}% OFF`}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        {/* --- Product/GiftSet Unified UI --- */}
-                        {/* If it's a gift set, display like a product */}
-                        {/* {item.giftSet && (
-                          <div className="mt-2 p-2 border rounded bg-[#fbf8ed]">
-                            <div className="flex gap-3 items-center">
-                              {item.giftSet.image && (
-                                <img
-                                  src={item.giftSet.image}
-                                  alt={item.giftSet.name}
-                                  className="w-[4.5rem] h-[4.5rem] object-cover rounded"
-                                />
-                              )}
-                              <div className="flex-1">
-                                <div className="font-semibold text-[#b87777] text-base">{item.giftSet.name}</div>
-                                <div className="text-xs text-gray-500 mb-1">
-                                  {item.giftSet.products && item.giftSet.products.length > 0
-                                    ? "Includes: " + item.giftSet.products.map(p => p.name).join(", ")
-                                    : null}
-                                </div>
-                                <p className="text-gray-800 font-semibold">
-                                  {formatPrice(Number(item.giftSet.price) * item.quantity)}
-                                </p>
-                                {item.giftSet.description && (
-                                  <div className="text-xs text-gray-700 mt-1">{item.giftSet.description}</div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        )} */}
-                        {/* --- END Product/GiftSet Unified UI --- */}
-                        {item.charms && item.charms.length > 0 && (
-                          <div className="text-sm mt-2">
-                            <p className="font-medium">Charm Selection</p>
-                            <div className="flex gap-1 mt-1">
-                              {item.charms.map((charm, index) => (
-                                <img 
-                                  key={index} 
-                                  src={charm} 
-                                  className="w-6 h-6 border rounded-sm" 
-                                  alt={`charm ${index}`} 
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {item.message && (
-                          <div className="text-sm mt-2">
-                            <p className="font-medium text-start text-gray-600">Special Message</p>
-                            <p className="italic text-sm text-gray-600">"{item.message}"</p>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2 mt-2">
-                          <button 
-                            className="border px-2 rounded text-gray-700"
-                            onClick={() => handleQuantityChange(item.id, -1)}
-                          >
-                            -
-                          </button>
-                          <span>{item.quantity}</span>
-                          <button 
-                            className="border px-2 rounded text-gray-700"
-                            onClick={() => handleQuantityChange(item.id, 1)}
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Bottom Section - Only show if cart has items and no error */}
-            {!cartError && cartItems.length > 0 && (
-              <>
-                <div className="flex items-center justify-between mt-10 pt-6 border-t">
-                  <div className="flex gap-2 items-center">
-                    <input 
-                      type="checkbox" 
-                      className="custom-checkbox" 
-                      checked={cartItems.length > 0 && cartItems.every(item => item.selected)}
-                      onChange={toggleSelectAll}
-                    />
-                    <label className="text-sm font-semibold">All</label>
-                  </div>
-                  <div className="flex gap-4 items-end">
-                    <p className="text-lg font-medium">Total</p>
-                    <p className="text-lg font-bold text-[#b87777]">
-                      {formatPrice(calculateTotal())}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-6 space-y-4">
-                  <Link 
-                    to="/checkout" 
-                    state={{ selectedItems: cartItems.filter(item => item.selected) }}
-                    className="w-full bg-[#e9d8a6] text-gray-800 font-medium py-3 rounded-lg text-lg tracking-wide hover:opacity-90 transition block text-center"
-                    onClick={() => {
-                      const hasSelectedItems = cartItems.some(item => item.selected);
-                      if (!hasSelectedItems) {
-                        setSnackbarMessage('Please select at least one item to checkout');
-                        setSnackbarType('error');
-                        setShowSnackbar(true);
-                        return false;
-                      }
-                    }}
-                  >
-                    Checkout
-                  </Link>
-                </div>
-              </>
-            )}
-
-            {/* Empty cart state (nice user-friendly) */}
-            {!isLoadingCart && cartItems.length === 0 && !cartError && (
-              <div className="flex flex-col items-center justify-center py-10 gap-4">
-                <img
-                  src={EMPTY_CART_IMAGE}
-                  alt="Empty Cart"
-                  className="w-24 h-24 opacity-60"
-                  style={{ filter: "grayscale(70%)" }}
-                />
-                <span className="text-[#b87777] font-semibold text-lg text-center">
-                  Your cart is empty.
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Mobile Layout */}
       <div className="md:hidden">

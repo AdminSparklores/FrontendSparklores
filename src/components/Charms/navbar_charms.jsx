@@ -4,9 +4,210 @@ import logo from "../../assets/logo/sparklore_logo.png";
 import { useState, useEffect } from "react";
 import banner from "../../assets/default/navbar_rings_bg.png";
 import product1 from "../../assets/default/homeproduct1.png";
-import product2 from "../../assets/default/homeproduct2.png";
-import { isLoggedIn, logout, getAuthData, fetchPageBanner } from "../../utils/api.js";
+import { isLoggedIn, logout, fetchCart, updateCartItemQuantity, deleteCartItem, BASE_URL, fetchProduct, fetchCharm, fetchPageBanner } from "../../utils/api.js";
 import Snackbar from '../snackbar.jsx';
+import CartDrawer from '../CartDrawer';
+
+const fetchGiftSet = async (giftSetId) => {
+  const response = await fetch(`${BASE_URL}/api/gift-sets/${giftSetId}/`);
+  if (!response.ok) throw new Error('Failed to fetch gift set');
+  return await response.json();
+};
+
+const mapCartItemsWithDetails = async (cartData, discountMap, BASE_URL, product1) => {
+  const productIds = [];
+  const charmIds = [];
+  const giftSetIds = [];
+  cartData.items.forEach(item => {
+    if (item.product) productIds.push(item.product);
+    if (item.gift_set) giftSetIds.push(item.gift_set);
+    if (item.charms && Array.isArray(item.charms)) charmIds.push(...item.charms);
+  });
+
+  const [productsArr, charmsArr, giftSetsArr] = await Promise.all([
+    Promise.all([...new Set(productIds)].map(id => fetchProduct(id))),
+    Promise.all([...new Set(charmIds)].map(id => fetchCharm(id))),
+    Promise.all([...new Set(giftSetIds)].map(id => fetchGiftSet(id))),
+  ]);
+  const productMap = {};
+  productsArr.forEach(prod => { productMap[prod.id] = prod; });
+  const charmMap = {};
+  charmsArr.forEach(charm => { charmMap[charm.id] = charm; });
+  const giftSetMap = {};
+  giftSetsArr.forEach(gs => { giftSetMap[gs.id] = gs; });
+
+  return cartData.items.map((item) => {
+    if (
+      !item.product &&
+      !item.gift_set &&
+      Array.isArray(item.charms) &&
+      item.charms.length === 1
+    ) {
+      const charmId = item.charms[0];
+      const charm = charmMap[charmId];
+      let price = Number(charm?.price) || 0;
+      let originalPrice = price;
+      let discount = Number(charm?.discount) || 0;
+      let discountLabel = "";
+      if (discount > 0) {
+        price = price * (1 - discount / 100);
+        discountLabel = `${discount}% OFF`;
+      }
+      return {
+        id: item.id,
+        name: charm?.name || "Unknown Charm",
+        price,
+        originalPrice: discount > 0 ? originalPrice : null,
+        discount,
+        discountLabel,
+        quantity: item.quantity,
+        selected: false,
+        image: charm?.image,
+        charms: [],
+        message: item.message || "",
+        giftSet: null,
+        description: charm?.description || "",
+        charmId: charmId,
+        category: charm?.category || "",
+        type: "single-charm",
+      };
+    }
+    const product = item.product ? productMap[item.product] : null;
+    const giftSet = item.gift_set ? giftSetMap[item.gift_set] : null;
+    let name = "";
+    let price = 0;
+    let originalPrice = 0;
+    let discount = 0;
+    let discountLabel = "";
+    let image = product1;
+    if (product) {
+      name = product.name;
+      let productOriginalPrice = Number(product.price) || 0;
+      let productPrice = productOriginalPrice;
+      image = product.images && product.images.length > 0
+        ? (product.images[0].image_url.startsWith('http')
+          ? product.images[0].image_url
+          : `${BASE_URL.replace(/\/$/, '')}${product.images[0].image_url}`)
+        : product1;
+
+      const campaignDiscount = discountMap[`${product.id}`];
+      if (campaignDiscount) {
+        const discountType = campaignDiscount.discount_type;
+        const discountValue = Number(campaignDiscount.discount_value || "0");
+        if (discountType === "percent") {
+          productPrice = productOriginalPrice * (1 - discountValue / 100);
+          discount = discountValue;
+          discountLabel = `${discountValue}% OFF`;
+        } else if (discountType === "amount") {
+          productPrice = discountValue;
+          discount = productOriginalPrice > 0 ? Math.round(((productOriginalPrice - productPrice) / productOriginalPrice) * 100) : 0;
+          discountLabel = `${discount}% OFF`;
+        }
+      } else if (product.discount && Number(product.discount) > 0) {
+        discount = Number(product.discount);
+        productPrice = productOriginalPrice * (1 - discount / 100);
+        discountLabel = `${discount}% OFF`;
+      }
+      let charmImages = [];
+      let charmsSubtotal = 0;
+      let originalCharms = 0;
+      let hasCharmDiscount = false;
+      if (Array.isArray(item.charms) && item.charms.length > 0) {
+        charmImages = item.charms.map(
+          charmId => charmMap[charmId]?.image
+        ).filter(Boolean);
+        charmsSubtotal = item.charms.reduce((sum, charmId) => {
+          const charm = charmMap[charmId];
+          if (!charm) return sum;
+          let charmPrice = Number(charm.price) || 0;
+          if (charm.discount && Number(charm.discount) > 0) {
+            charmPrice = charmPrice * (1 - Number(charm.discount) / 100);
+            hasCharmDiscount = true;
+          }
+          return sum + charmPrice;
+        }, 0);
+        originalCharms = item.charms.reduce((sum, charmId) => {
+          const charm = charmMap[charmId];
+          return sum + (Number(charm?.price) || 0);
+        }, 0);
+      }
+      price = productPrice + charmsSubtotal;
+      originalPrice = productOriginalPrice + originalCharms;
+      if (hasCharmDiscount || discount > 0) {
+        discountLabel = [
+          discount > 0 ? `${discount}% OFF` : null,
+          hasCharmDiscount ? "Charm Discount" : null,
+        ].filter(Boolean).join(" + ");
+      }
+      return {
+        id: item.id,
+        name,
+        price,
+        originalPrice: price !== originalPrice ? originalPrice : null,
+        discount,
+        discountLabel,
+        quantity: item.quantity,
+        selected: false,
+        image,
+        charms: (item.charms || []).map(charmId => charmMap[charmId]?.image).filter(Boolean),
+        message: item.message || "",
+        giftSet: null,
+        type: "product",
+      };
+    }
+    if (giftSet) {
+      name = giftSet.name;
+      originalPrice = Number(giftSet.price) || 0;
+      price = originalPrice;
+      image = giftSet.image_url
+        ? (giftSet.image_url.startsWith('http')
+          ? giftSet.image_url
+          : `${BASE_URL.replace(/\/$/, '')}${giftSet.image_url}`)
+        : product1;
+      return {
+        id: item.id,
+        name,
+        price,
+        originalPrice: null,
+        discount: 0,
+        discountLabel: "",
+        quantity: item.quantity,
+        selected: false,
+        image,
+        charms: [],
+        message: item.message || "",
+        giftSet: {
+          id: giftSet.id,
+          name: giftSet.name,
+          image: giftSet.image_url
+            ? (giftSet.image_url.startsWith('http')
+              ? giftSet.image_url
+              : `${BASE_URL.replace(/\/$/, '')}${giftSet.image_url}`)
+            : null,
+          price: giftSet.price,
+          description: giftSet.description,
+          products: giftSet.products
+        },
+        type: "gift_set",
+      };
+    }
+    return {
+      id: item.id,
+      name: "Unknown Item",
+      price: 0,
+      originalPrice: null,
+      discount: 0,
+      discountLabel: "",
+      quantity: item.quantity,
+      selected: false,
+      image: product1,
+      charms: [],
+      message: item.message || "",
+      giftSet: null,
+      type: "unknown",
+    };
+  });
+};
 
 const NavBar_Charms = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -19,31 +220,97 @@ const NavBar_Charms = () => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarType, setSnackbarType] = useState('success');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [bannerImage, setBannerImage] = useState("");
+  const [cartItems, setCartItems] = useState([]);
+  const [isLoadingCart, setIsLoadingCart] = useState(false);
+  const [cartError, setCartError] = useState(null);
+  const [discountMap, setDiscountMap] = useState({});
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
-  const [bannerImage, setBannerImage] = useState("");
 
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 1,
-      name: "Charm Link Custom Bracelet",
-      price: 369998,
-      quantity: 1,
-      selected: false,
-      image: product1,
-      charms: [product1, product1, product1, product1, product1],
-      message: "This is for the special message if the user want to send a message to the recipient."
-    },
-    {
-      id: 2,
-      name: "Marbella Ring",
-      price: 99999,
-      quantity: 1,
-      selected: false,
-      image: product2
+  useEffect(() => {
+    setIsInitialLoad(false);
+
+    const getBannerImage = async () => {
+      try {
+        const imageUrl = await fetchPageBanner("charms");
+        setBannerImage(imageUrl);
+      } catch (error) {
+        setBannerImage(banner);
+      }
+    };
+    getBannerImage();
+
+    if (location.state?.showLoginSuccess) {
+      navigate(location.pathname, { replace: true, state: {} });
     }
-  ]);
+
+    const checkAuth = () => {
+      const loggedIn = isLoggedIn();
+      setIsLoggedInState(loggedIn);
+    };
+
+    checkAuth();
+    const handleStorageChange = (e) => {
+      if (e.key === 'authData') {
+        checkAuth();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [location.state]);
+
+  useEffect(() => {
+    const fetchDiscountCampaigns = async () => {
+      try {
+        const response = await fetch(`${BASE_URL}/api/discount-campaigns/`);
+        if (!response.ok) throw new Error("Failed to fetch discount campaigns");
+        const campaigns = await response.json();
+        const map = {};
+        campaigns.forEach(campaign => {
+          if (campaign.items && campaign.items.length > 0) {
+            campaign.items.forEach(item => {
+              if (item.product && item.product.id !== undefined && item.product.id !== null) {
+                map[`${item.product.id}`] = item;
+              }
+            });
+          }
+        });
+        setDiscountMap(map);
+      } catch (err) {
+        setDiscountMap({});
+      }
+    };
+    if (drawerCartOpen && isLoggedInState) fetchDiscountCampaigns();
+  }, [drawerCartOpen, isLoggedInState]);
+
+  useEffect(() => {
+    const loadCartData = async () => {
+      if (drawerCartOpen && isLoggedInState) {
+        try {
+          setIsLoadingCart(true);
+          setCartError(null);
+          const cartData = await fetchCart();
+          const itemsWithDetails = await mapCartItemsWithDetails(cartData, discountMap, BASE_URL, product1);
+          setCartItems(itemsWithDetails);
+        } catch (error) {
+          setCartError("Couldn't load cart data.");
+          setCartItems([]);
+          setCartError(error.message);
+        } finally {
+          setIsLoadingCart(false);
+        }
+      }
+    };
+    loadCartData();
+    // eslint-disable-next-line
+  }, [drawerCartOpen, isLoggedInState, discountMap]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -52,64 +319,6 @@ const NavBar_Charms = () => {
       setShowSearchBar(false);
     }
   };
-
-  const navItems = [
-    { name: "Charm Bar", path: "/charmbar" },
-    { name: "Charms", path: "/charms" },
-    { name: "Necklaces", path: "/necklaces" },
-    { name: "Bracelets", path: "/bracelets" },
-    { name: "Earrings", path: "/earrings" },
-    { name: "Rings", path: "/rings" },
-    { name: "Anklets", path: "/anklets" },
-    { name: "Gift Sets", path: "/giftsets" },
-  ];
-
-  useEffect(() => {
-    setIsInitialLoad(false);
-
-    const getBannerImage = async () => {
-      try {
-        const imageUrl = await fetchPageBanner("charms"); // Fetch banner for charmbar
-        setBannerImage(imageUrl);
-      } catch (error) {
-        console.error("Error fetching banner image:", error);
-        // Optionally set a default image in case of an error
-        setBannerImage(banner); // Replace with your actual default image path
-      }
-    };
-    getBannerImage();
-
-    if (location.state?.showLoginSuccess) {
-      // setSnackbarMessage('Successfully logged in');
-      // setSnackbarType('success');
-      // setShowSnackbar(true);
-      navigate(location.pathname, { replace: true, state: {} });
-    }
-
-    const checkAuth = () => {
-      const loggedIn = isLoggedIn();
-      if (loggedIn && !isLoggedInState) {
-        // setSnackbarMessage('Successfully logged in');
-        // setSnackbarType('success');
-        // setShowSnackbar(true);
-      }
-      setIsLoggedInState(loggedIn);
-    };
-
-    checkAuth();
-    
-    const handleStorageChange = (e) => {
-      if (e.key === 'authData') {
-        checkAuth();
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, [location.state]);
 
   const handleCartClick = () => {
     if (!isLoggedInState) {
@@ -129,17 +338,59 @@ const NavBar_Charms = () => {
     navigate('/');
   };
 
-  const handleQuantityChange = (id, change) => {
-    setCartItems(prevItems =>
-      prevItems.map(item =>
-        item.id === id
-          ? {
-              ...item,
-              quantity: Math.max(1, item.quantity + change)
-            }
-          : item
-      )
-    );
+  const navItems = [
+    { name: "Charm Bar", path: "/charmbar" },
+    { name: "Charms", path: "/charms" },
+    { name: "Necklaces", path: "/necklaces" },
+    { name: "Bracelets", path: "/bracelets" },
+    { name: "Earrings", path: "/earrings" },
+    { name: "Rings", path: "/rings" },
+    { name: "Anklets", path: "/anklets" },
+    { name: "Gift Sets", path: "/giftsets" },
+  ];
+
+  const handleQuantityChange = async (id, change) => {
+    const item = cartItems.find(item => item.id === id);
+    if (!item) return;
+    const newQuantity = item.quantity + change;
+    if (newQuantity < 0) return;
+    if (newQuantity === 0) {
+      setItemToDelete(id);
+      setShowDeleteConfirm(true);
+      return;
+    }
+    try {
+      setCartItems(prev =>
+        prev.map(it => it.id === id ? { ...it, quantity: newQuantity } : it)
+      );
+      await updateCartItemQuantity(id, newQuantity);
+      const cartData = await fetchCart();
+      const itemsWithDetails = await mapCartItemsWithDetails(cartData, discountMap, BASE_URL, product1);
+      setCartItems(itemsWithDetails);
+    } catch (error) {
+      setSnackbarMessage(error.message || 'Failed to update quantity');
+      setSnackbarType('error');
+      setShowSnackbar(true);
+      console.error("Quantity update error:", error);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+    try {
+      await deleteCartItem(itemToDelete);
+      setCartItems(prevItems => prevItems.filter(item => item.id !== itemToDelete));
+      setSnackbarMessage('Item removed from cart');
+      setSnackbarType('success');
+      setShowSnackbar(true);
+    } catch (error) {
+      setSnackbarMessage('Failed to remove item');
+      setSnackbarType('error');
+      setShowSnackbar(true);
+    } finally {
+      setShowDeleteConfirm(false);
+      setItemToDelete(null);
+    }
   };
 
   const toggleItemSelection = (id) => {
@@ -147,9 +398,9 @@ const NavBar_Charms = () => {
       prevItems.map(item =>
         item.id === id
           ? {
-              ...item,
-              selected: !item.selected
-            }
+            ...item,
+            selected: !item.selected
+          }
           : item
       )
     );
@@ -386,117 +637,30 @@ const NavBar_Charms = () => {
             )}
           </div>
 
-          {drawerCartOpen && (
-            <div className="fixed inset-0 z-50 bg-black/30 flex justify-end">
-              <div className="bg-[#fdfaf3] sm:w-full md:w-[60%] h-full p-6 overflow-y-auto relative animate-slideInRight shadow-2xl">
-                <div className="flex justify-between items-center border-b pb-4 mb-4">
-                  <h2 className="text-xl font-semibold tracking-widest text-gray-800">YOUR CART</h2>
-                  <button 
-                    className="text-2xl text-gray-700" 
-                    onClick={() => setDrawerCartOpen(false)}
-                  >
-                    ✕
-                  </button>
-                </div>
+          {/* Use CartDrawer */}
+           <div className="text-start text-black">
+            <CartDrawer
+              open={drawerCartOpen}
+              onClose={() => setDrawerCartOpen(false)}
+              cartItems={cartItems}
+              isLoadingCart={isLoadingCart}
+              cartError={cartError}
+              handleQuantityChange={handleQuantityChange}
+              toggleItemSelection={toggleItemSelection}
+              toggleSelectAll={toggleSelectAll}
+              formatPrice={formatPrice}
+              calculateTotal={calculateTotal}
+              showDeleteConfirm={showDeleteConfirm}
+              itemToDelete={itemToDelete}
+              handleConfirmDelete={handleConfirmDelete}
+              setShowDeleteConfirm={setShowDeleteConfirm}
+              setItemToDelete={setItemToDelete}
+              setSnackbarMessage={setSnackbarMessage}
+              setSnackbarType={setSnackbarType}
+              setShowSnackbar={setShowSnackbar}
+            />
+           </div>
 
-                <div className="space-y-8">
-                  {cartItems.map((item) => (
-                    <div key={item.id} className="flex flex-col gap-2">
-                      <div className="flex gap-4">
-                        <input 
-                          type="checkbox" 
-                          className="custom-checkbox" 
-                          checked={item.selected}
-                          onChange={() => toggleItemSelection(item.id)}
-                        />
-                        <img 
-                          src={item.image} 
-                          alt={item.name} 
-                          className="w-[6rem] h-[6rem] object-cover rounded-md" 
-                        />
-                        <div className="flex-1">
-                          <div className="flex justify-between">
-                            <h3 className="font-semibold text-gray-800">{item.name}</h3>
-                            <button className="text-sm text-gray-600">Edit</button>
-                          </div>
-                          <p className="text-[#b87777] font-semibold text-start">{formatPrice(item.price)}</p>
-                          
-                          {item.charms && (
-                            <div className="text-sm mt-2">
-                              <p className="font-medium">Charm Selection</p>
-                              <div className="flex gap-1 mt-1">
-                                {item.charms.map((charm, index) => (
-                                  <img 
-                                    key={index} 
-                                    src={charm} 
-                                    className="w-6 h-6 border rounded-sm" 
-                                    alt={`charm ${index}`} 
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          
-                          {item.message && (
-                            <div className="text-sm mt-2">
-                              <p className="font-medium text-start text-gray-600">Special Message</p>
-                              <p className="italic text-sm text-gray-600 text-start">"{item.message}"</p>
-                            </div>
-                          )}
-                          
-                          <div className="flex items-center gap-2 mt-2">
-                            <button 
-                              className="border px-2 rounded text-gray-700"
-                              onClick={() => handleQuantityChange(item.id, -1)}
-                            >
-                              -
-                            </button>
-                            <span>{item.quantity}</span>
-                            <button 
-                              className="border px-2 rounded text-gray-700"
-                              onClick={() => handleQuantityChange(item.id, 1)}
-                            >
-                              +
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex items-center justify-between mt-10 pt-6 border-t border-black">
-                  <div className="flex gap-2 items-center">
-                    <input 
-                      type="checkbox" 
-                      className="w-5 h-5" 
-                      checked={cartItems.length > 0 && cartItems.every(item => item.selected)}
-                      onChange={toggleSelectAll}
-                    />
-                    <label className="text-sm font-semibold  text-black">All</label>
-                  </div>
-                  <div className="flex gap-4 items-end">
-                    <p className="text-lg font-medium">Total</p>
-                    <p className="text-lg font-bold text-[#b87777]">
-                      {formatPrice(calculateTotal())}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-6 space-y-4">
-                  <Link 
-                    to="/checkout" 
-                    className="w-full bg-[#e9d8a6] text-gray-800 font-medium py-3 rounded-lg text-lg tracking-wide hover:opacity-90 transition block text-center"
-                  >
-                    Checkout
-                  </Link>
-                  <button className="w-full bg-[#e4572e] text-white font-medium py-3 rounded-lg text-lg tracking-wide hover:opacity-90 transition">
-                    Shopee Checkout
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
 
           {drawerOpen && (
             <div className="md:hidden fixed inset-0 z-50 bg-stone-500/30">
