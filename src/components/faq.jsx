@@ -1,58 +1,83 @@
 import React from "react";
-import { Link } from "react-router-dom";
 
 const Faq = () => {
   return (
     <div className="bg-[#f8f4ed] min-h-screen py-12 px-6">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">Frequently Asked Questions</h1>
-        
+        <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">Pertanyaan yang Sering Diajukan (FAQ)</h1>
+
         <div className="bg-white p-6 rounded-lg border border-[#e5cfa4] shadow-sm mb-8">
           <div className="space-y-6">
-            <div className="border-b border-[#f0f0f0] pb-4 last:border-0 last:pb-0">
-              <h3 className="text-lg font-medium text-gray-700">How long does shipping take?</h3>
+
+            <div className="border-b border-[#f0f0f0] pb-4">
+              <h3 className="text-lg font-medium text-gray-700">Apakah aksesoris di toko ini terbuat dari bahan asli titanium?</h3>
               <p className="text-gray-600 mt-2">
-                Our standard shipping typically takes 3-5 business days. During peak seasons, there may be slight delays.
+                Ya, semua produk kami terbuat dari titanium berkualitas tinggi yang tahan lama dan tidak mudah berkarat.
               </p>
             </div>
-            
-            <div className="border-b border-[#f0f0f0] pb-4 last:border-0 last:pb-0">
-              <h3 className="text-lg font-medium text-gray-700">Do you offer international shipping?</h3>
+
+            <div className="border-b border-[#f0f0f0] pb-4">
+              <h3 className="text-lg font-medium text-gray-700">Apa keunggulan titanium dibanding bahan lain seperti stainless steel atau perak?</h3>
               <p className="text-gray-600 mt-2">
-                Currently, we only ship within Indonesia. We're working to expand our shipping options in the future.
+                Titanium memiliki beberapa keunggulan:<br />
+                • Anti karat dan anti noda, bahkan saat terkena air atau keringat.<br />
+                • Ringan tapi sangat kuat, nyaman dipakai sehari-hari.<br />
+                • Hypoallergenic, aman untuk kulit sensitif.<br />
+                • Tidak berubah warna atau kusam dalam jangka panjang.
               </p>
             </div>
-            
-            <div className="border-b border-[#f0f0f0] pb-4 last:border-0 last:pb-0">
-              <h3 className="text-lg font-medium text-gray-700">How can I track my order?</h3>
+
+            <div className="border-b border-[#f0f0f0] pb-4">
+              <h3 className="text-lg font-medium text-gray-700">Apakah aksesoris ini bisa dipakai saat mandi atau berenang?</h3>
               <p className="text-gray-600 mt-2">
-                Once your order is shipped, you'll receive a tracking number via email. You can use this number to track your package on our website or the courier's site.
+                Tentu bisa dong! Karena berbahan titanium anti karat, produk kami aman dipakai saat mandi, berenang, maupun terkena air laut.
               </p>
             </div>
-            
-            <div className="border-b border-[#f0f0f0] pb-4 last:border-0 last:pb-0">
-              <h3 className="text-lg font-medium text-gray-700">What payment methods do you accept?</h3>
+
+            <div className="border-b border-[#f0f0f0] pb-4">
+              <h3 className="text-lg font-medium text-gray-700">Apakah warna titanium bisa memudar?</h3>
               <p className="text-gray-600 mt-2">
-                We accept Visa, Mastercard, BCA, Mandiri, and GoPay. All transactions are secure and encrypted.
+                Warna alami titanium (Silver) tidak akan memudar. Namun untuk produk kami yang berwarna Gold (lapisan emas 18K), kami menyarankan untuk menghindari zat kimia keras agar warna tetap tahan lama.
               </p>
             </div>
+
+            <div className="border-b border-[#f0f0f0] pb-4">
+              <h3 className="text-lg font-medium text-gray-700">Bagaimana cara merawat aksesoris titanium?</h3>
+              <p className="text-gray-600 mt-2">
+                Cukup bersihkan dengan air hangat dan sabun ringan, lalu keringkan dengan kain lembut. Simpan di tempat kering untuk menjaga kilau dan kebersihannya.
+              </p>
+            </div>
+
+            <div className="border-b border-[#f0f0f0] pb-4">
+              <h3 className="text-lg font-medium text-gray-700">Apakah tersedia garansi produk?</h3>
+              <p className="text-gray-600 mt-2">
+                Ya, kami memberikan garansi 3 bulan untuk produk cacat produksi. Silakan hubungi kami melalui Instagram <strong>@sparklore.official</strong> segera jika ada masalah setelah penerimaan produk.
+              </p>
+            </div>
+
+            <div className="border-b border-[#f0f0f0] pb-4">
+              <h3 className="text-lg font-medium text-gray-700">Apakah bisa COD (Bayar di Tempat)?</h3>
+              <p className="text-gray-600 mt-2">
+                Tersedia! Kami mendukung pembayaran untuk pengiriman Cash on Delivery (COD) untuk area tertentu.
+              </p>
+            </div>
+
+            <div className="border-b border-[#f0f0f0] pb-4">
+              <h3 className="text-lg font-medium text-gray-700">Berapa lama pengiriman pesanan?</h3>
+              <p className="text-gray-600 mt-2">
+                Pengiriman dilakukan 1–2 hari kerja setelah pembayaran dikonfirmasi. Lama pengiriman tergantung lokasi, biasanya antara 2–5 hari kerja.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-medium text-gray-700">Berapa lama untuk proses claim garansi?</h3>
+              <p className="text-gray-600 mt-2">
+                Proses claim garansi akan dilakukan paling lama 7 hari kerja. Setelah proses selesai, pengiriman barang baru akan dilakukan dan membutuhkan tambahan waktu 2–5 hari kerja.
+              </p>
+            </div>
+
           </div>
         </div>
-
-        {/* <div className="flex justify-center space-x-4">
-          <Link 
-            to="/refund-policy" 
-            className="bg-[#e5cfa4] text-gray-900 font-semibold py-2 px-6 rounded-md hover:bg-[#d4bf8f] transition-colors inline-block shadow-sm"
-          >
-            View Refund Policy
-          </Link>
-          <Link 
-            to="/" 
-            className="bg-white text-gray-900 font-semibold py-2 px-6 rounded-md hover:bg-gray-100 transition-colors inline-block shadow-sm border border-[#e5cfa4]"
-          >
-            Back to Home
-          </Link>
-        </div> */}
       </div>
     </div>
   );

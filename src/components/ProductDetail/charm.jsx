@@ -173,14 +173,31 @@ const ProductDetailCharmBar = () => {
     };
   };
 
-  // Group charms by category
-  const groupCharmsByCategory = () => {
+  // Group charms by category, then by label
+  const groupCharmsByCategoryAndLabel = () => {
     const grouped = {};
     charmsData.forEach(charm => {
-      if (!grouped[charm.category]) {
-        grouped[charm.category] = [];
+      const category = charm.category;
+      const label = charm.label ? charm.label.toLowerCase() : "others";
+
+      if (!grouped[category]) {
+        grouped[category] = {
+          gold: [],
+          "rose gold": [],
+          silver: [],
+          others: [],
+        };
       }
-      grouped[charm.category].push(charm);
+
+      if (label === "gold") {
+        grouped[category].gold.push(charm);
+      } else if (label === "silver") {
+        grouped[category].silver.push(charm);
+      } else if (label === "rose gold") {
+        grouped[category]["rose gold"].push(charm);
+      } else {
+        grouped[category].others.push(charm);
+      }
     });
     return grouped;
   };
@@ -199,6 +216,9 @@ const ProductDetailCharmBar = () => {
 
   // Play sound effect on charm select!
   const handleCharmSelect = (charm) => {
+    // Prevent charm selection in chain-only mode
+    if (charmCount === 0) return;
+
     setSelectedCharms((prev) => ({
       ...prev,
       [selectedTab]: charm,
@@ -241,7 +261,7 @@ const ProductDetailCharmBar = () => {
     );
   }
 
-  const groupedCharms = groupCharmsByCategory();
+  const groupedCharms = groupCharmsByCategoryAndLabel();
 
   return (
     <div className="bg-[#fdf9f0] py-[2rem]" id="product-detail-charm-bar" tabIndex={-1}>
@@ -391,10 +411,10 @@ const ProductDetailCharmBar = () => {
               Add to cart
             </button>
 
-            {/* --- CHAIN ONLY/0 CHARMS CHARMS PICKER HIDE START --- */}
+            {/* Charms grouped by category */}
             {charmCount > 0 && (
               <div className="space-y-4 max-h-[25vw] overflow-y-auto pr-2">
-                {Object.entries(groupedCharms).map(([category, charms]) => (
+                {Object.entries(groupedCharms).map(([category, labels]) => (
                   <div key={category} className="mb-2">
                     <button
                       onClick={() => setOpenCategory(openCategory === category ? null : category)}
@@ -404,27 +424,123 @@ const ProductDetailCharmBar = () => {
                       <ChevronDown className="w-4 h-4" />
                     </button>
                     {openCategory === category && (
-                      <div className="grid grid-cols-3 gap-2 p-2">
-                        {charms.map((charm) => (
-                          <div
-                            key={charm.id}
-                            className="relative cursor-pointer group"
-                            onClick={() => handleCharmSelect(charm)}
-                          >
-                            <img
-                              src={charm.image}
-                              alt={charm.name}
-                              className="hover:scale-105 transition rounded border p-1 w-full"
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = '../../assets/default/basenecklace.png';
-                              }}
-                            />
-                            <div style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }} className="absolute inset-0 opacity-0 group-hover:opacity-100 flex justify-center items-center text-white text-sm font-semibold transition">
-                              {charm.name}
+                      <div className="space-y-2">
+                        {/* Section for Gold charms */}
+                        {labels.gold.length > 0 && (
+                          <div>
+                            <h4 className="font-semibold pl-2">Gold</h4>
+                            <div className="grid grid-cols-6 gap-2 p-2">
+                              {labels.gold.map((charm) => (
+                                <div 
+                                  key={charm.id} 
+                                  className="relative cursor-pointer group" 
+                                  onClick={() => handleCharmSelect(charm)}
+                                >
+                                  <img
+                                    src={charm.image}
+                                    alt={charm.name}
+                                    className=" ```jsx
+hover:scale-105 transition rounded border p-1 w-full"
+                                    onError={(e) => {
+                                      e.target.onerror = null;
+                                      e.target.src = '../../assets/default/basenecklace.png';
+                                    }}
+                                  />
+                                  <div style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }} className="absolute inset-0 opacity-0 group-hover:opacity-100 flex justify-center items-center text-white text-sm font-semibold transition">
+                                    {charm.name}
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           </div>
-                        ))}
+                        )}
+
+                        {/* Section for Silver charms */}
+                        {labels.silver.length > 0 && (
+                          <div>
+                            <h4 className="font-semibold pl-2">Silver</h4>
+                            <div className="grid grid-cols-6 gap-2 p-2">
+                              {labels.silver.map((charm) => (
+                                <div 
+                                  key={charm.id} 
+                                  className="relative cursor-pointer group" 
+                                  onClick={() => handleCharmSelect(charm)}
+                                >
+                                  <img
+                                    src={charm.image}
+                                    alt={charm.name}
+                                    className="hover:scale-105 transition rounded border p-1 w-full"
+                                    onError={(e) => {
+                                      e.target.onerror = null;
+                                      e.target.src = '../../assets/default/basenecklace.png';
+                                    }}
+                                  />
+                                  <div style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }} className="absolute inset-0 opacity-0 group-hover:opacity-100 flex justify-center items-center text-white text-sm font-semibold transition">
+                                    {charm.name}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Section for Rose Gold charms */}
+                        {labels["rose gold"].length > 0 && (
+                          <div>
+                            <h4 className="font-semibold pl-2">Rose Gold</h4>
+                            <div className="grid grid-cols-6 gap-2 p-2">
+                              {labels["rose gold"].map((charm) => (
+                                <div 
+                                  key={charm.id} 
+                                  className="relative cursor-pointer group" 
+                                  onClick={() => handleCharmSelect(charm)}
+                                >
+                                  <img
+                                    src={charm.image}
+                                    alt={charm.name}
+                                    className="hover:scale-105 transition rounded border p-1 w-full"
+                                    onError={(e) => {
+                                      e.target.onerror = null;
+                                      e.target.src = '../../assets/default/basenecklace.png';
+                                    }}
+                                  />
+                                  <div style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }} className="absolute inset-0 opacity-0 group-hover:opacity-100 flex justify-center items-center text-white text-sm font-semibold transition">
+                                    {charm.name}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Section for Other charms */}
+                        {labels.others.length > 0 && (
+                          <div>
+                            <h4 className="font-semibold pl-2">Others</h4>
+                            <div className="grid grid-cols-6 gap-2 p-2">
+                              {labels.others.map((charm) => (
+                                <div 
+                                  key={charm.id} 
+                                  className="relative cursor-pointer group" 
+                                  onClick={() => handleCharmSelect(charm)}
+                                >
+                                  <img
+                                    src={charm.image}
+                                    alt={charm.name}
+                                    className="hover:scale-105 transition rounded border p-1 w-full"
+                                    onError={(e) => {
+                                      e.target.onerror = null;
+                                      e.target.src = '../../assets/default/basenecklace.png';
+                                    }}
+                                  />
+                                  <div style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }} className="absolute inset-0 opacity-0 group-hover:opacity-100 flex justify-center items-center text-white text-sm font-semibold transition">
+                                    {charm.name}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

@@ -34,6 +34,7 @@ import MonthlySpecials from './pages/monthly_specials.jsx'
 import FinalCheckoutQRISPage from './pages/final_checkout_qris.jsx'
 import FinalCheckoutVAPage from './pages/final_checkout _va.jsx'
 import DetailPageJewelSets from './pages/detail_page_jewelsets.jsx'
+import UserReviewPage from './pages/review.jsx'
 
 const router = createBrowserRouter([
   {path:"/", element: <Home/>},
@@ -65,6 +66,7 @@ const router = createBrowserRouter([
   {path:"/faq", element: <FaqPage />},
   {path:"/refund", element: <RefundPage />},
   {path:"/monthly-specials", element: <MonthlySpecials />},
+  { path: "/review", element: <UserReviewPage /> },
   {path:"*", element: <NotFound/>},
   
 ]);
