@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Star, Plus, SlidersHorizontal, LayoutGrid, Rows2 } from "lucide-react";
 import { cn } from "../../utils/utils.js";
-import { fetchAllCharms } from "../../utils/api.js";
+import { fetchAllCharms, isLoggedIn, addToCart } from "../../utils/api.js";
+import Snackbar from '../snackbar.jsx';
 
 const ProductGrid = () => {
   const navigate = useNavigate();
@@ -13,19 +14,22 @@ const ProductGrid = () => {
     category: [],
     price: [],
     material: [],
-    discount: false, // New discount filter
+    discount: false,
   });
   const [charms, setCharms] = useState([]);
   const [filteredCharms, setFilteredCharms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [categories, setCategories] = useState([]);
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarType, setSnackbarType] = useState('success');
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   useEffect(() => {
     const loadCharms = async () => {
       try {
         const data = await fetchAllCharms();
-        // Sort charms to prioritize gold items first
         const sortedData = [...data].sort((a, b) => {
           if (a.label === 'gold' && b.label !== 'gold') return -1;
           if (a.label !== 'gold' && b.label === 'gold') return 1;
@@ -49,7 +53,44 @@ const ProductGrid = () => {
     navigate(`/products-charm/${productId}`);
   };
 
-  
+  const handleAddToCart = async (charmId, e) => {
+    e.stopPropagation();
+    if (!isLoggedIn()) {
+      setShowLoginPrompt(true);
+      return;
+    }
+
+    try {
+      // Prepare the cart data in the required format
+      const cartData = {
+        charms: [charmId],
+        quantity: 1 
+      };
+
+      await addToCart(null, cartData);
+      setSnackbarMessage('Item added to cart!');
+      setSnackbarType('success');
+      setShowSnackbar(true);
+    } catch (error) {
+      setSnackbarMessage(error.message || 'Failed to update cart');
+      setSnackbarType('error');
+      setShowSnackbar(true);
+    }
+  };
+
+  useEffect(() => {
+    let timer;
+    if (showSnackbar) {
+      timer = setTimeout(() => {
+        setShowSnackbar(false);
+      }, 3000);
+    }
+    
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [showSnackbar]);
+
   const transformCharms = (charmsToTransform) => {
     return charmsToTransform.map(charm => {
       const originalPrice = parseFloat(charm.price);
@@ -83,7 +124,7 @@ const ProductGrid = () => {
       if (category === "price") {
         newFilters[category] = newFilters[category].includes(value) ? [] : [value];
       } else if (category === "discount") {
-        newFilters[category] = !newFilters[category]; // Toggle discount filter
+        newFilters[category] = !newFilters[category];
       } else {
         newFilters[category] = newFilters[category].includes(value)
           ? newFilters[category].filter(item => item !== value)
@@ -103,29 +144,24 @@ const ProductGrid = () => {
   const applyFilters = () => {
     let filtered = [...charms];
 
-    // Apply category filter
     if (filters.category.length > 0) {
       filtered = filtered.filter(charm => filters.category.includes(charm.category));
     }
 
-    // Apply material filter
     if (filters.material.length > 0) {
-      filtered = filtered.filter(charm => filters.material.includes(charm.label)); // Assuming 'label' contains material info
+      filtered = filtered.filter(charm => filters.material.includes(charm.label));
     }
 
-    // Apply discount filter
     if (filters.discount) {
       filtered = filtered.filter(charm => charm.discount > 0);
     }
 
-    // Apply price sorting
     if (filters.price.includes("Low to High")) {
       filtered.sort((a, b) => a.price - b.price);
     } else if (filters.price.includes("High to Low")) {
       filtered.sort((a, b) => b.price - a.price);
     }
 
-    // Maintain gold items priority even after other filters
     filtered.sort((a, b) => {
       if (a.label === 'gold' && b.label !== 'gold') return -1;
       if (a.label !== 'gold' && b.label === 'gold') return 1;
@@ -214,7 +250,6 @@ const ProductGrid = () => {
                 }`}
               />
               
-              {/* Discount badge */}
               {product.discount > 0 && (
                 <div className="absolute top-2 right-2 bg-[#b87777] text-white text-xs font-bold px-2 py-1 rounded">
                   {product.discount}% OFF
@@ -235,7 +270,7 @@ const ProductGrid = () => {
                 <div className="absolute bottom-2 right-2 bg-white p-1 rounded-b-xs">
                   <button 
                     className="bg-white text-[#c3a46f] border border-[#c3a46f] p-1 rounded-full"
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => handleAddToCart(product.id, e)}
                   >
                     <Plus size={16} />
                   </button>
@@ -381,6 +416,43 @@ const ProductGrid = () => {
                   />
                   Show only discounted items
                 </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        message={snackbarMessage}
+        show={showSnackbar}
+        onClose={() => setShowSnackbar(false)}
+        type={snackbarType}
+      />
+
+      {/* Login Prompt Popup */}
+      {showLoginPrompt && (
+        <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-4 animate-fadeIn">
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Login Required</h3>
+              <p className="text-gray-600 mb-6">
+                You need to be logged in to add items to your cart.
+              </p>
+              <div className="flex gap-4 justify-center">
+                <button
+                  onClick={() => setShowLoginPrompt(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <Link
+                  to="/login"
+                  className="px-4 py-2 bg-[#e6d4a5] text-gray-800 rounded-md hover:bg-[#d4c191] transition"
+                  onClick={() => setShowLoginPrompt(false)}
+                >
+                  Login
+                </Link>
               </div>
             </div>
           </div>

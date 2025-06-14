@@ -1,11 +1,9 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  LayoutGrid,
-  Rows2,
-} from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { LayoutGrid, Rows2, Plus } from "lucide-react";
 import { cn } from "../../utils/utils.js";
-import { BASE_URL } from "../../utils/api.js";
+import { BASE_URL, isLoggedIn, addToCart } from "../../utils/api.js";
+import Snackbar from '../snackbar.jsx';
 
 export default function ProductGrid() {
   const navigate = useNavigate();
@@ -14,6 +12,10 @@ export default function ProductGrid() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [giftSets, setGiftSets] = useState([]);
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarType, setSnackbarType] = useState('success');
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   // Fetch gift sets from API and filter by label "forUs"
   useEffect(() => {
@@ -40,6 +42,44 @@ export default function ProductGrid() {
 
     fetchGiftSets();
   }, []);
+
+  const handleAddToCart = async (giftSetId, e) => {
+    e.stopPropagation();
+    if (!isLoggedIn()) {
+      setShowLoginPrompt(true);
+      return;
+    }
+
+    try {
+      // Prepare the cart data in the required format for gift sets
+      const cartData = {
+        gift_set: giftSetId,
+        quantity: 1
+      };
+
+      await addToCart(null, cartData);
+      setSnackbarMessage('Gift set added to cart!');
+      setSnackbarType('success');
+      setShowSnackbar(true);
+    } catch (error) {
+      setSnackbarMessage(error.message || 'Failed to update cart');
+      setSnackbarType('error');
+      setShowSnackbar(true);
+    }
+  };
+
+  useEffect(() => {
+    let timer;
+    if (showSnackbar) {
+      timer = setTimeout(() => {
+        setShowSnackbar(false);
+      }, 3000);
+    }
+    
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [showSnackbar]);
 
   const productsPerPage = layout === "grid" ? 12 : 8;
   const totalPages = Math.ceil(giftSets.length / productsPerPage);
@@ -108,7 +148,7 @@ export default function ProductGrid() {
         </p>
       </div>
 
-      {/* Products Grid (your card UI) */}
+      {/* Products Grid */}
       <>
         <div
           className={`max-w-6xl mx-auto grid ${
@@ -133,6 +173,15 @@ export default function ProductGrid() {
                     e.target.src = '../../assets/default/banner_home.jpeg';
                   }}
                 />
+                {/* Add to cart button */}
+                <div className="absolute bottom-2 right-2 bg-white p-1 rounded-b-xs">
+                  <button 
+                    className="bg-white text-[#c3a46f] border border-[#c3a46f] p-1 rounded-full"
+                    onClick={(e) => handleAddToCart(giftSet.id, e)}
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
               </div>
               <div className="text-center mt-2">
                 <p className="text-sm font-semibold uppercase text-[#403c39] leading-tight">
@@ -181,6 +230,43 @@ export default function ProductGrid() {
           </button>
         </div>
       </>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        message={snackbarMessage}
+        show={showSnackbar}
+        onClose={() => setShowSnackbar(false)}
+        type={snackbarType}
+      />
+
+      {/* Login Prompt Popup */}
+      {showLoginPrompt && (
+        <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-4 animate-fadeIn">
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Login Required</h3>
+              <p className="text-gray-600 mb-6">
+                You need to be logged in to add items to your cart.
+              </p>
+              <div className="flex gap-4 justify-center">
+                <button
+                  onClick={() => setShowLoginPrompt(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <Link
+                  to="/login"
+                  className="px-4 py-2 bg-[#e6d4a5] text-gray-800 rounded-md hover:bg-[#d4c191] transition"
+                  onClick={() => setShowLoginPrompt(false)}
+                >
+                  Login
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

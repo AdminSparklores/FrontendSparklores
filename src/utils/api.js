@@ -1,5 +1,5 @@
 // src/api.js
-export const BASE_URL = 'http://192.168.1.3:8000';
+export const BASE_URL = 'http://192.168.1.6:8000';
 
 // Helper function to store auth data
 const storeAuthData = (data) => {
@@ -311,13 +311,15 @@ export const deleteCartItem = async (itemId) => {
 //   return existingItem ? existingItem.id : null;
 // };
 
-export const addToCart = async (productId) => {
-  console.log("ini productid nya yg add to cart: ",productId);
-  if (!productId) throw new Error('No product id specified');
+export const addToCart = async (productId, data) => {
+  if (!productId && !data.gift_set && (!data.charms || data.charms.length === 0)) {
+    throw new Error('No product, gift_set, or charms specified');
+  }
+
   const authData = getAuthData();
   if (!authData) throw new Error('Not authenticated');
-  
-  // 1. Check if product exists in cart
+
+  // 1. Fetch current cart
   const response = await fetch(`${BASE_URL}/api/cart/`, {
     method: 'GET',
     headers: {
@@ -325,20 +327,29 @@ export const addToCart = async (productId) => {
       'Authorization': `Bearer ${authData.token}`
     }
   });
+
   if (!response.ok) throw new Error('Failed to fetch cart');
   const cartData = await response.json();
   const cartItems = cartData.items || [];
+
+  // 2. Find if a matching item already exists
   const existingItem = cartItems.find(item => {
-    if (!item.product) return false; // skip charm/giftset-only
-    if (typeof item.product === 'object' && item.product !== null && 'id' in item.product) {
-      return item.product.id == productId;
-    }
-    return item.product == productId;
+    const isSameProduct = productId && item.product == productId;
+    const isSameGiftSet = data.gift_set && item.gift_set == data.gift_set;
+    const isSameCharms = JSON.stringify(item.charms?.sort()) === JSON.stringify((data.charms || []).sort());
+
+    // Match by type
+    if (item.source_type === "product" && isSameProduct && isSameCharms) return true;
+    if (item.source_type === "gift_set" && isSameGiftSet) return true;
+    if (item.source_type === "charms_only" && isSameCharms) return true;
+
+    return false;
   });
 
+  // 3. If match found: PATCH to increase quantity
   if (existingItem) {
-    // 2. If exists, PATCH to increase quantity
-    const newQty = (existingItem.quantity || 1) + 1;
+    const newQty = (existingItem.quantity || 1) + (data.quantity || 1);
+
     const patchResp = await fetch(`${BASE_URL}/api/cart/${existingItem.id}/update_item/`, {
       method: 'PATCH',
       headers: {
@@ -347,30 +358,40 @@ export const addToCart = async (productId) => {
       },
       body: JSON.stringify({ quantity: newQty })
     });
+
     if (!patchResp.ok) {
       let msg = "Failed to update cart";
       try { msg = await patchResp.text(); } catch {}
       throw new Error(msg);
     }
+
     return await patchResp.json();
-  } else {
-    // 3. If not exists, POST to add
-    const postResp = await fetch(`${BASE_URL}/api/cart/add/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authData.token}`
-      },
-      body: JSON.stringify({ product: productId, quantity: 1, charms: [] })
-    });
-    if (!postResp.ok) {
-      let msg = "Failed to add item to cart";
-      try { msg = await postResp.text(); } catch {}
-      throw new Error(msg);
-    }
-    return await postResp.json();
   }
+
+  // 4. If no match: POST a new item
+  const postData = {
+    ...data,
+    ...(productId ? { product: productId } : {})
+  };
+
+  const postResp = await fetch(`${BASE_URL}/api/cart/add/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authData.token}`
+    },
+    body: JSON.stringify(postData)
+  });
+
+  if (!postResp.ok) {
+    let msg = "Failed to add item to cart";
+    try { msg = await postResp.text(); } catch {}
+    throw new Error(msg);
+  }
+
+  return await postResp.json();
 };
+
 
 export const checkProductInCart = async (productId) => {
   const authData = getAuthData();

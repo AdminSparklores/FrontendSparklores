@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import clsx from "clsx";
-import { BASE_URL, isLoggedIn } from "../../utils/api.js";
+import { BASE_URL, isLoggedIn, addToCart } from "../../utils/api.js";
+import Snackbar from '../snackbar.jsx';
 
 // BASE IMAGES
 import baseNecklace from "../../assets/default/basenecklace.png";
@@ -23,10 +24,27 @@ const ProductDetailCharm = () => {
   const [showNote, setShowNote] = useState(false);
   const [note, setNote] = useState('');
   const [discountItem, setDiscountItem] = useState(null);
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarType, setSnackbarType] = useState('success');
 
   // Login popup state
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [isLoggedInState, setIsLoggedInState] = useState(false);
+
+  // Auto-close Snackbar after 3 seconds
+  useEffect(() => {
+    let timer;
+    if (showSnackbar) {
+      timer = setTimeout(() => {
+        setShowSnackbar(false);
+      }, 3000);
+    }
+    
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [showSnackbar]);
 
   // Check login state on mount and when auth changes
   useEffect(() => {
@@ -78,13 +96,24 @@ const ProductDetailCharm = () => {
   }, [productId]);
 
   // Handler for Add to Cart (checks login)
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!isLoggedIn()) {
       setShowLoginPrompt(true);
       return;
     }
-    setShowPopup(true);
-    setShowCharms(true);
+
+    try {
+      await addToCart(null, { charms: [productId], quantity: 1 });
+      setSnackbarMessage('Charm added to cart!');
+      setSnackbarType('success');
+      setShowSnackbar(true);
+      setShowPopup(true);
+      setShowCharms(true);
+    } catch (error) {
+      setSnackbarMessage(error.message || 'Failed to add charm to cart');
+      setSnackbarType('error');
+      setShowSnackbar(true);
+    }
   };
 
   const handleAddOrSkipCharms = () => {
@@ -185,6 +214,14 @@ const ProductDetailCharm = () => {
           </div>
         </div>
       )}
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        message={snackbarMessage}
+        show={showSnackbar}
+        onClose={() => setShowSnackbar(false)}
+        type={snackbarType}
+      />
 
       {/* Popup Overlay */}
       {showPopup && (

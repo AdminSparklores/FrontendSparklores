@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { BASE_URL, isLoggedIn } from "../../utils/api.js";
+import { BASE_URL, isLoggedIn, addToCart } from "../../utils/api.js";
+import Snackbar from '../snackbar.jsx';
 
 // Helper: format IDR currency
 const formatIDR = (value) =>
@@ -43,9 +44,26 @@ const ProductDetail = (props) => {
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [isLoggedInState, setIsLoggedInState] = useState(false);
   const [showArrows, setShowArrows] = useState(false);
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarType, setSnackbarType] = useState('success');
 
   // Refs for scrollable containers
   const thumbnailContainerRef = useRef(null);
+
+  // Auto-close Snackbar after 3 seconds
+  useEffect(() => {
+    let timer;
+    if (showSnackbar) {
+      timer = setTimeout(() => {
+        setShowSnackbar(false);
+      }, 3000);
+    }
+    
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [showSnackbar]);
 
   // check login state on mount and when auth changes
   useEffect(() => {
@@ -106,13 +124,24 @@ const ProductDetail = (props) => {
     fetchProductAndDiscount();
   }, [productId]);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!isLoggedIn()) {
       setShowLoginPrompt(true);
       return;
     }
-    setShowPopup(true);
-    setShowCharms(true);
+
+    try {
+      await addToCart(productId, { quantity: 1 });
+      setSnackbarMessage('Item added to cart!');
+      setSnackbarType('success');
+      setShowSnackbar(true);
+      setShowPopup(true);
+      setShowCharms(true);
+    } catch (error) {
+      setSnackbarMessage(error.message || 'Failed to update cart');
+      setSnackbarType('error');
+      setShowSnackbar(true);
+    }
   };
 
   const handleCustomize = () => {
@@ -258,6 +287,14 @@ const ProductDetail = (props) => {
           </div>
         </div>
       )}
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        message={snackbarMessage}
+        show={showSnackbar}
+        onClose={() => setShowSnackbar(false)}
+        type={snackbarType}
+      />
 
       {/* Popup Overlay */}
       {showPopup && (
@@ -498,7 +535,7 @@ const ProductDetail = (props) => {
                 disabled={product.stock === 0}
                 className={`${BTN_RATIO} px-10 py-4 text-lg ${product.stock === 0 ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#ffffff00] border-2 border-[#f6e3b8] hover:opacity-90 hover:bg-[#f6e3b8]'} text-[#2d2a26] font-medium rounded transition`}
               >
-                {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                {product.stock === 0 ? 'Out of Stock' : 'Add to Cart (Chain Only)'}
               </button>
             </>
           ) : (
@@ -528,7 +565,7 @@ const ProductDetail = (props) => {
                 disabled={product.stock === 0}
                 className={`${BTN_RATIO} px-4 py-3 text-base ${product.stock === 0 ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#ffffff00] border-2 border-[#f6e3b8] hover:opacity-90 hover:bg-[#f6e3b8]'} text-[#2d2a26] font-medium rounded transition`}
               >
-                {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                {product.stock === 0 ? 'Out of Stock' : 'Add to Cart (Chain Only)'}
               </button>
             </>
           ) : (

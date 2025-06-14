@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ChevronDown } from "lucide-react";
 import clsx from "clsx";
-import { BASE_URL, fetchProduct, fetchAllCharms, isLoggedIn } from "../../utils/api";
+import { BASE_URL, fetchProduct, fetchAllCharms, isLoggedIn, addToCart } from "../../utils/api";
+import Snackbar from '../snackbar.jsx';
 
 // Import your metal sound effect
 import metalSfx from "../../assets/audio/metal_sfx2.mp3";
@@ -31,6 +32,11 @@ const ProductDetailCharmBar = () => {
   const [charmsData, setCharmsData] = useState([]);
   const [charmLoading, setCharmLoading] = useState(true);
 
+  // Snackbar state
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarType, setSnackbarType] = useState('success');
+
   // --- CHAIN ONLY/0 CHARMS INTEGRATION START ---
   useEffect(() => {
     if (charmCount === 0) {
@@ -41,6 +47,20 @@ const ProductDetailCharmBar = () => {
     }
   }, [charmCount]);
   // --- CHAIN ONLY/0 CHARMS INTEGRATION END ---
+
+  // Auto-close Snackbar after 3 seconds
+  useEffect(() => {
+    let timer;
+    if (showSnackbar) {
+      timer = setTimeout(() => {
+        setShowSnackbar(false);
+      }, 3000);
+    }
+    
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [showSnackbar]);
 
   // Audio ref for metal sound effect
   const metalAudioRef = useRef(null);
@@ -229,12 +249,36 @@ const ProductDetailCharmBar = () => {
     }
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!isLoggedIn()) {
       setShowLoginPrompt(true);
       return;
     }
-    alert("Added to cart! (Implement actual logic here)");
+
+    try {
+      // Get selected charm IDs
+      const charmIds = [];
+      for (let i = 1; i <= charmCount; i++) {
+        if (selectedCharms[i]?.id) {
+          charmIds.push(selectedCharms[i].id);
+        }
+      }
+
+      // Prepare cart data
+      const cartData = {
+        quantity: 1,
+        charms: charmIds
+      };
+
+      await addToCart(productId, cartData);
+      setSnackbarMessage('Customized product added to cart!');
+      setSnackbarType('success');
+      setShowSnackbar(true);
+    } catch (error) {
+      setSnackbarMessage(error.message || 'Failed to add to cart');
+      setSnackbarType('error');
+      setShowSnackbar(true);
+    }
   };
 
   const handleCloseLoginPrompt = () => setShowLoginPrompt(false);
@@ -293,6 +337,14 @@ const ProductDetailCharmBar = () => {
           </div>
         </div>
       )}
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        message={snackbarMessage}
+        show={showSnackbar}
+        onClose={() => setShowSnackbar(false)}
+        type={snackbarType}
+      />
 
       <div className="font-sans px-6 pt-10 max-w-6xl mx-auto">
         <h2 className="text-2xl font-serif font-semibold mb-4">CUSTOMIZE YOUR CHARM</h2>
@@ -439,8 +491,7 @@ const ProductDetailCharmBar = () => {
                                   <img
                                     src={charm.image}
                                     alt={charm.name}
-                                    className=" ```jsx
-hover:scale-105 transition rounded border p-1 w-full"
+                                    className="hover:scale-105 transition rounded border p-1 w-full"
                                     onError={(e) => {
                                       e.target.onerror = null;
                                       e.target.src = '../../assets/default/basenecklace.png';

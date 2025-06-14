@@ -88,7 +88,7 @@ const HomePart2 = () => {
 
     try {
       await addToCart(productId);
-      setSnackbarMessage('Item quantity updated in cart!');
+      setSnackbarMessage('Item added to cart!');
       setSnackbarType('success');
       setShowSnackbar(true);
     } catch (error) {
@@ -97,6 +97,19 @@ const HomePart2 = () => {
       setShowSnackbar(true);
     }
   };
+
+  useEffect(() => {
+  let timer;
+  if (showSnackbar) {
+    timer = setTimeout(() => {
+      setShowSnackbar(false);
+    }, 3000);
+  }
+  
+  return () => {
+    if (timer) clearTimeout(timer);
+  };
+}, [showSnackbar]);
 
   if (isLoading) {
     return (

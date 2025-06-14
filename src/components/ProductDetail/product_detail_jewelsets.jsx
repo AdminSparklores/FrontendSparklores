@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { BASE_URL, isLoggedIn } from "../../utils/api.js";
+import { BASE_URL, isLoggedIn, addToCart } from "../../utils/api.js";
+import Snackbar from '../snackbar.jsx';
 
 // Helper: format IDR currency
 const formatIDR = (amount) => {
@@ -35,6 +36,23 @@ const ProductDetailJewelSets = () => {
   const [isLoggedInState, setIsLoggedInState] = useState(false);
   const [showArrows, setShowArrows] = useState(false);
   const [jewelSetProducts, setJewelSetProducts] = useState([]);
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarType, setSnackbarType] = useState('success');
+
+  // Auto-close Snackbar after 3 seconds
+  useEffect(() => {
+    let timer;
+    if (showSnackbar) {
+      timer = setTimeout(() => {
+        setShowSnackbar(false);
+      }, 3000);
+    }
+    
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [showSnackbar]);
 
   useEffect(() => {
     setIsLoggedInState(isLoggedIn());
@@ -84,13 +102,22 @@ const ProductDetailJewelSets = () => {
   }, [productId]);
 
   // Handler for Add to Cart (checks login)
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!isLoggedIn()) {
       setShowLoginPrompt(true);
       return;
     }
-    // Implement your add-to-cart logic for sets here
-    alert("Added to cart! (Implement this functionality as needed)");
+
+    try {
+      await addToCart(productId, { quantity: 1 });
+      setSnackbarMessage('Jewel set added to cart!');
+      setSnackbarType('success');
+      setShowSnackbar(true);
+    } catch (error) {
+      setSnackbarMessage(error.message || 'Failed to add jewel set to cart');
+      setSnackbarType('error');
+      setShowSnackbar(true);
+    }
   };
 
   const handleCloseLoginPrompt = () => setShowLoginPrompt(false);
@@ -195,6 +222,14 @@ const ProductDetailJewelSets = () => {
         </div>
       )}
 
+      {/* Snackbar for notifications */}
+      <Snackbar
+        message={snackbarMessage}
+        show={showSnackbar}
+        onClose={() => setShowSnackbar(false)}
+        type={snackbarType}
+      />
+
       <div className="max-w-7xl mx-auto px-6 md:px-16 py-10 font-serif text-[#2d2a26]">
         {/* Breadcrumb */}
         <div className="text-sm text-gray-400 mb-4">
@@ -274,11 +309,7 @@ const ProductDetailJewelSets = () => {
                 {detailList.map((detail, idx) => (
                   <li key={idx}>{detail}</li>
                 ))}
-                {/* <li>Stock: {giftSet.stock} available</li> */}
-                {/* <li>Created: {new Date(giftSet.created_at).toLocaleString()}</li> */}
-                {/* <li>Sold: {giftSet.sold_stok}</li> */}
                 <li>Material: {giftSet.label}</li>
-                {/* <li>Category: {giftSet.category}</li> */}
               </ul>
               {jewelSetProducts.length > 0 && (
                 <div className="mt-3">

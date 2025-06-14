@@ -8,7 +8,8 @@ import {
   Rows2,
 } from "lucide-react";
 import { cn } from "../../utils/utils.js";
-import { BASE_URL } from "../../utils/api.js";
+import { BASE_URL, isLoggedIn, addToCart } from "../../utils/api.js";
+import Snackbar from '../snackbar.jsx';
 
 export default function ProductGrid() {
   const navigate = useNavigate();
@@ -25,6 +26,11 @@ export default function ProductGrid() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [discountMap, setDiscountMap] = useState({});
+  
+  // Snackbar state
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarType, setSnackbarType] = useState('success');
 
   // Helper function to get the first image URL from a product
   const getFirstProductImage = (product) => {
@@ -126,9 +132,46 @@ export default function ProductGrid() {
     // eslint-disable-next-line
   }, []);
 
+  // Add to cart function
+  const handleAddToCart = async (productId, e) => {
+    e.stopPropagation();
+    if (!isLoggedIn()) {
+      // Handle login prompt if needed
+      return;
+    }
+
+    try {
+      const cartData = {
+        quantity: 1
+      };
+
+      await addToCart(productId, cartData);
+      setSnackbarMessage('Item added to cart!');
+      setSnackbarType('success');
+      setShowSnackbar(true);
+    } catch (error) {
+      setSnackbarMessage(error.message || 'Failed to update cart');
+      setSnackbarType('error');
+      setShowSnackbar(true);
+    }
+  };
+
+  // Snackbar auto-hide
+  useEffect(() => {
+    let timer;
+    if (showSnackbar) {
+      timer = setTimeout(() => {
+        setShowSnackbar(false);
+      }, 3000);
+    }
+    
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [showSnackbar]);
+
   // Discount price calculation logic per product
   const getDiscounted = (product, discountMapArg) => {
-    // Defensive: product.id could be string or number, discountMap keys as string
     const discountItem = (discountMapArg || discountMap)[`${product.id}`];
     let displayPrice = product.price;
     let oldPrice = null;
@@ -160,7 +203,6 @@ export default function ProductGrid() {
   const handleDone = () => {
     setIsPopupOpen(false);
 
-    // Apply discount logic to all products for accurate filtering/sorting
     let filtered = products.map(product => ({
       ...product,
       ...getDiscounted(product)
@@ -182,7 +224,6 @@ export default function ProductGrid() {
       });
     }
 
-    // Use displayPrice for sorting!
     if (filters.price.includes("Low to High")) {
       filtered.sort((a, b) => a.displayPrice - b.displayPrice);
     } else if (filters.price.includes("High to Low")) {
@@ -207,7 +248,6 @@ export default function ProductGrid() {
   };
 
   useEffect(() => {
-    // After products/discountMap changes, always update filteredProducts with discount logic
     setFilteredProducts(
       products.map(product => ({
         ...product,
@@ -381,10 +421,7 @@ export default function ProductGrid() {
                       <div className="absolute bottom-2 right-2 bg-white p-1 rounded-b-xs">
                         <button 
                           className="bg-white text-[#c3a46f] border border-[#c3a46f] p-1 rounded-full"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Add to cart logic here
-                          }}
+                          onClick={(e) => handleAddToCart(product.id, e)}
                         >
                           <Plus size={16} />
                         </button>
@@ -459,6 +496,14 @@ export default function ProductGrid() {
           </div>
         </>
       )}
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        message={snackbarMessage}
+        show={showSnackbar}
+        onClose={() => setShowSnackbar(false)}
+        type={snackbarType}
+      />
 
       {/* Filter Popup */}
       {isPopupOpen && (

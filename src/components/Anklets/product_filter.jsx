@@ -8,7 +8,8 @@ import {
   Rows2,
 } from "lucide-react";
 import { cn } from "../../utils/utils.js";
-import { BASE_URL } from "../../utils/api.js";
+import { BASE_URL, isLoggedIn, addToCart } from "../../utils/api.js"; // Import necessary functions
+import Snackbar from '../snackbar.jsx'; // Import Snackbar component
 
 export default function ProductGrid() {
   const navigate = useNavigate();
@@ -25,6 +26,11 @@ export default function ProductGrid() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [discountMap, setDiscountMap] = useState({});
+  
+  // Snackbar state
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarType, setSnackbarType] = useState('success');
 
   // Helper function to get the first image URL from a product
   const getFirstProductImage = (product) => {
@@ -128,7 +134,6 @@ export default function ProductGrid() {
 
   // Discount price calculation logic per product
   const getDiscounted = (product, discountMapArg) => {
-    // Defensive: product.id could be string or number, discountMap keys as string
     const discountItem = (discountMapArg || discountMap)[`${product.id}`];
     let displayPrice = product.price;
     let oldPrice = null;
@@ -155,6 +160,45 @@ export default function ProductGrid() {
     }
     return { displayPrice, oldPrice, discountLabel };
   };
+
+  // Add to cart logic
+  const handleAddToCart = async (productId, e) => {
+    e.stopPropagation();
+    if (!isLoggedIn()) {
+      // Handle login prompt if needed
+      return;
+    }
+
+    try {
+      // Prepare the cart data in the required format for gift sets
+      const cartData = {
+        quantity: 1
+      };
+
+      await addToCart(productId, cartData);
+      setSnackbarMessage('Item added to cart!');
+      setSnackbarType('success');
+      setShowSnackbar(true);
+    } catch (error) {
+      setSnackbarMessage(error.message || 'Failed to update cart');
+      setSnackbarType('error');
+      setShowSnackbar(true);
+    }
+  };
+
+  // Snackbar auto-hide logic
+  useEffect(() => {
+    let timer;
+    if (showSnackbar) {
+      timer = setTimeout(() => {
+        setShowSnackbar(false);
+      }, 3000);
+    }
+    
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [showSnackbar]);
 
   // Filtering and sorting logic
   const handleDone = () => {
@@ -382,10 +426,7 @@ export default function ProductGrid() {
                       <div className="absolute bottom-2 right-2 bg-white p-1 rounded-b-xs">
                         <button 
                           className="bg-white text-[#c3a46f] border border-[#c3a46f] p-1 rounded-full"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Add to cart logic here
-                          }}
+                          onClick={(e) => handleAddToCart(product.id, e)} // Call the add to cart function
                         >
                           <Plus size={16} />
                         </button>
@@ -452,14 +493,23 @@ export default function ProductGrid() {
               onClick={() =>
                 setCurrentPage((prev) => Math.min(prev + 1, totalPages))
               }
-              disabled={currentPage === totalPages}
+              disabled={currentPage === totalPages} // Change 'total' to 'totalPages'
               className="px-4 py-2 bg-[#c3a46f] text-white rounded-r"
             >
               Next
             </button>
           </div>
+
         </>
       )}
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        message={snackbarMessage}
+        show={showSnackbar}
+        onClose={() => setShowSnackbar(false)}
+        type={snackbarType}
+      />
 
       {/* Filter Popup */}
       {isPopupOpen && (

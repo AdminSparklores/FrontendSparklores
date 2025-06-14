@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { BASE_URL, isLoggedIn } from "../../utils/api.js";
+import { BASE_URL, isLoggedIn, addToCart } from "../../utils/api.js";
+import Snackbar from '../snackbar.jsx';
 
 // Helper: format IDR currency
 const formatIDR = (amount) => {
@@ -34,6 +35,23 @@ const ProductDetailSets = () => {
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [isLoggedInState, setIsLoggedInState] = useState(false);
   const [showArrows, setShowArrows] = useState(false);
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarType, setSnackbarType] = useState('success');
+
+  // Auto-close Snackbar after 3 seconds
+  useEffect(() => {
+    let timer;
+    if (showSnackbar) {
+      timer = setTimeout(() => {
+        setShowSnackbar(false);
+      }, 3000);
+    }
+    
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [showSnackbar]);
 
   useEffect(() => {
     setIsLoggedInState(isLoggedIn());
@@ -72,13 +90,22 @@ const ProductDetailSets = () => {
   }, [productId]);
 
   // Handler for Add to Cart (checks login)
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!isLoggedIn()) {
       setShowLoginPrompt(true);
       return;
     }
-    // Implement your add-to-cart logic for sets here
-    alert("Added to cart! (Implement this functionality as needed)");
+
+    try {
+      await addToCart(null, { gift_set: productId, quantity: 1 });
+      setSnackbarMessage('Gift set added to cart!');
+      setSnackbarType('success');
+      setShowSnackbar(true);
+    } catch (error) {
+      setSnackbarMessage(error.message || 'Failed to add gift set to cart');
+      setSnackbarType('error');
+      setShowSnackbar(true);
+    }
   };
 
   const handleCloseLoginPrompt = () => setShowLoginPrompt(false);
@@ -170,6 +197,14 @@ const ProductDetailSets = () => {
           </div>
         </div>
       )}
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        message={snackbarMessage}
+        show={showSnackbar}
+        onClose={() => setShowSnackbar(false)}
+        type={snackbarType}
+      />
 
       <div className="max-w-7xl mx-auto px-6 md:px-16 py-10 font-serif text-[#2d2a26]">
         {/* Breadcrumb */}

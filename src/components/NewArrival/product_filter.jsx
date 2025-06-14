@@ -8,7 +8,8 @@ import {
   Rows2,
 } from "lucide-react";
 import { cn } from "../../utils/utils.js";
-import { BASE_URL } from "../../utils/api.js";
+import { BASE_URL, isLoggedIn, addToCart } from "../../utils/api.js";
+import Snackbar from '../snackbar.jsx';
 
 // Helper: format IDR currency
 const formatIDR = (value) =>
@@ -34,11 +35,16 @@ export default function ProductNewArrival() {
     product: [],
     price: [],
   });
-  const [items, setItems] = useState([]); // Both products and charms
+  const [items, setItems] = useState([]);
   const [filteredItems, setFilteredItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [discountMap, setDiscountMap] = useState({});
+  
+  // Snackbar state
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarType, setSnackbarType] = useState('success');
 
   // Helper: get first product image
   const getFirstProductImage = (product) => {
@@ -77,18 +83,76 @@ export default function ProductNewArrival() {
     return { displayPrice, oldPrice, discountLabel };
   };
 
-  // Fetch products, charms and discounts from API
+  // Handle add to cart based on product type
+  const handleAddToCart = async (item, e) => {
+    e.stopPropagation();
+    
+    if (!isLoggedIn()) {
+      // Handle login prompt if needed
+      return;
+    }
+
+    try {
+      let cartData;
+      if (item.isCharm) {
+        // Charms-only product
+        cartData = { charms: [item.id], quantity: 1 };
+        await addToCart(null, cartData);
+      } else if (item.isGiftSet) {
+        // Gift set product
+        cartData = { gift_set: item.id, quantity: 1 };
+        await addToCart(null, cartData);
+      } else {
+        // Regular product
+        cartData = { quantity: 1 };
+        await addToCart(item.id, cartData);
+      }
+
+      setSnackbarMessage('Item added to cart!');
+      setSnackbarType('success');
+      setShowSnackbar(true);
+    } catch (error) {
+      setSnackbarMessage(error.message || 'Failed to update cart');
+      setSnackbarType('error');
+      setShowSnackbar(true);
+    }
+  };
+
+  // Snackbar auto-hide
+  useEffect(() => {
+    let timer;
+    if (showSnackbar) {
+      timer = setTimeout(() => {
+        setShowSnackbar(false);
+      }, 3000);
+    }
+    
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [showSnackbar]);
+
+  // Fetch products, charms, gift sets and discounts from API
   useEffect(() => {
     const fetchNewArrivals = async () => {
       setIsLoading(true);
       try {
-        // 1. Fetch all products & discounts
-        const [productRes, discountRes] = await Promise.all([
+        // 1. Fetch all products, charms, gift sets & discounts
+        const [productRes, charmRes, giftSetRes, discountRes] = await Promise.all([
           fetch(`${BASE_URL}/api/products/`),
+          fetch(`${BASE_URL}/api/charms/`),
+          fetch(`${BASE_URL}/api/gift-sets/`),
           fetch(`${BASE_URL}/api/discount-campaigns/`)
         ]);
+        
         if (!productRes.ok) throw new Error("Failed to fetch products");
         const productData = await productRes.json();
+        
+        if (!charmRes.ok) throw new Error("Failed to fetch charms");
+        const charmData = await charmRes.json();
+        
+        if (!giftSetRes.ok) throw new Error("Failed to fetch gift sets");
+        const giftSetData = await giftSetRes.json();
 
         let discountData = [];
         if (discountRes.ok) {
@@ -106,17 +170,12 @@ export default function ProductNewArrival() {
         });
         setDiscountMap(discountMap);
 
-        // 2. Fetch all charms
-        const charmRes = await fetch(`${BASE_URL}/api/charms/`);
-        if (!charmRes.ok) throw new Error("Failed to fetch charms");
-        const charmData = await charmRes.json();
-
-        // 3. Calculate date range: from today to 1 month ago (ISO)
+        // 2. Calculate date range: from today to 1 month ago (ISO)
         const today = new Date();
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(today.getMonth() - 1);
 
-        // 4. Transform product data, filter by 1 month, add badges/discount
+        // 3. Transform product data, filter by 1 month, add badges/discount
         const transformedProducts = productData
           .filter((p) => {
             const created = new Date(p.created_at || new Date());
@@ -130,15 +189,16 @@ export default function ProductNewArrival() {
             discount: parseFloat(product.discount || 0),
             rating: parseFloat(product.rating) || 0,
             image: getFirstProductImage(product),
-            stock: product.stock,
+            stock: product.stock || product.stok || product.quantity || 0,
             soldStock: product.sold_stok || 0,
             createdAt: product.created_at || new Date().toISOString(),
             category: product.category,
             isCharm: false,
+            isGiftSet: false,
             ...getDiscounted(product, discountMap)
           }));
 
-        // 5. Transform charm data, filter by 1 month, add badges/discount
+        // 4. Transform charm data, filter by 1 month, add badges/discount
         const transformedCharms = charmData
           .filter((c) => {
             const created = new Date(c.created_at || new Date());
@@ -157,19 +217,43 @@ export default function ProductNewArrival() {
               discount: parseFloat(charm.discount || 0),
               rating: Math.round(parseFloat(charm.rating || 0)),
               image: charm.image,
-              stock: charm.stock,
+              stock: charm.stock || charm.stok || charm.quantity || 0,
               soldStock: charm.sold_stok || 0,
               createdAt: charm.created_at || new Date().toISOString(),
               category: charm.category,
               isCharm: true,
+              isGiftSet: false,
               displayPrice: hasDiscount ? discountedPrice : originalPrice,
               oldPrice: hasDiscount ? originalPrice : null,
               discountLabel: hasDiscount ? `${parseFloat(charm.discount)}% OFF` : ""
             };
           });
 
+        // 5. Transform gift set data, filter by 1 month
+        const transformedGiftSets = giftSetData
+          .filter((g) => {
+            const created = new Date(g.created_at || new Date());
+            return created >= oneMonthAgo && created <= today;
+          })
+          .map(giftSet => ({
+            id: giftSet.id,
+            name: giftSet.name,
+            type: giftSet.label ? giftSet.label.toUpperCase() : "",
+            price: parseFloat(giftSet.price),
+            discount: parseFloat(giftSet.discount || 0),
+            rating: Math.round(parseFloat(giftSet.rating || 0)),
+            image: giftSet.image_url || giftSet.image,
+            stock: giftSet.stock || giftSet.stok || giftSet.quantity || 0,
+            soldStock: giftSet.sold_stok || 0,
+            createdAt: giftSet.created_at || new Date().toISOString(),
+            category: giftSet.category,
+            isCharm: false,
+            isGiftSet: true,
+            ...getDiscounted(giftSet, discountMap)
+          }));
+
         // 6. Combine and sort by newest
-        const allArrivals = [...transformedProducts, ...transformedCharms].sort(
+        const allArrivals = [...transformedProducts, ...transformedCharms, ...transformedGiftSets].sort(
           (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
         );
 
@@ -188,24 +272,29 @@ export default function ProductNewArrival() {
   // Re-apply discount logic if products/discountMap changes
   useEffect(() => {
     setFilteredItems(
-      items.map(product => ({
-        ...product,
-        ...(product.isCharm
+      items.map(item => ({
+        ...item,
+        ...(item.isCharm || item.isGiftSet
           ? {} // handled at mapping
-          : getDiscounted(product))
+          : getDiscounted(item))
       }))
     );
     // eslint-disable-next-line
   }, [items, discountMap]);
 
-  // Handle click: products vs charm
+  // Handle click: products vs charm vs gift set
   const handleProductClick = (item) => {
     if (item.isCharm) {
       navigate(`/products-charm/${item.id}`);
+    } else if (item.isGiftSet) {
+      navigate(`/products-sets/${item.id}`);
     } else {
       navigate(`/products/${item.id}`);
     }
   };
+
+  // Rest of your existing code remains the same...
+  // (Filtering, pagination, and rendering logic)
 
   const productsPerPage = layout === "grid" ? 12 : 8;
   const totalPages = Math.ceil(filteredItems.length / productsPerPage);
@@ -245,24 +334,23 @@ export default function ProductNewArrival() {
   const handleDone = () => {
     setIsPopupOpen(false);
 
-    // Filtering and sorting logic, with discount-aware prices
-    let filtered = items.map(product => ({
-      ...product,
-      ...(product.isCharm ? {} : getDiscounted(product))
+    let filtered = items.map(item => ({
+      ...item,
+      ...(item.isCharm || item.isGiftSet ? {} : getDiscounted(item))
     }));
 
     if (filters.material.length > 0) {
-      filtered = filtered.filter((product) =>
-        filters.material.includes(product.type)
+      filtered = filtered.filter((item) =>
+        filters.material.includes(item.type)
       );
     }
 
     if (filters.product.length > 0) {
-      filtered = filtered.filter((product) => {
-        if (filters.product.includes("Best Seller") && product.isBestSeller) return true;
-        if (filters.product.includes("New Arrival") && product.isNewArrival) return true;
-        if (filters.product.includes("Newest")) return product.isNewArrival;
-        if (filters.product.includes("Oldest") && product.isOldest) return true;
+      filtered = filtered.filter((item) => {
+        if (filters.product.includes("Best Seller") && item.isBestSeller) return true;
+        if (filters.product.includes("New Arrival") && item.isNewArrival) return true;
+        if (filters.product.includes("Newest")) return item.isNewArrival;
+        if (filters.product.includes("Oldest") && item.isOldest) return true;
         return false;
       });
     }
@@ -351,13 +439,12 @@ export default function ProductNewArrival() {
             } gap-6`}
           >
             {currentProducts.map((item) => {
-              // If it's a charm, use charm price logic, else product logic
               const displayPrice = typeof item.displayPrice !== "undefined" ? item.displayPrice : item.price;
               const oldPrice = item.oldPrice;
               const discountLabel = item.discountLabel;
               return (
                 <div
-                  key={item.isCharm ? `charm-${item.id}` : `product-${item.id}`}
+                  key={item.isCharm ? `charm-${item.id}` : item.isGiftSet ? `giftset-${item.id}` : `product-${item.id}`}
                   className={`p-2 rounded-lg hover:shadow-md transition duration-200 relative ${
                     item.stock === 0 ? 'opacity-70' : 'cursor-pointer'
                   }`}
@@ -377,13 +464,13 @@ export default function ProductNewArrival() {
                     />
 
                     {/* Stock Status Badge */}
-                    {item.stock === 0 ? (
+                    {item.stock <= 0 ? (
                       <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">
                         SOLD OUT
                       </div>
                     ) : item.stock < 10 ? (
                       <div className="absolute top-2 left-2 bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded">
-                        LOW STOCK
+                        LOW STOCK: {item.stock} LEFT
                       </div>
                     ) : null}
 
@@ -399,10 +486,7 @@ export default function ProductNewArrival() {
                       <div className="absolute bottom-2 right-2 bg-white p-1 rounded-b-xs">
                         <button 
                           className="bg-white text-[#c3a46f] border border-[#c3a46f] p-1 rounded-full"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Add to cart logic here
-                          }}
+                          onClick={(e) => handleAddToCart(item, e)}
                         >
                           <Plus size={16} />
                         </button>
@@ -477,6 +561,14 @@ export default function ProductNewArrival() {
           </div>
         </>
       )}
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        message={snackbarMessage}
+        show={showSnackbar}
+        onClose={() => setShowSnackbar(false)}
+        type={snackbarType}
+      />
 
       {/* Filter Popup */}
       {isPopupOpen && (
