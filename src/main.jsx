@@ -35,6 +35,13 @@ import FinalCheckoutQRISPage from './pages/final_checkout_qris.jsx'
 import FinalCheckoutVAPage from './pages/final_checkout _va.jsx'
 import DetailPageJewelSets from './pages/detail_page_jewelsets.jsx'
 import UserReviewPage from './pages/review.jsx'
+import AdminProducts from './pages/Admin/product.jsx'
+import AdminCharms from './pages/Admin/charms.jsx'
+import AdminGiftSets from './pages/Admin/gift_set.jsx'
+import AdminDashboardAndOrder from './pages/Admin/dashboard.jsx'
+import AdminDiscount from './pages/Admin/discount_campaign.jsx'
+import AdminBanner from './pages/Admin/page_banner.jsx'
+import AdminGallery from './pages/Admin/photo_gallery.jsx'
 
 const router = createBrowserRouter([
   {path:"/", element: <Home/>},
@@ -67,6 +74,16 @@ const router = createBrowserRouter([
   {path:"/refund", element: <RefundPage />},
   {path:"/monthly-specials", element: <MonthlySpecials />},
   { path: "/review", element: <UserReviewPage /> },
+
+  // admin pages
+  { path: "/admin/products", element: <AdminProducts /> },
+  { path: "/admin/charms", element: <AdminCharms /> },
+  { path: "/admin/giftsets", element: <AdminGiftSets /> },
+  { path: "/admin/dashboard", element: <AdminDashboardAndOrder /> },
+  { path: "/admin/discount", element: <AdminDiscount /> },
+  { path: "/admin/photoGallery", element: <AdminGallery /> },
+  { path: "/admin/pageBanner", element: <AdminBanner /> },
+
   {path:"*", element: <NotFound/>},
   
 ]);
