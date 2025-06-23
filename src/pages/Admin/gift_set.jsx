@@ -1,5 +1,6 @@
 import AdminLayout from "../../components/Admin/AdminLayout";
 import { useEffect, useState, useRef } from "react";
+import AdminRouteGuard from "../../components/Admin/adminRouteGuard";
 import {
   getGiftSets,
   addGiftSet,
@@ -81,82 +82,85 @@ export default function AdminGiftSets() {
   };
 
   return (
-    <AdminLayout>
-      <div className="mx-auto max-w-full">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-xl font-bold text-[#bfa170]">Gift Sets</h1>
-          <button
-            onClick={() => setEditing({})}
-            className="bg-[#e5cfa4] hover:bg-[#d1b98a] text-white px-4 py-2 rounded-lg font-semibold shadow transition"
-          >
-            + Add Gift Set
-          </button>
-        </div>
-        <div className="bg-white rounded-xl border border-[#e5cfa4] shadow overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="text-[#bfa170] border-b">
-                <th className="p-4 w-[30%]">Name</th>
-                <th>Label</th>
-                <th>Price</th>
-                <th>Stock</th>
-                <th>Discount</th>
-                <th>Monthly Special?</th>
-                <th>Image</th>
-                <th>Products</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr>
-                  <td colSpan={9} className="text-center py-4">Loading...</td>
+    <AdminRouteGuard>
+        <AdminLayout>
+        <div className="mx-auto max-w-full">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-xl font-bold text-[#bfa170]">Gift Sets</h1>
+            <button
+              onClick={() => setEditing({})}
+              className="bg-[#e5cfa4] hover:bg-[#d1b98a] text-white px-4 py-2 rounded-lg font-semibold shadow transition"
+            >
+              + Add Gift Set
+            </button>
+          </div>
+          <div className="bg-white rounded-xl border border-[#e5cfa4] shadow overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="text-[#bfa170] border-b">
+                  <th className="p-4 w-[30%]">Name</th>
+                  <th>Label</th>
+                  <th>Price</th>
+                  <th>Stock</th>
+                  <th>Discount</th>
+                  <th>Monthly Special?</th>
+                  <th>Image</th>
+                  <th>Products</th>
+                  <th></th>
                 </tr>
-              )}
-              {!loading &&
-                giftSets.map((set) => (
-                  <tr key={set.id} className="border-b hover:bg-[#f8f4ed] transition">
-                    <td className="p-4 font-medium">{set.name}</td>
-                    <td>{set.label}</td>
-                    <td>{set.price}</td>
-                    <td>{set.stock}</td>
-                    <td>{set.discount}</td>
-                    <td>{set.is_monthly_special ? "Yes" : "No"}</td>
-                    <td>
-                      {set.image_url && (
-                        <img src={set.image_url || set.image} alt={set.name} className="h-10 w-10 object-contain rounded shadow" />
-                      )}
-                    </td>
-                    <td className="max-w-[180px] truncate">
-                      {(set.products || []).map((p) => p.name).join(", ")}
-                    </td>
-                    <td>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setEditing(set)}
-                          className="bg-[#e5cfa4] hover:bg-[#d1b98a] text-white px-3 py-1 rounded font-semibold shadow transition"
-                        >Edit</button>
-                        <button
-                          onClick={() => handleDelete(set.id)}
-                          className="bg-red-500 hover:bg-red-400 text-white px-3 py-1 rounded font-semibold shadow transition"
-                        >Delete</button>
-                      </div>
-                    </td>
+              </thead>
+              <tbody>
+                {loading && (
+                  <tr>
+                    <td colSpan={9} className="text-center py-4">Loading...</td>
                   </tr>
-                ))}
-            </tbody>
-          </table>
+                )}
+                {!loading &&
+                  giftSets.map((set) => (
+                    <tr key={set.id} className="border-b hover:bg-[#f8f4ed] transition">
+                      <td className="p-4 font-medium">{set.name}</td>
+                      <td>{set.label}</td>
+                      <td>{set.price}</td>
+                      <td>{set.stock}</td>
+                      <td>{set.discount}</td>
+                      <td>{set.is_monthly_special ? "Yes" : "No"}</td>
+                      <td>
+                        {set.image_url && (
+                          <img src={set.image_url || set.image} alt={set.name} className="h-10 w-10 object-contain rounded shadow" />
+                        )}
+                      </td>
+                      <td className="max-w-[180px] truncate">
+                        {(set.products || []).map((p) => p.name).join(", ")}
+                      </td>
+                      <td>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setEditing(set)}
+                            className="bg-[#e5cfa4] hover:bg-[#d1b98a] text-white px-3 py-1 rounded font-semibold shadow transition"
+                          >Edit</button>
+                          <button
+                            onClick={() => handleDelete(set.id)}
+                            className="bg-red-500 hover:bg-red-400 text-white px-3 py-1 rounded font-semibold shadow transition"
+                          >Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+          {editing && (
+            <GiftSetModal
+              giftSet={editing}
+              allProducts={products}
+              onClose={() => setEditing(null)}
+              onSave={handleSave}
+            />
+          )}
         </div>
-        {editing && (
-          <GiftSetModal
-            giftSet={editing}
-            allProducts={products}
-            onClose={() => setEditing(null)}
-            onSave={handleSave}
-          />
-        )}
-      </div>
-    </AdminLayout>
+      </AdminLayout>
+    </AdminRouteGuard>
+    
   );
 }
 

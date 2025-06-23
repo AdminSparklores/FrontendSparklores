@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, Link } from "react-router-dom";
 import logo from "../../assets/logo/sparklore_logo.png";
 
 const links = [
@@ -18,11 +18,13 @@ export default function AdminSidebar() {
   return (
     <aside className="h-screen bg-white border-r border-[#e5cfa4] min-w-[220px] px-6 py-8 flex flex-col items-center shadow-lg">
       <div className="mb-10 flex flex-col items-center gap-2">
-        <img
-          src={logo}
-          alt="Admin"
-          className="w-[10rem]"
-        />
+        <Link to="/">
+          <img
+            src={logo}
+            alt="Admin"
+            className="w-[10rem]"
+          />        
+        </Link>
         <div className="font-semibold text-lg text-[#bfa170]">Admin</div>
         <span className="text-xs text-gray-400">Sparklore Dashboard</span>
       </div>

@@ -1,6 +1,7 @@
 import AdminLayout from "../../components/Admin/AdminLayout";
 import { useEffect, useState, useRef } from "react";
 import { getCharms, addCharm, updateCharm, deleteCharm } from "../../utils/admin_api";
+import AdminRouteGuard from "../../components/Admin/adminRouteGuard";
 
 const CATEGORY_OPTIONS = [
   { value: "alphabet", label: "Alphabet" },
@@ -81,79 +82,82 @@ export default function AdminCharms() {
   };
 
   return (
-    <AdminLayout>
-      <div className="mx-auto max-w-full">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-xl font-bold text-[#bfa170]">Charms</h1>
-          <button
-            onClick={() => setEditing({})}
-            className="bg-[#e5cfa4] hover:bg-[#d1b98a] text-white px-4 py-2 rounded-lg font-semibold shadow transition"
-          >
-            + Add Charm
-          </button>
-        </div>
-        <div className="bg-white rounded-xl border border-[#e5cfa4] shadow overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="text-[#bfa170] border-b">
-                <th className="p-4 w-[20%]">Name</th>
-                <th>Category</th>
-                <th>Label</th>
-                <th>Price</th>
-                <th>Stock</th>
-                <th>Rating</th>
-                <th>Discount</th>
-                <th>Image</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr>
-                  <td colSpan={9} className="text-center py-4">Loading...</td>
+    <AdminRouteGuard>
+        <AdminLayout>
+        <div className="mx-auto max-w-full">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-xl font-bold text-[#bfa170]">Charms</h1>
+            <button
+              onClick={() => setEditing({})}
+              className="bg-[#e5cfa4] hover:bg-[#d1b98a] text-white px-4 py-2 rounded-lg font-semibold shadow transition"
+            >
+              + Add Charm
+            </button>
+          </div>
+          <div className="bg-white rounded-xl border border-[#e5cfa4] shadow overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="text-[#bfa170] border-b">
+                  <th className="p-4 w-[20%]">Name</th>
+                  <th>Category</th>
+                  <th>Label</th>
+                  <th>Price</th>
+                  <th>Stock</th>
+                  <th>Rating</th>
+                  <th>Discount</th>
+                  <th>Image</th>
+                  <th></th>
                 </tr>
-              )}
-              {!loading &&
-                charms.map((charm) => (
-                  <tr key={charm.id} className="border-b hover:bg-[#f8f4ed] transition">
-                    <td className="p-4 font-medium">{charm.name}</td>
-                    <td>{charm.category}</td>
-                    <td>{charm.label}</td>
-                    <td>{charm.price}</td>
-                    <td>{charm.stock}</td>
-                    <td>{charm.rating}</td>
-                    <td>{charm.discount}</td>
-                    <td>
-                      {charm.image && (
-                        <img src={charm.image} alt={charm.name} className="h-10 w-10 object-contain rounded shadow" />
-                      )}
-                    </td>
-                    <td>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setEditing(charm)}
-                          className="bg-[#e5cfa4] hover:bg-[#d1b98a] text-white px-3 py-1 rounded font-semibold shadow transition"
-                        >Edit</button>
-                        <button
-                          onClick={() => handleDelete(charm.id)}
-                          className="bg-red-500 hover:bg-red-400 text-white px-3 py-1 rounded font-semibold shadow transition"
-                        >Delete</button>
-                      </div>
-                    </td>
+              </thead>
+              <tbody>
+                {loading && (
+                  <tr>
+                    <td colSpan={9} className="text-center py-4">Loading...</td>
                   </tr>
-                ))}
-            </tbody>
-          </table>
+                )}
+                {!loading &&
+                  charms.map((charm) => (
+                    <tr key={charm.id} className="border-b hover:bg-[#f8f4ed] transition">
+                      <td className="p-4 font-medium">{charm.name}</td>
+                      <td>{charm.category}</td>
+                      <td>{charm.label}</td>
+                      <td>{charm.price}</td>
+                      <td>{charm.stock}</td>
+                      <td>{charm.rating}</td>
+                      <td>{charm.discount}</td>
+                      <td>
+                        {charm.image && (
+                          <img src={charm.image} alt={charm.name} className="h-10 w-10 object-contain rounded shadow" />
+                        )}
+                      </td>
+                      <td>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setEditing(charm)}
+                            className="bg-[#e5cfa4] hover:bg-[#d1b98a] text-white px-3 py-1 rounded font-semibold shadow transition"
+                          >Edit</button>
+                          <button
+                            onClick={() => handleDelete(charm.id)}
+                            className="bg-red-500 hover:bg-red-400 text-white px-3 py-1 rounded font-semibold shadow transition"
+                          >Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+          {editing && (
+            <CharmModal
+              charm={editing}
+              onClose={() => setEditing(null)}
+              onSave={handleSave}
+            />
+          )}
         </div>
-        {editing && (
-          <CharmModal
-            charm={editing}
-            onClose={() => setEditing(null)}
-            onSave={handleSave}
-          />
-        )}
-      </div>
-    </AdminLayout>
+      </AdminLayout>
+    </AdminRouteGuard>
+    
   );
 }
 

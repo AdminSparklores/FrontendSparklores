@@ -1,6 +1,7 @@
 import AdminLayout from "../../components/Admin/AdminLayout";
 import { useEffect, useState } from "react";
 import {BASE_URL} from "../../utils/api"
+import AdminRouteGuard from "../../components/Admin/adminRouteGuard";
 
 export default function AdminBanner() {
   const [iframeKey, setIframeKey] = useState(0);
@@ -9,7 +10,8 @@ export default function AdminBanner() {
   const refreshIframe = () => setIframeKey(prev => prev + 1);
   const link = `${BASE_URL}/admin/api/pagebanner/`
   return (
-    <AdminLayout>
+    <AdminRouteGuard>
+      <AdminLayout>
       <div style={{ width: '100%', height: '100vh' }} className="p-[1rem]">
         <iframe
           key={iframeKey}
@@ -23,11 +25,17 @@ export default function AdminBanner() {
         />
         <button 
           onClick={refreshIframe}
-          style={{ position: 'absolute', top: 70, right: 10, zIndex: 1000 }}
+          style={{ position: 'absolute', top: 63, right: 10, zIndex: 1000,padding: '8px 16px',
+            backgroundColor: '#4CAF50',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer', }}
         >
           Refresh Iframe
         </button>
       </div>
     </AdminLayout>
+    </AdminRouteGuard>
   );
 }

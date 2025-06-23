@@ -6,7 +6,7 @@ import banner from "../../assets/default/navbar_earrings_bg.png";
 import product1 from "../../assets/default/homeproduct1.png";
 import { isLoggedIn, logout, fetchCart, updateCartItemQuantity, deleteCartItem, BASE_URL, fetchProduct, fetchCharm, fetchPageBanner } from "../../utils/api.js";
 import Snackbar from '../snackbar.jsx';
-import CartDrawer from '../CartDrawer';
+import CartDrawer from '../cartDrawer.jsx';
 
 const fetchGiftSet = async (giftSetId) => {
   const response = await fetch(`${BASE_URL}/api/gift-sets/${giftSetId}/`);

@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import product1 from "../../assets/default/homeproduct1.png";
 import { isLoggedIn, logout, fetchCart, updateCartItemQuantity, deleteCartItem, BASE_URL, fetchProduct, fetchCharm } from "../../utils/api.js";
 import Snackbar from '../snackbar.jsx';
-import CartDrawer from '../CartDrawer';
+import CartDrawer from '../cartDrawer.jsx';
 
 const fetchGiftSet = async (giftSetId) => {
   const response = await fetch(`${BASE_URL}/api/gift-sets/${giftSetId}/`);

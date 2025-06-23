@@ -1,5 +1,7 @@
 import AdminLayout from "../../components/Admin/AdminLayout";
 import { useEffect, useState } from "react";
+import AdminRouteGuard from "../../components/Admin/adminRouteGuard";
+
 
 const initialOrders = [
   {
@@ -58,105 +60,108 @@ export default function AdminDashboardAndOrder() {
   };
 
   return (
-    <AdminLayout>
-      <div className="mx-auto max-w-full">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-xl font-bold text-[#bfa170]">Orders</h1>
-          <div className="flex gap-2">
-            <input
-              type="date"
-              className="border rounded px-2 py-1"
-              value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
-            />
-            <button
-              className="bg-gray-100 px-2 rounded text-[#bfa170] font-semibold"
-              onClick={() => setSortDesc((s) => !s)}
-            >
-              Sort {sortDesc ? "↓" : "↑"}
-            </button>
+    <AdminRouteGuard>
+        <AdminLayout>
+        <div className="mx-auto max-w-full">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-xl font-bold text-[#bfa170]">Orders</h1>
+            <div className="flex gap-2">
+              <input
+                type="date"
+                className="border rounded px-2 py-1"
+                value={filterDate}
+                onChange={(e) => setFilterDate(e.target.value)}
+              />
+              <button
+                className="bg-gray-100 px-2 rounded text-[#bfa170] font-semibold"
+                onClick={() => setSortDesc((s) => !s)}
+              >
+                Sort {sortDesc ? "↓" : "↑"}
+              </button>
+            </div>
           </div>
-        </div>
-        <div className="bg-white rounded-xl border border-[#e5cfa4] shadow overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="text-[#bfa170] border-b">
-                <th className="p-4">User</th>
-                <th>Date</th>
-                <th>Items</th>
-                <th>Message</th>
-                <th>Payment</th>
-                <th>Delivery</th>
-                <th>Proof</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="text-center py-4">No orders found.</td>
+          <div className="bg-white rounded-xl border border-[#e5cfa4] shadow overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="text-[#bfa170] border-b">
+                  <th className="p-4">User</th>
+                  <th>Date</th>
+                  <th>Items</th>
+                  <th>Message</th>
+                  <th>Payment</th>
+                  <th>Delivery</th>
+                  <th>Proof</th>
+                  <th></th>
                 </tr>
-              )}
-              {filtered.map((order) => (
-                <tr key={order.id} className="border-b hover:bg-[#f8f4ed] transition">
-                  <td className="p-4 font-medium">{order.user}</td>
-                  <td>{order.date}</td>
-                  <td>
-                    {order.items.map((item, idx) => (
-                      <div key={idx}>{item.name} x{item.qty}</div>
-                    ))}
-                  </td>
-                  <td>{order.message || "-"}</td>
-                  <td>
-                    <select
-                      value={order.paymentStatus}
-                      onChange={(e) =>
-                        updateOrderStatus(order.id, "paymentStatus", e.target.value)
-                      }
-                      className="border rounded px-2 py-1"
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="paid">Paid</option>
-                    </select>
-                    <StatusBadge type={order.paymentStatus} />
-                  </td>
-                  <td>
-                    <select
-                      value={order.deliveryStatus}
-                      onChange={(e) =>
-                        updateOrderStatus(order.id, "deliveryStatus", e.target.value)
-                      }
-                      className="border rounded px-2 py-1"
-                    >
-                      <option>Being packed</option>
-                      <option>On delivery</option>
-                      <option>Arrived successfully</option>
-                    </select>
-                    <StatusBadge type={order.deliveryStatus} />
-                  </td>
-                  <td>
-                    <a href={order.paymentProof} target="_blank" rel="noopener noreferrer" className="underline text-[#bfa170]">View</a>
-                  </td>
-                  <td>
-                    <button
-                      onClick={() => handleCancel(order)}
-                      className="text-red-600"
-                    >Cancel</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="text-center py-4">No orders found.</td>
+                  </tr>
+                )}
+                {filtered.map((order) => (
+                  <tr key={order.id} className="border-b hover:bg-[#f8f4ed] transition">
+                    <td className="p-4 font-medium">{order.user}</td>
+                    <td>{order.date}</td>
+                    <td>
+                      {order.items.map((item, idx) => (
+                        <div key={idx}>{item.name} x{item.qty}</div>
+                      ))}
+                    </td>
+                    <td>{order.message || "-"}</td>
+                    <td>
+                      <select
+                        value={order.paymentStatus}
+                        onChange={(e) =>
+                          updateOrderStatus(order.id, "paymentStatus", e.target.value)
+                        }
+                        className="border rounded px-2 py-1"
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="paid">Paid</option>
+                      </select>
+                      <StatusBadge type={order.paymentStatus} />
+                    </td>
+                    <td>
+                      <select
+                        value={order.deliveryStatus}
+                        onChange={(e) =>
+                          updateOrderStatus(order.id, "deliveryStatus", e.target.value)
+                        }
+                        className="border rounded px-2 py-1"
+                      >
+                        <option>Being packed</option>
+                        <option>On delivery</option>
+                        <option>Arrived successfully</option>
+                      </select>
+                      <StatusBadge type={order.deliveryStatus} />
+                    </td>
+                    <td>
+                      <a href={order.paymentProof} target="_blank" rel="noopener noreferrer" className="underline text-[#bfa170]">View</a>
+                    </td>
+                    <td>
+                      <button
+                        onClick={() => handleCancel(order)}
+                        className="text-red-600"
+                      >Cancel</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {toCancel && (
+            <ConfirmDialog
+              message={`Cancel order for "${toCancel.user}"? This action cannot be undone.`}
+              onCancel={() => setToCancel(null)}
+              onConfirm={confirmCancel}
+            />
+          )}
         </div>
-        {toCancel && (
-          <ConfirmDialog
-            message={`Cancel order for "${toCancel.user}"? This action cannot be undone.`}
-            onCancel={() => setToCancel(null)}
-            onConfirm={confirmCancel}
-          />
-        )}
-      </div>
-    </AdminLayout>
+      </AdminLayout>
+    </AdminRouteGuard>
+    
   );
 }
 

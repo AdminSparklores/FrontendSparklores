@@ -1,17 +1,18 @@
 // src/api.js
-export const BASE_URL = 'http://192.168.1.6:8000';
+// export const BASE_URL_LOCAL = 'http://localhost:8000';
+// export const BASE_URL = 'http://192.168.1.12:8000';
+export const BASE_URL = 'https://sparkloreofficial.com';
 
 // Helper function to store auth data
 const storeAuthData = (data) => {
-  // Decode the JWT to get the expiration time
   const decodedToken = JSON.parse(atob(data.access.split('.')[1]));
-  const expiresAt = decodedToken.exp * 1000; // Convert to milliseconds
+  const expiresAt = decodedToken.exp * 1000;
   
   localStorage.setItem('authData', JSON.stringify({
     token: data.access,
-    refreshToken: data.refresh, // Store refresh token if needed
+    refreshToken: data.refresh, 
     email: data.user.email,
-    user: { id: data.user.id }, // Store the user object with ID
+    user: { id: data.user.id },
     expiresAt: expiresAt
   }));
 };
@@ -78,6 +79,10 @@ export const verifyOTP = async (email, code) => {
     storeAuthData(data);
     console.log('Auth data stored:', getAuthData()); // Add this line
 
+    // Fetch and return user details
+    const userDetails = await fetchUserDetails();
+    return { ...data, userDetails };
+
     return data;
   } catch (error) {
     console.error('Verify OTP error:', error);
@@ -90,6 +95,25 @@ export const logout = () => {
   localStorage.removeItem('authData');
 };
 
+
+export const fetchUserDetails = async () => {
+  const authData = getAuthData();
+  if (!authData) throw new Error('Not authenticated');
+
+  const response = await fetch(`${BASE_URL}/auth/me/`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authData.token}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch user details');
+  }
+
+  return await response.json();
+};
 
 export const fetchCart = async () => {
   const authData = getAuthData();

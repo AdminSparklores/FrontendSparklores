@@ -4,7 +4,7 @@ import logo from "../../assets/logo/sparklore_logo.png";
 import { useState, useEffect } from "react";
 import product1 from "../../assets/default/homeproduct1.png";
 import product2 from "../../assets/default/homeproduct2.png";
-import { isLoggedIn, logout, fetchCart, updateCartItemQuantity, deleteCartItem, BASE_URL, fetchProduct, fetchCharm } from "../../utils/api.js";
+import { isLoggedIn, logout, fetchCart, updateCartItemQuantity, deleteCartItem, BASE_URL, fetchProduct, fetchCharm, getAuthData} from "../../utils/api.js";
 import Snackbar from '../snackbar.jsx';
 import CartDrawer from '../cartDrawer.jsx';
 
@@ -242,6 +242,7 @@ const NavBar = () => {
   const [discountMap, setDiscountMap] = useState({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [userDetails, setUserDetails] = useState(null);
 
   const navItems = [
     { name: "Charm Bar", path: "/charmbar" },
@@ -323,6 +324,37 @@ const NavBar = () => {
       window.removeEventListener('storage', handleStorageChange);
     };
   }, [location.state]);
+
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      try {
+        const authData = getAuthData();
+        if (!authData) return;
+
+        const response = await fetch(`${BASE_URL}/auth/me/`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authData.token}`
+          }
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch user details');
+        
+        const data = await response.json();
+        setUserDetails(data);
+      } catch (error) {
+        console.error('Error fetching user details:', error);
+        // Optional: handle error (e.g., show snackbar or logout if unauthorized)
+      }
+    };
+
+    if (isLoggedInState) {
+      fetchUserDetails();
+    } else {
+      setUserDetails(null);
+    }
+  }, [isLoggedInState]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -499,6 +531,15 @@ const NavBar = () => {
               className="w-5 h-5 cursor-pointer" 
               onClick={handleCartClick} 
             />
+            {userDetails?.is_staff && (
+              // && userDetails?.is_superuser
+              <Link 
+                to="/admin/dashboard" 
+                className="inline-block px-4 py-2 text-sm font-medium text-white bg-[#b87777] rounded shadow-md hover:bg-[#a06666] transition duration-200 focus:outline-none focus:ring-2 focus:ring-[#b87777] focus:ring-opacity-50"
+              >
+                Admin Dashboard
+              </Link>
+            )}
           </div>
         </nav>
 
@@ -575,27 +616,36 @@ const NavBar = () => {
               <img src={logo} alt="Sparklore Logo" className="h-12 object-contain" />
             </Link>
             <div className="flex items-center gap-4">
-              <Search className="w-5 h-5 cursor-pointer" onClick={() => setShowSearchBar(!showSearchBar)} />
-              {isLoggedInState ? (
-                <LogOut 
-                  className="w-5 h-5 cursor-pointer hover:text-[#b87777]" 
-                  onClick={() => setShowLogoutConfirm(true)}
-                  title="Logout"
-                />
-              ) : (
-                <Link to="/login">
-                  <User className="w-5 h-5 cursor-pointer hover:text-[#b87777]" />
-                </Link>
-              )}
-              <ShoppingBag 
-                className="w-5 h-5 cursor-pointer" 
-                onClick={handleCartClick} 
+            <Search className="w-5 h-5 cursor-pointer" onClick={() => setShowSearchBar(!showSearchBar)} />
+            {isLoggedInState ? (
+              <LogOut 
+                className="w-5 h-5 cursor-pointer hover:text-[#b87777]" 
+                onClick={() => setShowLogoutConfirm(true)}
+                title="Logout"
               />
-              <Menu 
-                className="w-6 h-6 cursor-pointer" 
-                onClick={() => setDrawerOpen(true)}
-              />
-            </div>
+            ) : (
+              <Link to="/login">
+                <User className="w-5 h-5 cursor-pointer hover:text-[#b87777]" />
+              </Link>
+            )}
+            <ShoppingBag 
+              className="w-5 h-5 cursor-pointer" 
+              onClick={handleCartClick} 
+            />
+            {userDetails?.is_staff && (
+              // && userDetails?.is_superuser
+              <Link 
+                to="/admin/dashboard" 
+                className="inline-block px-4 py-2 text-sm font-medium text-white bg-[#b87777] rounded shadow-md hover:bg-[#a06666] transition duration-200 focus:outline-none focus:ring-2 focus:ring-[#b87777] focus:ring-opacity-50"
+              >
+                Admin
+              </Link>
+            )}
+            <Menu 
+              className="w-6 h-6 cursor-pointer" 
+              onClick={() => setDrawerOpen(true)}
+            />
+          </div>
           </nav>
 
         {showSearchBar && (

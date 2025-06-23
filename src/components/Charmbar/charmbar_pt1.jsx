@@ -120,7 +120,8 @@ export default function CharmCustomizerFull() {
         price: parseFloat(product.price),
         discount_price: product.discount_price ? parseFloat(product.discount_price) : null,
         stock: product.stock,
-        category: product.category
+        category: product.category,
+        is_charm_spreadable: product.is_charm_spreadable ?? false,
       }));
   };
 
@@ -226,79 +227,76 @@ export default function CharmCustomizerFull() {
     </div>
   );
 
+  // Find is_charm_spreadable from selected base product (default to false)
+  const isCharmSpreadable = selectedBaseProduct?.is_charm_spreadable === true;
+
+  // getCharmPosition function switches logic based on isCharmSpreadable
   const getCharmPosition = (index, total) => {
     const baseSize = '25.33%';
 
-    if (total === 1) {
-      return {
-        width: baseSize,
-        height: baseSize,
-        left: '53%',
-        top: '72%',
-        transform: 'translate(-50%, -50%) rotate(0deg)'
-      };
-    }
-    if (total === 2) {
-      const rotationAngle = index === 0 ? 30 : -40;
-      return {
-        width: baseSize,
-        height: baseSize,
-        left: index === 0 ? '43%' : '65%',
-        top: index === 0 ? '72%' : '70%',
-        transform: `translate(-50%, -50%) rotate(${rotationAngle}deg)`
-      };
-    }
-    if (total === 3) {
-      const positions = [
+    // Spreadable positions (adjust as needed for your design)
+    const spreadPositions = {
+      1: [{ left: '50%', top: '65%', rotation: 0 }],
+      2: [
+        { left: '40%', top: '65%', rotation: 0 },
+        { left: '60%', top: '65%', rotation: 0 }
+      ],
+      3: [
+        { left: '35%', top: '65%', rotation: 0 },
+        { left: '50%', top: '65%', rotation: 0 },
+        { left: '65%', top: '65%', rotation: 0 }
+      ],
+      4: [
+        { left: '20%', top: '65%', rotation: 0 },
+        { left: '40%', top: '65%', rotation: 0 },
+        { left: '60%', top: '65%', rotation: 0 },
+        { left: '79%', top: '65%', rotation: 0 }
+      ],
+      5: [
+        { left: '13%', top: '65%', rotation: 0 },
+        { left: '33%', top: '65%', rotation: 0 },
+        { left: '53%', top: '65%', rotation: 0 },
+        { left: '71%', top: '65%', rotation: 0 },
+        { left: '88%', top: '65%', rotation: 0 }
+      ]
+    };
+
+    // Original (non-spreadable) positions
+    const defaultPositions = {
+      1: [{ left: '53%', top: '72%', rotation: 0 }],
+      2: [
+        { left: '43%', top: '72%', rotation: 30 },
+        { left: '65%', top: '70%', rotation: -40 }
+      ],
+      3: [
         { left: '43%', top: '71%', rotation: 30 },
         { left: '55%', top: '73%', rotation: -5 },
         { left: '67%', top: '68%', rotation: -48 }
-      ];
-      return {
-        width: baseSize,
-        height: baseSize,
-        left: positions[index].left,
-        top: positions[index].top,
-        transform: `translate(-50%, -50%) rotate(${positions[index].rotation}deg)`
-      };
-    }
-    if (total === 4) {
-      const positions = [
+      ],
+      4: [
         { left: '41%', top: '70%', rotation: 40 },
         { left: '52%', top: '73%', rotation: 2 },
         { left: '64%', top: '70%', rotation: -35 },
         { left: '72%', top: '61%', rotation: -75 }
-      ];
-      return {
-        width: baseSize,
-        height: baseSize,
-        left: positions[index].left,
-        top: positions[index].top,
-        transform: `translate(-50%, -50%) rotate(${positions[index].rotation}deg)`
-      };
-    }
-    if (total === 5) {
-      const positions = [
+      ],
+      5: [
         { left: '41%', top: '70%', rotation: 40 },
         { left: '52%', top: '73%', rotation: 2 },
         { left: '64%', top: '70%', rotation: -35 },
         { left: '72%', top: '61%', rotation: -75 },
         { left: '35%', top: '63%', rotation: 73 }
-      ];
-      return {
-        width: baseSize,
-        height: baseSize,
-        left: positions[index].left,
-        top: positions[index].top,
-        transform: `translate(-50%, -50%) rotate(${positions[index].rotation}deg)`
-      };
-    }
+      ]
+    };
+
+    const posList = isCharmSpreadable ? spreadPositions : defaultPositions;
+    const pos = (posList[total] && posList[total][index]) || { left: '50%', top: '50%', rotation: 0 };
+
     return {
       width: baseSize,
       height: baseSize,
-      left: '50%',
-      top: '50%',
-      transform: 'translate(-50%, -50%) rotate(0deg)'
+      left: pos.left,
+      top: pos.top,
+      transform: `translate(-50%, -50%) rotate(${pos.rotation}deg)`
     };
   };
 
