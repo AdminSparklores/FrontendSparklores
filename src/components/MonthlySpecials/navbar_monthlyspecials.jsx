@@ -656,10 +656,11 @@ const NavBar_MonthlySpecials = () => {
                 style={{ animation: 'slideIn 0.3s ease-out' }}
               >
                 <div className="flex justify-between items-center mb-8">
-                  <button className="flex items-center border rounded-full text-xs font-medium">
+                  {/* <button className="flex items-center border rounded-full text-xs font-medium">
                     <span className="px-3 py-1 bg-white rounded-l-full text-black">EN</span>
                     <span className="px-3 py-1 bg-[#e6d4a5] rounded-r-full text-black">ID</span>
-                  </button>
+                  </button> */}
+                  <div className="p-[3rem]"></div>
                   <button 
                     className="text-gray-700 text-2xl"
                     onClick={() => setDrawerOpen(false)}

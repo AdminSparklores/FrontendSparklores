@@ -117,68 +117,138 @@ const ProductDetailCharmBar = () => {
     fetchData();
   }, [productId]);
 
-  // getCharmPosition is now based on product?.is_charm_spreadable
+  // getCharmPosition is now based on product?.is_charm_spreadable and per-category positioning
   const getCharmPosition = (index, total) => {
     const baseSize = '25.33%';
+    if (!product) return {
+      width: baseSize,
+      height: baseSize,
+      left: '50%',
+      top: '50%',
+      transform: 'translate(-50%, -50%) rotate(0deg)'
+    };
 
+    // ---- NECKLACE POSITIONS ----
     // Default positions (is_charm_spreadable === false)
-    const defaultPositions = {
-      1: [{ left: '53%', top: '72%', rotation: 0 }],
+    const necklaceDefaultPositions = {
+      1: [{ left: '52%', top: '83%', rotation: 0 }],
       2: [
-        { left: '43%', top: '72%', rotation: 30 },
-        { left: '65%', top: '70%', rotation: -40 }
+        { left: '45%', top: '83%', rotation: 0 },
+        { left: '55%', top: '83%', rotation: 0 }
       ],
       3: [
-        { left: '43%', top: '71%', rotation: 30 },
-        { left: '55%', top: '73%', rotation: -5 },
-        { left: '67%', top: '68%', rotation: -48 }
+        { left: '40%', top: '83%', rotation: 30 },
+        { left: '52%', top: '84%', rotation: 0 },
+        { left: '64%', top: '83%', rotation: -35 }
       ],
       4: [
-        { left: '41%', top: '70%', rotation: 40 },
-        { left: '52%', top: '73%', rotation: 2 },
-        { left: '64%', top: '70%', rotation: -35 },
-        { left: '72%', top: '61%', rotation: -75 }
+        { left: '30%', top: '75%', rotation: 75 },
+        { left: '44%', top: '83%', rotation: 0 },
+        { left: '57%', top: '83%', rotation: 0 },
+        { left: '72%', top: '75%', rotation: -75 }
       ],
       5: [
-        { left: '41%', top: '70%', rotation: 40 },
-        { left: '52%', top: '73%', rotation: 2 },
-        { left: '64%', top: '70%', rotation: -35 },
-        { left: '72%', top: '61%', rotation: -75 },
-        { left: '35%', top: '63%', rotation: 73 }
+        { left: '39%', top: '82%', rotation: 40 },
+        { left: '52%', top: '84%', rotation: 0 },
+        { left: '64%', top: '83%', rotation: -35 },
+        { left: '72%', top: '75%', rotation: -75 },
+        { left: '30%', top: '75%', rotation: 73 }
+      ]
+    };
+    // Spread positions (is_charm_spreadable === true)
+    const necklaceSpreadPositions = {
+       1: [{ left: '52%', top: '83%', rotation: 0 }],
+        2: [
+          { left: '45%', top: '83%', rotation: 0 },
+          { left: '55%', top: '83%', rotation: 0 }
+        ],
+        3: [
+          { left: '40%', top: '83%', rotation: 30 },
+          { left: '52%', top: '84%', rotation: 0 },
+          { left: '64%', top: '83%', rotation: -35 }
+        ],
+        4: [
+          { left: '30%', top: '75%', rotation: 75 },
+          { left: '44%', top: '83%', rotation: 0 },
+          { left: '57%', top: '83%', rotation: 0 },
+          { left: '72%', top: '75%', rotation: -75 }
+        ],
+        5: [
+          { left: '39%', top: '82%', rotation: 40 },
+          { left: '52%', top: '84%', rotation: 0 },
+          { left: '64%', top: '83%', rotation: -35 },
+          { left: '72%', top: '75%', rotation: -75 },
+          { left: '30%', top: '75%', rotation: 73 }
+        ]
+      };
+
+    // ---- BRACELET POSITIONS ----
+    // Default positions (is_charm_spreadable === false)
+    const braceletDefaultPositions = {
+      1: [{ left: '50%', top: '62%', rotation: 0 }],
+      2: [
+        { left: '45%', top: '62%', rotation: 15 },
+        { left: '55%', top: '62%', rotation: -15 }
+      ],
+      3: [
+        { left: '41%', top: '61%', rotation: 30 },
+        { left: '50%', top: '62%', rotation: 0 },
+        { left: '59%', top: '61%', rotation: -30 }
+      ],
+      4: [
+        { left: '41%', top: '61%', rotation: 30 },
+        { left: '59%', top: '61%', rotation: -30 },
+        { left: '41%', top: '42%', rotation: -225 },
+        { left: '60%', top: '42%', rotation: -135 }
+      ],
+      5: [
+        { left: '59%', top: '61%', rotation: -30 },
+        { left: '50%', top: '62%', rotation: 0 },
+        { left: '41%', top: '61%', rotation: 30 },
+        { left: '60%', top: '42%', rotation: -135 },
+        { left: '41%', top: '42%', rotation: -225 },
+      ]
+    };
+    // Spread positions (is_charm_spreadable === true)
+    const braceletSpreadPositions = {
+      1: [{ left: '50%', top: '60%', rotation: 0 }],
+      2: [
+        { left: '40%', top: '60%', rotation: 0 },
+        { left: '60%', top: '60%', rotation: 0 }
+      ],
+      3: [
+        { left: '33%', top: '60%', rotation: 0 },
+        { left: '50%', top: '60%', rotation: 0 },
+        { left: '67%', top: '60%', rotation: 0 }
+      ],
+      4: [
+        { left: '26%', top: '60%', rotation: 0 },
+        { left: '41%', top: '60%', rotation: 0 },
+        { left: '59%', top: '60%', rotation: 0 },
+        { left: '74%', top: '60%', rotation: 0 }
+      ],
+      5: [
+        { left: '18%', top: '60%', rotation: 0 },
+        { left: '34%', top: '60%', rotation: 0 },
+        { left: '50%', top: '60%', rotation: 0 },
+        { left: '66%', top: '60%', rotation: 0 },
+        { left: '82%', top: '60%', rotation: 0 }
       ]
     };
 
-    // Spreadable positions (is_charm_spreadable === true)
-    // Example: more spread out evenly along a line or arc (custom as needed)
-    const spreadPositions = {
-      1: [{ left: '50%', top: '65%', rotation: 0 }],
-      2: [
-        { left: '40%', top: '65%', rotation: 0 },
-        { left: '60%', top: '65%', rotation: 0 }
-      ],
-      3: [
-        { left: '35%', top: '65%', rotation: 0 },
-        { left: '50%', top: '65%', rotation: 0 },
-        { left: '65%', top: '65%', rotation: 0 }
-      ],
-      4: [
-        { left: '20%', top: '65%', rotation: 0 },
-        { left: '40%', top: '65%', rotation: 0 },
-        { left: '60%', top: '65%', rotation: 0 },
-        { left: '79%', top: '65%', rotation: 0 }
-      ],
-      5: [
-        { left: '13%', top: '65%', rotation: 0 },
-        { left: '33%', top: '65%', rotation: 0 },
-        { left: '53%', top: '65%', rotation: 0 },
-        { left: '71%', top: '65%', rotation: 0 },
-        { left: '88%', top: '65%', rotation: 0 }
-      ]
-    };
+    // ---- SELECT THE POSITION BY CATEGORY ----
+    const isSpreadable = product.is_charm_spreadable;
+    let posList;
 
-    // Choose which positions to use
-    const isSpreadable = product?.is_charm_spreadable;
-    const posList = isSpreadable ? spreadPositions : defaultPositions;
+    if (product.category === "bracelet") {
+      posList = isSpreadable ? braceletSpreadPositions : braceletDefaultPositions;
+    } else if (product.category === "necklace") {
+      posList = isSpreadable ? necklaceSpreadPositions : necklaceDefaultPositions;
+    } else {
+      // fallback: use necklace logic for unknown category
+      posList = isSpreadable ? necklaceSpreadPositions : necklaceDefaultPositions;
+    }
+
     const pos = (posList[total] && posList[total][index]) || { left: '50%', top: '50%', rotation: 0 };
 
     return {
@@ -382,7 +452,7 @@ const ProductDetailCharmBar = () => {
         </div>
 
         <div className="flex flex-col lg:flex-row gap-8">
-          <div className="bg-white rounded p-4 relative overflow-hidden" style={{ width: '100%', maxWidth: '500px', aspectRatio: '1/1' }}>
+          <div className="bg-white rounded p-4 relative overflow-hidden" style={{ width: '100%', maxWidth: '500px',maxHeight: '500px', aspectRatio: '1/1' }}>
             <div className="relative w-full h-full flex items-center justify-center">
               <div className="relative" style={{ width: '100%', height: '100%' }}>
                 <img
@@ -430,7 +500,7 @@ const ProductDetailCharmBar = () => {
             </div>
           </div>
 
-          <div className="flex-1">
+          <div className="flex-1" style={{ width: '100%', maxWidth: '500px',maxHeight: '500px', aspectRatio: '1/1' }}>
             <div className="text-2xl font-semibold mb-4">
               {formatIDR(calculateTotalPrice())}
             </div>
@@ -463,7 +533,7 @@ const ProductDetailCharmBar = () => {
 
             {/* Charms grouped by category */}
             {charmCount > 0 && (
-              <div className="space-y-4 max-h-[25vw] overflow-y-auto pr-2">
+              <div className="space-y-4 md:max-h-[21vw] sm:max-h-[40vw] overflow-y-auto pr-2">
                 {Object.entries(groupedCharms).map(([category, labels]) => (
                   <div key={category} className="mb-2">
                     <button

@@ -650,20 +650,26 @@ const NavBar = () => {
 
         {showSearchBar && (
           <div className="px-[0.2rem] pt-2 pb-4 animate-fadeIn border-t-2 border-[#e6d4a5]">
-            <div className="relative">
+            <form
+              className="relative"
+              onSubmit={handleSearchSubmit}
+            >
               <input
                 type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="COUPLE BRACELETS...."
                 className="w-full bg-[#fdfaf3] border-b border-gray-300 text-gray-700 placeholder-gray-400 text-lg tracking-wide px-12 py-3 focus:outline-none"
               />
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />
               <button
+                type="button"
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 text-xl"
                 onClick={() => setShowSearchBar(false)}
               >
                 ✕
               </button>
-            </div>
+            </form>
           </div>
         )}
       </div>
