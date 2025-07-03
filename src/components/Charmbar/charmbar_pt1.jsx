@@ -232,73 +232,141 @@ export default function CharmCustomizerFull() {
 
   // getCharmPosition function switches logic based on isCharmSpreadable
   const getCharmPosition = (index, total) => {
-    const baseSize = '25.33%';
+  const baseSize = '17%';
 
-    // Spreadable positions (adjust as needed for your design)
-    const spreadPositions = {
-      1: [{ left: '50%', top: '65%', rotation: 0 }],
-      2: [
-        { left: '40%', top: '65%', rotation: 0 },
-        { left: '60%', top: '65%', rotation: 0 }
-      ],
-      3: [
-        { left: '35%', top: '65%', rotation: 0 },
-        { left: '50%', top: '65%', rotation: 0 },
-        { left: '65%', top: '65%', rotation: 0 }
-      ],
-      4: [
-        { left: '20%', top: '65%', rotation: 0 },
-        { left: '40%', top: '65%', rotation: 0 },
-        { left: '60%', top: '65%', rotation: 0 },
-        { left: '79%', top: '65%', rotation: 0 }
-      ],
-      5: [
-        { left: '13%', top: '65%', rotation: 0 },
-        { left: '33%', top: '65%', rotation: 0 },
-        { left: '53%', top: '65%', rotation: 0 },
-        { left: '71%', top: '65%', rotation: 0 },
-        { left: '88%', top: '65%', rotation: 0 }
-      ]
-    };
+  // Get category and spreadable info from selectedBaseProduct (or default to necklace logic)
+  const category = selectedBaseProduct?.category || 'necklace';
+  const isCharmSpreadable = selectedBaseProduct?.is_charm_spreadable === true;
 
-    // Original (non-spreadable) positions
-    const defaultPositions = {
-      1: [{ left: '53%', top: '72%', rotation: 0 }],
-      2: [
-        { left: '43%', top: '72%', rotation: 30 },
-        { left: '65%', top: '70%', rotation: -40 }
-      ],
-      3: [
-        { left: '43%', top: '71%', rotation: 30 },
-        { left: '55%', top: '73%', rotation: -5 },
-        { left: '67%', top: '68%', rotation: -48 }
-      ],
-      4: [
-        { left: '41%', top: '70%', rotation: 40 },
-        { left: '52%', top: '73%', rotation: 2 },
-        { left: '64%', top: '70%', rotation: -35 },
-        { left: '72%', top: '61%', rotation: -75 }
-      ],
-      5: [
-        { left: '41%', top: '70%', rotation: 40 },
-        { left: '52%', top: '73%', rotation: 2 },
-        { left: '64%', top: '70%', rotation: -35 },
-        { left: '72%', top: '61%', rotation: -75 },
-        { left: '35%', top: '63%', rotation: 73 }
-      ]
-    };
-
-    const posList = isCharmSpreadable ? spreadPositions : defaultPositions;
-    const pos = (posList[total] && posList[total][index]) || { left: '50%', top: '50%', rotation: 0 };
-
-    return {
-      width: baseSize,
-      height: baseSize,
-      left: pos.left,
-      top: pos.top,
-      transform: `translate(-50%, -50%) rotate(${pos.rotation}deg)`
-    };
+  // ---- NECKLACE POSITIONS ----
+  // Default positions (is_charm_spreadable === false)
+  const necklaceDefaultPositions = {
+    1: [{ left: '52%', top: '82%', rotation: 0 }],
+    2: [
+      { left: '45%', top: '82%', rotation: 0 },
+      { left: '55%', top: '82%', rotation: 0 }
+    ],
+    3: [
+      { left: '42%', top: '81%', rotation: 30 },
+      { left: '52%', top: '82%', rotation: 0 },
+      { left: '62%', top: '81%', rotation: -35 }
+    ],
+    4: [
+      { left: '32%', top: '75%', rotation: 75 },
+      { left: '46%', top: '82%', rotation: 0 },
+      { left: '55%', top: '82%', rotation: 0 },
+      { left: '70%', top: '75%', rotation: -75 }
+    ],
+    5: [
+      { left: '43%', top: '81%', rotation: 20 },
+      { left: '52%', top: '82%', rotation: 0 },
+      { left: '60%', top: '81%', rotation: -20 },
+      { left: '70%', top: '75%', rotation: -75 },
+      { left: '32%', top: '75%', rotation: 73 }
+    ]
   };
+  // Spread positions (is_charm_spreadable === true)
+  const necklaceSpreadPositions = {
+      1: [{ left: '50%', top: '57%', rotation: 0 }],
+      2: [
+        { left: '50%', top: '57%', rotation: 0 },
+        { left: '66%', top: '54%', rotation: 0 }
+      ],
+      3: [
+        { left: '33%', top: '54%', rotation: 0 },
+        { left: '50%', top: '57%', rotation: 0 },
+        { left: '66%', top: '54%', rotation: 0 }
+      ],
+      4: [
+        { left: '18%', top: '43%', rotation: 0 },
+        { left: '33%', top: '54%', rotation: 0 },
+        { left: '50%', top: '57%', rotation: 0 },
+        { left: '66%', top: '54%', rotation: 0 }
+      ],
+      5: [
+        { left: '18%', top: '43%', rotation: 0 },
+        { left: '33%', top: '54%', rotation: 0 },
+        { left: '50%', top: '57%', rotation: 0 },
+        { left: '81%', top: '45%', rotation: 0 },
+        { left: '66%', top: '54%', rotation: 0 }
+      ]
+    };
+
+  // ---- BRACELET POSITIONS ----
+  // Default positions (is_charm_spreadable === false)
+  const braceletDefaultPositions = {
+    1: [{ left: '50%', top: '59%', rotation: 0 }],
+    2: [
+      { left: '45%', top: '59%', rotation: 15 },
+      { left: '55%', top: '59%', rotation: -15 }
+    ],
+    3: [
+      { left: '43%', top: '58%', rotation: 30 },
+      { left: '50%', top: '59%', rotation: 0 },
+      { left: '57%', top: '58%', rotation: -30 }
+    ],
+    4: [
+      { left: '45%', top: '59%', rotation: 30 },
+      { left: '55%', top: '59%', rotation: -30 },
+      { left: '43%', top: '44%', rotation: -225 },
+      { left: '55%', top: '44%', rotation: -135 }
+    ],
+    5: [
+      { left: '57%', top: '58%', rotation: -30 },
+      { left: '50%', top: '60%', rotation: 0 },
+      { left: '43%', top: '58%', rotation: 30 },
+      { left: '58%', top: '43%', rotation: -135 },
+      { left: '43%', top: '43%', rotation: -225 },
+    ]
+  };
+  // Spread positions (is_charm_spreadable === true)
+  const braceletSpreadPositions = {
+    1: [{ left: '49%', top: '58%', rotation: 0 }],
+    2: [
+      { left: '49%', top: '58%', rotation: 0 },
+      { left: '65%', top: '57%', rotation: 0 }
+    ],
+    3: [
+      { left: '33%', top: '57%', rotation: 0 },
+      { left: '49%', top: '58%', rotation: 0 },
+      { left: '65%', top: '57%', rotation: 0 }
+    ],
+    4: [
+      { left: '33%', top: '57%', rotation: 0 },
+      { left: '49%', top: '58%', rotation: 0 },
+      { left: '65%', top: '57%', rotation: 0 },
+      { left: '93%', top: '59%', rotation: 0 }
+    ],
+    5: [
+      { left: '33%', top: '57%', rotation: 0 },
+      { left: '46%', top: '57%', rotation: 20 },
+      { left: '65%', top: '57%', rotation: 0 },
+      { left: '93%', top: '59%', rotation: 0 },
+      { left: '53%', top: '57%', rotation: -20 }
+    ]
+  };
+
+  // ---- SELECT THE POSITION BY CATEGORY ----
+  let posList;
+  if (category === "bracelet") {
+    posList = isCharmSpreadable ? braceletSpreadPositions : braceletDefaultPositions;
+  } else if (category === "necklace") {
+    posList = isCharmSpreadable ? necklaceSpreadPositions : necklaceDefaultPositions;
+  } else {
+    // fallback: use necklace logic for unknown category
+    posList = isCharmSpreadable ? necklaceSpreadPositions : necklaceDefaultPositions;
+  }
+
+  const pos = (posList[total] && posList[total][index]) || { left: '50%', top: '50%', rotation: 0 };
+
+  return {
+    width: baseSize,
+    height: baseSize,
+    left: pos.left,
+    top: pos.top,
+    transform: `translate(-50%, -50%) rotate(${pos.rotation}deg)`
+  };
+};
 
   // --- CHAIN ONLY/0 CHARMS INTEGRATION START ---
   // Effect: When charmCount is 0, clear selectedCharms and selectedTab
@@ -493,7 +561,7 @@ export default function CharmCustomizerFull() {
         </div>
 
         <div className="flex flex-col lg:flex-row gap-8">
-          <div className="bg-white rounded p-4 relative overflow-hidden" style={{ width: '100%', maxWidth: '500px', aspectRatio: '1/1' }}>
+          <div className="bg-white rounded p-4 relative overflow-hidden" style={{ width: '100%', maxWidth: '500px',maxHeight: '500px', aspectRatio: '1/1' }}>
             <div className="relative w-full h-full flex items-center justify-center">
               <div className="relative" style={{ width: '100%', height: '100%' }}>
                 <img 
@@ -533,7 +601,7 @@ export default function CharmCustomizerFull() {
             </div>
           </div>
 
-          <div className="flex-1">
+          <div className="flex-1" style={{ width: '100%', maxWidth: '500px',maxHeight: '500px', aspectRatio: '1/1' }}>
             <div className="text-2xl font-semibold mb-4">
               {formatIDR(calculateTotalPrice())}
               {/* Optionally, show the striked original price if any item is discounted */}
@@ -590,7 +658,7 @@ export default function CharmCustomizerFull() {
 
             {/* --- CHARM PICKER HIDE START --- */}
             {charmCount > 0 && (
-              <div className="space-y-4 max-h-[25vw] overflow-y-auto pr-2">
+              <div className="space-y-4 md:max-h-[21vw] sm:max-h-[40vw] overflow-y-auto pr-2">
                 {Object.entries(groupedCharms).map(([category, labels]) => (
                   <div key={category} className="mb-2">
                     <button

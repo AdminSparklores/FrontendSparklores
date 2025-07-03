@@ -182,7 +182,8 @@ const ProductDetailCharm = () => {
   }
 
   // Create thumbnails array (using the same image for all thumbnails since the API only provides one image)
-  const thumbnails = [charm.image];
+  // const thumbnails = [charm.image];
+  // --- Thumbnails commented as requested ---
 
   return (
     <div className='bg-[#faf7f0] relative'>
@@ -271,6 +272,7 @@ const ProductDetailCharm = () => {
 
         <div className="flex flex-col md:flex-row gap-10">
           {/* Thumbnail Images */}
+          {/*
           <div className="flex md:flex-col gap-4 overflow-x-auto md:overflow-visible pb-2 order-2 md:order-1">
             {thumbnails.map((src, idx) => (
               <img
@@ -282,6 +284,7 @@ const ProductDetailCharm = () => {
               />
             ))}
           </div>
+          */}
 
           {/* Main Charm Image */}
           <div className="flex-1 order-1 md:order-2">
@@ -331,7 +334,7 @@ const ProductDetailCharm = () => {
           <button 
             onClick={handleAddToCart}
             disabled={charm.stock === 0}
-            className={`w-[53%] px-10 py-4 text-lg ${charm.stock === 0 ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#f6e3b8] hover:opacity-90'} text-[#2d2a26] font-medium rounded transition`}
+            className={`w-[45%] px-10 py-4 text-lg ${charm.stock === 0 ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#f6e3b8] hover:opacity-90'} text-[#2d2a26] font-medium rounded transition`}
           >
             {charm.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
           </button>

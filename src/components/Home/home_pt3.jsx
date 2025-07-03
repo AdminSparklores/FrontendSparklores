@@ -22,6 +22,9 @@ const HomePart3 = () => {
   const [snackbarType, setSnackbarType] = useState('success');
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
+  // Track the hovered product
+  const [hoveredProductId, setHoveredProductId] = useState(null);
+
   // Helper function to get the first image URL from a product
   const getFirstProductImage = (product) => {
     if (product.images && product.images.length > 0) {
@@ -98,7 +101,7 @@ const HomePart3 = () => {
     }
 
     try {
-      await addToCart(productId);
+      await addToCart(productId, { quantity: 1 });
       setSnackbarMessage('Item added to cart!');
       setSnackbarType('success');
       setShowSnackbar(true);
@@ -128,10 +131,8 @@ const HomePart3 = () => {
   return (
     <div className="bg-[#F9F5EE] px-1 pb-2 md:px-10 md:pb-10 text-center pt-[1rem] md:pt-[8rem]">
       <h2 className="text-2xl md:text-5xl">BEST SELLER</h2>
-
       <div className="grid grid-cols-2 md:grid-cols-5 gap-1 md:gap-6 mt-6">
         {products.map((product) => {
-          // 1. Check if product is in discountMap
           const discountItem = discountMap[product.id];
           let displayPrice = product.price;
           let oldPrice = null;
@@ -147,62 +148,101 @@ const HomePart3 = () => {
             } else if (discountType === "amount") {
               displayPrice = discountValue;
               oldPrice = product.price;
-              // percent = (original - discounted) / original * 100
               const percent = product.price > 0
                 ? Math.round(((product.price - displayPrice) / product.price) * 100)
                 : 0;
               discountLabel = `${percent}% OFF`;
             }
           } else if (product.discount > 0) {
-            // 2. If not in discount API, but discount in product API
             displayPrice = product.price * (1 - product.discount / 100);
             oldPrice = product.price;
             discountLabel = `${product.discount}% OFF`;
           } else {
-            // 3. No discount
             displayPrice = product.price;
             oldPrice = null;
             discountLabel = "";
           }
 
+          const isHovered = hoveredProductId === product.id;
+          const imageList = product.images && product.images.length > 0 ? product.images : [{ image_url: product.image }];
+          // If hovered and there is a second image, show it, else show first image
+          const showImageIdx = isHovered && imageList.length > 1 ? 1 : 0;
+          const currentImage = imageList[showImageIdx] ? imageList[showImageIdx].image_url : '../../assets/default/banner_home.jpeg';
+
           return (
             <div
               key={product.id}
-              className={`p-4 ${product.stock === 0 ? 'opacity-70' : 'cursor-pointer'}`}
+              className={`transition-all duration-200 bg-[#F9F5EE] rounded-lg ${
+                product.stock === 0 ? 'opacity-70' : 'cursor-pointer'
+              } ${isHovered ? 'shadow-xl scale-[1.04] z-20' : ''}`}
+              style={{
+                padding: "0.75rem",
+                border: "none",
+                outline: "none",
+                background: isHovered ? "#f9f5ee" : "#F9F5EE",
+                boxShadow: isHovered
+                  ? "0 4px 32px 0 rgba(176,157,131,.18), 0 1.5px 4px 0 rgba(176,157,131,.22), 0 0.5px 1.5px 0 rgba(176,157,131,.16)"
+                  : "none",
+                transform: isHovered ? "scale(1.04)" : "scale(1)",
+                transition:
+                  "box-shadow 0.18s cubic-bezier(.4,2,.6,1), transform 0.18s cubic-bezier(.4,2,.6,1), background 0.2s"
+              }}
               onClick={() => product.stock > 0 && handleProductClick(product.id)}
+              onMouseEnter={() => setHoveredProductId(product.id)}
+              onMouseLeave={() => setHoveredProductId(null)}
             >
-              <div className="relative">
+              <div
+                className="relative w-full"
+                style={{
+                  aspectRatio: "1 / 1",
+                  minHeight: 0,
+                  background: "#f7f3e9"
+                }}
+              >
+                {/* Show only the currentImage */}
                 <img
-                  src={product.image}
+                  src={currentImage}
                   alt={product.name}
-                  className={`rounded-lg w-full h-auto object-cover ${product.stock === 0 ? 'grayscale' : ''}`}
-                  onError={(e) => {
+                  className={`rounded-lg w-full h-full object-cover absolute top-0 left-0 transition-opacity duration-500 ${product.stock === 0 ? 'grayscale' : ''} opacity-100 z-10`}
+                  style={{
+                    pointerEvents: "none",
+                    aspectRatio: "1 / 1",
+                    transition: 'opacity 0.5s cubic-bezier(0.45,0.05,0.55,0.95)'
+                  }}
+                  onError={e => {
                     e.target.onerror = null;
                     e.target.src = '../../assets/default/banner_home.jpeg';
                   }}
                 />
-
+                {/* Dark overlay on hover */}
+                <div
+                  className={`absolute top-0 left-0 w-full h-full rounded-lg pointer-events-none
+                    transition duration-300
+                    ${isHovered ? "bg-black/60" : "bg-black/0"}`}
+                  style={{
+                    transition: "background-color 0.3s cubic-bezier(0.45,0.05,0.55,0.95)",
+                    aspectRatio: "1 / 1"
+                  }}
+                />
                 {/* Stock Status Badge */}
                 {product.stock === 0 ? (
-                  <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">
+                  <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded z-20">
                     SOLD OUT
                   </div>
                 ) : product.stock < 10 ? (
-                  <div className="absolute top-2 left-2 bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded">
+                  <div className="absolute top-2 left-2 bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded z-20">
                     LOW STOCK
                   </div>
                 ) : null}
-
                 {/* Discount Badge */}
                 {discountLabel && (
-                  <div className="absolute top-2 right-2 bg-[#c3a46f] text-white text-xs font-bold px-2 py-1 rounded">
+                  <div className="absolute top-2 right-2 bg-[#c3a46f] text-white text-xs font-bold px-2 py-1 rounded z-20">
                     {discountLabel}
                   </div>
                 )}
-
                 {/* Only show add to cart button if product is in stock */}
                 {product.stock > 0 && (
-                  <div className="absolute bottom-2 right-2 bg-[#faf7f0] p-2 rounded-sm shadow">
+                  <div className="absolute bottom-2 right-2 bg-[#faf7f0] p-2 rounded-sm shadow z-20">
                     <button
                       className="p-2 rounded-full border-2 border-[#e8d6a8] bg-[#faf7f0]"
                       onClick={(e) => handleAddToCart(product.id, e)}
@@ -232,7 +272,6 @@ const HomePart3 = () => {
           );
         })}
       </div>
-
       {/* Snackbar for notifications */}
       <Snackbar
         message={snackbarMessage}

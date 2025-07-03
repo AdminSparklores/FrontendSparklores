@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { BASE_URL, isLoggedIn, addToCart } from "../../utils/api.js";
 import Snackbar from '../snackbar.jsx';
@@ -39,6 +39,10 @@ const ProductDetailSets = () => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarType, setSnackbarType] = useState('success');
 
+  // Touch handling for swipe
+  const touchStartX = useRef(null);
+  const touchEndX = useRef(null);
+
   // Auto-close Snackbar after 3 seconds
   useEffect(() => {
     let timer;
@@ -47,7 +51,6 @@ const ProductDetailSets = () => {
         setShowSnackbar(false);
       }, 3000);
     }
-    
     return () => {
       if (timer) clearTimeout(timer);
     };
@@ -71,7 +74,6 @@ const ProductDetailSets = () => {
         if (!response.ok) throw new Error('Failed to fetch gift set');
         const data = await response.json();
         setGiftSet(data);
-        // If you have an array of images, use that. Otherwise, fallback to a single image.
         if (Array.isArray(data.images) && data.images.length > 0) {
           setMainImage(data.images[0].image_url || data.images[0].image || "");
           setMainIdx(0);
@@ -141,6 +143,34 @@ const ProductDetailSets = () => {
     const nextIdx = (mainIdx + 1) % totalImages;
     setMainIdx(nextIdx);
     setMainImage(thumbnails[nextIdx]);
+  };
+
+  // Touch event handlers for swipe (mobile)
+  const handleTouchStart = (e) => {
+    if (e.touches && e.touches.length === 1) {
+      touchStartX.current = e.touches[0].clientX;
+    }
+  };
+  const handleTouchMove = (e) => {
+    if (e.touches && e.touches.length === 1) {
+      touchEndX.current = e.touches[0].clientX;
+    }
+  };
+  const handleTouchEnd = () => {
+    if (touchStartX.current !== null && touchEndX.current !== null) {
+      const diff = touchEndX.current - touchStartX.current;
+      if (Math.abs(diff) > 45) {
+        if (diff < 0) {
+          // Swipe left
+          handleNext();
+        } else {
+          // Swipe right
+          handlePrev();
+        }
+      }
+    }
+    touchStartX.current = null;
+    touchEndX.current = null;
   };
 
   if (loading) {
@@ -213,27 +243,63 @@ const ProductDetailSets = () => {
         </div>
 
         <div className="flex flex-col md:flex-row gap-10">
-          {/* Thumbnail Images */}
-          <div className="flex md:flex-col gap-4 overflow-x-auto md:overflow-visible pb-2 order-2 md:order-1">
-            {thumbnails.map((src, idx) => (
-              <img
-                key={idx}
-                src={src}
-                alt={`Thumbnail ${idx + 1}`}
-                onClick={() => {
-                  setMainImage(src);
-                  setMainIdx(idx);
-                }}
-                className={`flex-shrink-0 w-16 h-16 object-cover rounded cursor-pointer border ${idx === mainIdx ? 'border-[#b87777] ring-2 ring-[#b87777]' : 'border-gray-200 hover:border-gray-400'} transition`}
-              />
-            ))}
-          </div>
+          {/* Thumbnail Images For Desktop (md and up) */}
+          {thumbnails.length > 0 && (
+            <div
+              className={`
+                hidden md:flex md:flex-col gap-4 overflow-visible pb-2 order-2 md:order-1
+              `}
+            >
+              {thumbnails.map((src, idx) => (
+                <img
+                  key={idx}
+                  src={src}
+                  alt={`Thumbnail ${idx + 1}`}
+                  onClick={() => {
+                    setMainImage(src);
+                    setMainIdx(idx);
+                  }}
+                  className={`flex-shrink-0 w-16 h-16 object-cover rounded cursor-pointer border ${idx === mainIdx ? 'border-[#b87777] ring-2 ring-[#b87777]' : 'border-gray-200 hover:border-gray-400'} transition`}
+                />
+              ))}
+            </div>
+          )}
 
-          {/* Main Gift Set Image with arrows on hover */}
+          {/* Thumbnail Images For Mobile (sm only, always horizontal scrollable) */}
+          {thumbnails.length > 0 && (
+            <div
+              className={`
+                flex md:hidden gap-4 pb-2 order-2 overflow-x-auto max-w-full scrollbar-thin scrollbar-thumb-[#e6d4a5] scrollbar-track-[#faf7f0]
+              `}
+              style={{
+                WebkitOverflowScrolling: 'touch',
+                minHeight: '64px',
+                maxWidth: '100%',
+              }}
+            >
+              {thumbnails.map((src, idx) => (
+                <img
+                  key={idx}
+                  src={src}
+                  alt={`Thumbnail ${idx + 1}`}
+                  onClick={() => {
+                    setMainImage(src);
+                    setMainIdx(idx);
+                  }}
+                  className={`flex-shrink-0 w-16 h-16 object-cover rounded cursor-pointer border ${idx === mainIdx ? 'border-[#b87777] ring-2 ring-[#b87777]' : 'border-gray-200 hover:border-gray-400'} transition`}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Main Gift Set Image with arrows on hover and swipe support */}
           <div
-            className="flex-1 order-1 md:order-2 relative flex items-center justify-center group"
+            className="flex-1 order-1 md:order-2 relative flex items-center justify-center group touch-pan-x"
             onMouseEnter={() => setShowArrows(true)}
             onMouseLeave={() => setShowArrows(false)}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
           >
             {totalImages > 1 && showArrows && (
               <button
@@ -249,6 +315,7 @@ const ProductDetailSets = () => {
               src={mainImage}
               alt={giftSet.name}
               className="w-full max-w-lg rounded-lg shadow-md object-contain"
+              draggable={false}
             />
             {totalImages > 1 && showArrows && (
               <button
@@ -279,7 +346,6 @@ const ProductDetailSets = () => {
             <div className="text-sm">
               <p className="mb-1 font-medium">Gift Set Details</p>
               <ul className="list-disc pl-5 text-[#4d4a45]">
-                {/* <li>Set Label: {giftSet.label}</li> */}
                 <li>Created: {new Date(giftSet.created_at).toLocaleString()}</li>
                 <li>Products in Set: {giftSet.products ? giftSet.products.length : 0}</li>
               </ul>
@@ -318,6 +384,18 @@ const ProductDetailSets = () => {
           </button>
         </div>
       </div>
+      {/* Custom scrollbar styling (Tailwind CSS 'scrollbar-thin' etc. or add your custom CSS) */}
+      <style>{`
+        .scrollbar-thin {
+          scrollbar-width: thin;
+        }
+        .scrollbar-thumb-[#e6d4a5]::-webkit-scrollbar-thumb {
+          background: #e6d4a5;
+        }
+        .scrollbar-track-[#faf7f0]::-webkit-scrollbar-track {
+          background: #faf7f0;
+        }
+      `}</style>
     </div>
   );
 };

@@ -1,6 +1,6 @@
 // src/api.js
 // export const BASE_URL_LOCAL = 'http://localhost:8000';
-// export const BASE_URL = 'http://192.168.1.12:8000';
+// export const BASE_URL = 'http://192.168.1.4:8000';
 export const BASE_URL = 'https://sparkloreofficial.com';
 
 // Helper function to store auth data

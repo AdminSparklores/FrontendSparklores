@@ -119,7 +119,7 @@ const ProductDetailCharmBar = () => {
 
   // getCharmPosition is now based on product?.is_charm_spreadable and per-category positioning
   const getCharmPosition = (index, total) => {
-    const baseSize = '25.33%';
+    const baseSize = '17%';
     if (!product) return {
       width: baseSize,
       height: baseSize,
@@ -131,108 +131,108 @@ const ProductDetailCharmBar = () => {
     // ---- NECKLACE POSITIONS ----
     // Default positions (is_charm_spreadable === false)
     const necklaceDefaultPositions = {
-      1: [{ left: '52%', top: '83%', rotation: 0 }],
+      1: [{ left: '52%', top: '82%', rotation: 0 }],
       2: [
-        { left: '45%', top: '83%', rotation: 0 },
-        { left: '55%', top: '83%', rotation: 0 }
+        { left: '45%', top: '82%', rotation: 0 },
+        { left: '55%', top: '82%', rotation: 0 }
       ],
       3: [
-        { left: '40%', top: '83%', rotation: 30 },
-        { left: '52%', top: '84%', rotation: 0 },
-        { left: '64%', top: '83%', rotation: -35 }
+        { left: '42%', top: '81%', rotation: 30 },
+        { left: '52%', top: '82%', rotation: 0 },
+        { left: '62%', top: '81%', rotation: -35 }
       ],
       4: [
-        { left: '30%', top: '75%', rotation: 75 },
-        { left: '44%', top: '83%', rotation: 0 },
-        { left: '57%', top: '83%', rotation: 0 },
-        { left: '72%', top: '75%', rotation: -75 }
+        { left: '32%', top: '75%', rotation: 75 },
+        { left: '46%', top: '82%', rotation: 0 },
+        { left: '55%', top: '82%', rotation: 0 },
+        { left: '70%', top: '75%', rotation: -75 }
       ],
       5: [
-        { left: '39%', top: '82%', rotation: 40 },
-        { left: '52%', top: '84%', rotation: 0 },
-        { left: '64%', top: '83%', rotation: -35 },
-        { left: '72%', top: '75%', rotation: -75 },
-        { left: '30%', top: '75%', rotation: 73 }
+        { left: '43%', top: '81%', rotation: 20 },
+        { left: '52%', top: '82%', rotation: 0 },
+        { left: '60%', top: '81%', rotation: -20 },
+        { left: '70%', top: '75%', rotation: -75 },
+        { left: '32%', top: '75%', rotation: 73 }
       ]
     };
     // Spread positions (is_charm_spreadable === true)
     const necklaceSpreadPositions = {
-       1: [{ left: '52%', top: '83%', rotation: 0 }],
+       1: [{ left: '50%', top: '57%', rotation: 0 }],
         2: [
-          { left: '45%', top: '83%', rotation: 0 },
-          { left: '55%', top: '83%', rotation: 0 }
+          { left: '50%', top: '57%', rotation: 0 },
+          { left: '66%', top: '54%', rotation: 0 }
         ],
         3: [
-          { left: '40%', top: '83%', rotation: 30 },
-          { left: '52%', top: '84%', rotation: 0 },
-          { left: '64%', top: '83%', rotation: -35 }
+          { left: '33%', top: '54%', rotation: 0 },
+          { left: '50%', top: '57%', rotation: 0 },
+          { left: '66%', top: '54%', rotation: 0 }
         ],
         4: [
-          { left: '30%', top: '75%', rotation: 75 },
-          { left: '44%', top: '83%', rotation: 0 },
-          { left: '57%', top: '83%', rotation: 0 },
-          { left: '72%', top: '75%', rotation: -75 }
+          { left: '18%', top: '43%', rotation: 0 },
+          { left: '33%', top: '54%', rotation: 0 },
+          { left: '50%', top: '57%', rotation: 0 },
+          { left: '66%', top: '54%', rotation: 0 }
         ],
         5: [
-          { left: '39%', top: '82%', rotation: 40 },
-          { left: '52%', top: '84%', rotation: 0 },
-          { left: '64%', top: '83%', rotation: -35 },
-          { left: '72%', top: '75%', rotation: -75 },
-          { left: '30%', top: '75%', rotation: 73 }
+          { left: '18%', top: '43%', rotation: 0 },
+          { left: '33%', top: '54%', rotation: 0 },
+          { left: '50%', top: '57%', rotation: 0 },
+          { left: '81%', top: '45%', rotation: 0 },
+          { left: '66%', top: '54%', rotation: 0 }
         ]
       };
 
     // ---- BRACELET POSITIONS ----
     // Default positions (is_charm_spreadable === false)
     const braceletDefaultPositions = {
-      1: [{ left: '50%', top: '62%', rotation: 0 }],
+      1: [{ left: '50%', top: '59%', rotation: 0 }],
       2: [
-        { left: '45%', top: '62%', rotation: 15 },
-        { left: '55%', top: '62%', rotation: -15 }
+        { left: '45%', top: '59%', rotation: 15 },
+        { left: '55%', top: '59%', rotation: -15 }
       ],
       3: [
-        { left: '41%', top: '61%', rotation: 30 },
-        { left: '50%', top: '62%', rotation: 0 },
-        { left: '59%', top: '61%', rotation: -30 }
+        { left: '43%', top: '58%', rotation: 30 },
+        { left: '50%', top: '59%', rotation: 0 },
+        { left: '57%', top: '58%', rotation: -30 }
       ],
       4: [
-        { left: '41%', top: '61%', rotation: 30 },
-        { left: '59%', top: '61%', rotation: -30 },
-        { left: '41%', top: '42%', rotation: -225 },
-        { left: '60%', top: '42%', rotation: -135 }
+        { left: '45%', top: '59%', rotation: 30 },
+        { left: '55%', top: '59%', rotation: -30 },
+        { left: '43%', top: '44%', rotation: -225 },
+        { left: '55%', top: '44%', rotation: -135 }
       ],
       5: [
-        { left: '59%', top: '61%', rotation: -30 },
-        { left: '50%', top: '62%', rotation: 0 },
-        { left: '41%', top: '61%', rotation: 30 },
-        { left: '60%', top: '42%', rotation: -135 },
-        { left: '41%', top: '42%', rotation: -225 },
+        { left: '57%', top: '58%', rotation: -30 },
+        { left: '50%', top: '60%', rotation: 0 },
+        { left: '43%', top: '58%', rotation: 30 },
+        { left: '58%', top: '43%', rotation: -135 },
+        { left: '43%', top: '43%', rotation: -225 },
       ]
     };
     // Spread positions (is_charm_spreadable === true)
     const braceletSpreadPositions = {
-      1: [{ left: '50%', top: '60%', rotation: 0 }],
+      1: [{ left: '49%', top: '58%', rotation: 0 }],
       2: [
-        { left: '40%', top: '60%', rotation: 0 },
-        { left: '60%', top: '60%', rotation: 0 }
+        { left: '49%', top: '58%', rotation: 0 },
+        { left: '65%', top: '57%', rotation: 0 }
       ],
       3: [
-        { left: '33%', top: '60%', rotation: 0 },
-        { left: '50%', top: '60%', rotation: 0 },
-        { left: '67%', top: '60%', rotation: 0 }
+        { left: '33%', top: '57%', rotation: 0 },
+        { left: '49%', top: '58%', rotation: 0 },
+        { left: '65%', top: '57%', rotation: 0 }
       ],
       4: [
-        { left: '26%', top: '60%', rotation: 0 },
-        { left: '41%', top: '60%', rotation: 0 },
-        { left: '59%', top: '60%', rotation: 0 },
-        { left: '74%', top: '60%', rotation: 0 }
+        { left: '33%', top: '57%', rotation: 0 },
+        { left: '49%', top: '58%', rotation: 0 },
+        { left: '65%', top: '57%', rotation: 0 },
+        { left: '93%', top: '59%', rotation: 0 }
       ],
       5: [
-        { left: '18%', top: '60%', rotation: 0 },
-        { left: '34%', top: '60%', rotation: 0 },
-        { left: '50%', top: '60%', rotation: 0 },
-        { left: '66%', top: '60%', rotation: 0 },
-        { left: '82%', top: '60%', rotation: 0 }
+        { left: '33%', top: '57%', rotation: 0 },
+        { left: '46%', top: '57%', rotation: 20 },
+        { left: '65%', top: '57%', rotation: 0 },
+        { left: '93%', top: '59%', rotation: 0 },
+        { left: '53%', top: '57%', rotation: -20 }
       ]
     };
 

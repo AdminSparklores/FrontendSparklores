@@ -38,6 +38,9 @@ export default function NecklaceGrid() {
   const [snackbarType, setSnackbarType] = useState('success');
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
+  // Hover logic for showing the second image
+  const [hoveredProductId, setHoveredProductId] = useState(null);
+
   // Helper function to get the first image URL from a product
   const getFirstProductImage = (product) => {
     if (product.images && product.images.length > 0) {
@@ -295,6 +298,11 @@ export default function NecklaceGrid() {
     });
   };
 
+  // ------ HOVER IMAGE LOGIC -------
+  // Track hovered product id
+  // Only change: add hoveredProductId and set on mouse enter/leave in the grid below
+  // Then, display second image if hovered and available, else the first
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#fdf8f3] px-6 py-10 font-serif flex items-center justify-center">
@@ -363,6 +371,13 @@ export default function NecklaceGrid() {
               const { displayPrice, oldPrice, discountLabel } = getDiscounted(product);
               const showBestSeller = product.isBestSeller;
               const showDiscount = !!discountLabel;
+              // --- HOVER IMAGE LOGIC ---
+              const isHovered = hoveredProductId === product.id;
+              const imageList = product.images && product.images.length > 0 ? product.images : [{ image_url: product.image }];
+              const showImageIdx = isHovered && imageList.length > 1 ? 1 : 0;
+              const currentImage = imageList[showImageIdx] ? imageList[showImageIdx].image_url : '../../assets/default/banner_home.jpeg';
+              // --- END HOVER LOGIC ---
+
               return (
                 <div
                   key={product.id}
@@ -370,10 +385,12 @@ export default function NecklaceGrid() {
                     product.stock === 0 ? 'opacity-70' : 'cursor-pointer'
                   }`}
                   onClick={() => product.stock > 0 && handleProductClick(product.id)}
+                  onMouseEnter={() => setHoveredProductId(product.id)}
+                  onMouseLeave={() => setHoveredProductId(null)}
                 >
                   <div className="relative">
                     <img
-                      src={product.image}
+                      src={currentImage}
                       alt={product.name}
                       className={`rounded-md w-full h-auto object-cover ${
                         product.stock === 0 ? 'grayscale' : ''

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { BASE_URL, isLoggedIn, addToCart } from "../../utils/api.js";
 import Snackbar from '../snackbar.jsx';
@@ -39,6 +39,10 @@ const ProductDetailJewelSets = () => {
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarType, setSnackbarType] = useState('success');
+
+  // Touch handling for swipe
+  const touchStartX = useRef(null);
+  const touchEndX = useRef(null);
 
   // Auto-close Snackbar after 3 seconds
   useEffect(() => {
@@ -155,7 +159,35 @@ const ProductDetailJewelSets = () => {
     setMainImage(thumbnails[nextIdx]);
   };
 
-  // Parse details string to display as bullet points
+  // Touch event handlers for swipe (mobile)
+  const handleTouchStart = (e) => {
+    if (e.touches && e.touches.length === 1) {
+      touchStartX.current = e.touches[0].clientX;
+    }
+  };
+  const handleTouchMove = (e) => {
+    if (e.touches && e.touches.length === 1) {
+      touchEndX.current = e.touches[0].clientX;
+    }
+  };
+  const handleTouchEnd = () => {
+    if (touchStartX.current !== null && touchEndX.current !== null) {
+      const diff = touchEndX.current - touchStartX.current;
+      if (Math.abs(diff) > 45) {
+        if (diff < 0) {
+          // Swipe left
+          handleNext();
+        } else {
+          // Swipe right
+          handlePrev();
+        }
+      }
+    }
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+
+  // Details as bullets
   const getDetailsList = (detailsStr) => {
     if (!detailsStr) return [];
     return detailsStr
@@ -163,6 +195,7 @@ const ProductDetailJewelSets = () => {
       .map(line => line.replace(/^\s*-\s*/, '').trim())
       .filter(line => line.length > 0);
   };
+  const detailList = getDetailsList(giftSet?.details);
 
   if (loading) {
     return (
@@ -187,9 +220,6 @@ const ProductDetailJewelSets = () => {
       </div>
     );
   }
-
-  // Details as bullets
-  const detailList = getDetailsList(giftSet.details);
 
   return (
     <div className='bg-[#faf7f0] relative'>
@@ -237,27 +267,86 @@ const ProductDetailJewelSets = () => {
         </div>
 
         <div className="flex flex-col md:flex-row gap-10">
-          {/* Thumbnail Images */}
-          <div className="flex md:flex-col gap-4 overflow-x-auto md:overflow-visible pb-2 order-2 md:order-1">
-            {thumbnails.map((src, idx) => (
-              <img
-                key={idx}
-                src={src}
-                alt={`Thumbnail ${idx + 1}`}
-                onClick={() => {
-                  setMainImage(src);
-                  setMainIdx(idx);
-                }}
-                className={`flex-shrink-0 w-16 h-16 object-cover rounded cursor-pointer border ${idx === mainIdx ? 'border-[#b87777] ring-2 ring-[#b87777]' : 'border-gray-200 hover:border-gray-400'} transition`}
-              />
-            ))}
-          </div>
+          {/* Thumbnail Images For Desktop (md and up) */}
+          {thumbnails.length > 0 && (
+            <div
+              className={`
+                hidden md:flex md:flex-col gap-4 overflow-visible pb-2 order-2 md:order-1
+              `}
+            >
+              {thumbnails.map((src, idx) => (
+                <img
+                  key={idx}
+                  src={src}
+                  alt={`Thumbnail ${idx + 1}`}
+                  onClick={() => {
+                    setMainImage(src);
+                    setMainIdx(idx);
+                  }}
+                  className={`flex-shrink-0 w-16 h-16 object-cover rounded cursor-pointer border ${idx === mainIdx ? 'border-[#b87777] ring-2 ring-[#b87777]' : 'border-gray-200 hover:border-gray-400'} transition`}
+                />
+              ))}
+            </div>
+          )}
 
-          {/* Main Gift Set Image with arrows on hover */}
+          {/* Thumbnail Images For Mobile (sm only, always horizontal scrollable) */}
+          {thumbnails.length > 0 && (
+            <div
+              className={`
+                flex md:hidden gap-4 pb-2 order-2 overflow-x-auto max-w-full scrollbar-thin scrollbar-thumb-[#e6d4a5] scrollbar-track-[#faf7f0]
+              `}
+              style={{
+                WebkitOverflowScrolling: 'touch',
+                minHeight: '64px',
+                maxWidth: '100%',
+              }}
+            >
+              {thumbnails.map((src, idx) => (
+                <img
+                  key={idx}
+                  src={src}
+                  alt={`Thumbnail ${idx + 1}`}
+                  onClick={() => {
+                    setMainImage(src);
+                    setMainIdx(idx);
+                  }}
+                  className={`flex-shrink-0 w-16 h-16 object-cover rounded cursor-pointer border ${idx === mainIdx ? 'border-[#b87777] ring-2 ring-[#b87777]' : 'border-gray-200 hover:border-gray-400'} transition`}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Main Gift Set Image with arrows on hover and swipe support */}
           <div
-            className="flex-1 order-1 md:order-2 relative flex items-center justify-center group"
+            className="flex-1 order-1 md:order-2 relative flex items-center justify-center group touch-pan-x"
             onMouseEnter={() => setShowArrows(true)}
             onMouseLeave={() => setShowArrows(false)}
+            onTouchStart={(e) => {
+              if (e.touches && e.touches.length === 1) {
+                touchStartX.current = e.touches[0].clientX;
+              }
+            }}
+            onTouchMove={(e) => {
+              if (e.touches && e.touches.length === 1) {
+                touchEndX.current = e.touches[0].clientX;
+              }
+            }}
+            onTouchEnd={() => {
+              if (touchStartX.current !== null && touchEndX.current !== null) {
+                const diff = touchEndX.current - touchStartX.current;
+                if (Math.abs(diff) > 45) {
+                  if (diff < 0) {
+                    // Swipe left
+                    handleNext();
+                  } else {
+                    // Swipe right
+                    handlePrev();
+                  }
+                }
+              }
+              touchStartX.current = null;
+              touchEndX.current = null;
+            }}
           >
             {totalImages > 1 && showArrows && (
               <button
@@ -273,6 +362,7 @@ const ProductDetailJewelSets = () => {
               src={mainImage}
               alt={giftSet.name}
               className="w-full max-w-lg rounded-lg shadow-md object-contain"
+              draggable={false}
             />
             {totalImages > 1 && showArrows && (
               <button
@@ -348,6 +438,18 @@ const ProductDetailJewelSets = () => {
           </button>
         </div>
       </div>
+      {/* Custom scrollbar styling (Tailwind CSS 'scrollbar-thin' etc. or add your custom CSS) */}
+      <style>{`
+        .scrollbar-thin {
+          scrollbar-width: thin;
+        }
+        .scrollbar-thumb-[#e6d4a5]::-webkit-scrollbar-thumb {
+          background: #e6d4a5;
+        }
+        .scrollbar-track-[#faf7f0]::-webkit-scrollbar-track {
+          background: #faf7f0;
+        }
+      `}</style>
     </div>
   );
 };

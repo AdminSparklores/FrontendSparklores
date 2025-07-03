@@ -48,6 +48,10 @@ const ProductDetail = (props) => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarType, setSnackbarType] = useState('success');
 
+  // Touch handling for swipe
+  const touchStartX = useRef(null);
+  const touchEndX = useRef(null);
+
   // Refs for scrollable containers
   const thumbnailContainerRef = useRef(null);
 
@@ -59,7 +63,6 @@ const ProductDetail = (props) => {
         setShowSnackbar(false);
       }, 3000);
     }
-    
     return () => {
       if (timer) clearTimeout(timer);
     };
@@ -169,7 +172,7 @@ const ProductDetail = (props) => {
     : [];
   const totalImages = thumbnails.length;
 
-  // Make thumbnail scrollable if more than 6 images
+  // Make thumbnail scrollable if more than 6 images (used for vertical desktop, for horizontal mobile, always allow scroll)
   const isThumbnailScrollable = thumbnails.length > 6;
 
   // If the mainImage is changed via thumbnail, update idx
@@ -192,6 +195,34 @@ const ProductDetail = (props) => {
     const nextIdx = (mainIdx + 1) % totalImages;
     setMainIdx(nextIdx);
     setMainImage(thumbnails[nextIdx]);
+  };
+
+  // Touch event handlers for swipe (mobile)
+  const handleTouchStart = (e) => {
+    if (e.touches && e.touches.length === 1) {
+      touchStartX.current = e.touches[0].clientX;
+    }
+  };
+  const handleTouchMove = (e) => {
+    if (e.touches && e.touches.length === 1) {
+      touchEndX.current = e.touches[0].clientX;
+    }
+  };
+  const handleTouchEnd = () => {
+    if (touchStartX.current !== null && touchEndX.current !== null) {
+      const diff = touchEndX.current - touchStartX.current;
+      if (Math.abs(diff) > 45) {
+        if (diff < 0) {
+          // Swipe left
+          handleNext();
+        } else {
+          // Swipe right
+          handlePrev();
+        }
+      }
+    }
+    touchStartX.current = null;
+    touchEndX.current = null;
   };
 
   // Parse details string to display as bullet points
@@ -395,19 +426,18 @@ const ProductDetail = (props) => {
             </div>
           )}
 
-          {/* Thumbnail Images For Mobile (sm only) */}
+          {/* Thumbnail Images For Mobile (sm only, always horizontal scrollable) */}
           {thumbnails.length > 0 && (
             <div
               className={`
-                flex md:hidden gap-4 pb-2 order-2
-                ${isThumbnailScrollable ? 'overflow-x-auto max-w-full scrollbar-thin scrollbar-thumb-[#e6d4a5] scrollbar-track-[#faf7f0]' : ''}
+                flex md:hidden gap-4 pb-2 order-2 overflow-x-auto max-w-full scrollbar-thin scrollbar-thumb-[#e6d4a5] scrollbar-track-[#faf7f0]
               `}
               ref={thumbnailContainerRef}
-              style={
-                isThumbnailScrollable
-                  ? { maxWidth: '100%', minHeight: '64px' }
-                  : {}
-              }
+              style={{
+                WebkitOverflowScrolling: 'touch',
+                minHeight: '64px',
+                maxWidth: '100%',
+              }}
             >
               {thumbnails.map((src, idx) => (
                 <img
@@ -428,11 +458,14 @@ const ProductDetail = (props) => {
             </div>
           )}
 
-          {/* Main Product Image with arrows */}
+          {/* Main Product Image with arrows and swipe */}
           <div
-            className="flex-1 order-1 md:order-2 relative flex items-start justify-start group"
+            className="flex-1 order-1 md:order-2 relative flex items-start justify-start group touch-pan-x"
             onMouseEnter={() => setShowArrows(true)}
             onMouseLeave={() => setShowArrows(false)}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
           >
             {totalImages > 1 && showArrows && (
               <button
@@ -452,6 +485,7 @@ const ProductDetail = (props) => {
                 e.target.onerror = null;
                 e.target.src = '/path/to/default/image.png';
               }}
+              draggable={false}
             />
             {totalImages > 1 && showArrows && (
               <button
