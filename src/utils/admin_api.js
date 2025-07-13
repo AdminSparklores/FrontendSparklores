@@ -1,10 +1,16 @@
-import { BASE_URL } from "./api.js";
+import { BASE_URL, getAuthData } from "./api.js";
 
 const BASE = `${BASE_URL}/api`
 
 async function handleResponse(response) {
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
+    console.error("API Error:", { 
+      status: response.status,
+      statusText: response.statusText,
+      url: response.url,
+      error 
+    });
     throw { status: response.status, ...error };
   }
   if (response.status === 204) return {};
@@ -95,3 +101,60 @@ export const deleteCharm = (id) =>
   fetch(`${BASE}/charms/${id}/`, {
     method: "DELETE",
   }).then(handleResponse);
+
+// ORDERS
+export const getOrders = () => {
+  const authData = getAuthData();
+  if (!authData || !authData.token) {
+    return Promise.reject({ status: 401, detail: "Not authenticated" });
+  }
+
+  return fetch(`${BASE}/admin/orders-table/`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authData.token}`
+    }
+  }).then(handleResponse);
+};
+
+
+// Create labels and print documents (for selected orders)
+export const createLabels = (orderIds) => {
+  const authData = getAuthData();
+  if (!authData || !authData.token) {
+    return Promise.reject({ status: 401, detail: "Not authenticated" });
+  }
+
+  return fetch(`${BASE}/admin/orders/create_labels/`, {  // Changed to /admin/orders/
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      'Authorization': `Bearer ${authData.token}`
+    },
+    body: JSON.stringify({ order_ids: orderIds }),
+  }).then(response => {
+    if (response.ok) {
+      return response.blob(); // Assuming it returns a PDF
+    }
+    return handleResponse(response);
+  });
+}
+
+// Add this to admin_api.js
+// export const updateOrderStatus = (orderId, status) => {
+//   const authData = getAuthData();
+//   if (!authData || !authData.token) {
+//     return Promise.reject({ status: 401, detail: "Not authenticated" });
+//   }
+
+//   return fetch(`${BASE}/orders/${orderId}/`, {
+//     method: "PATCH",
+//     headers: { 
+//       "Content-Type": "application/json",
+//       'Authorization': `Bearer ${authData.token}`
+//     },
+//     body: JSON.stringify({ fulfillment_status: status }),
+//   }).then(handleResponse);
+// }
+
