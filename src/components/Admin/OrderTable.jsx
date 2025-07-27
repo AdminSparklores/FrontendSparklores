@@ -40,7 +40,7 @@ export default function OrderTable({
               products={products}
               giftSets={giftSets}
               charms={charms}
-              showCheckbox={status === "awaiting_shipment"}
+              showCheckbox={status === "awaiting_shipment" || status === "collection"}
               checked={selectedIds.includes(order.id)}
               onCheck={onCheck}
             />

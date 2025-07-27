@@ -243,6 +243,8 @@ const NavBar = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [userDetails, setUserDetails] = useState(null);
+  const [isMobileView, setIsMobileView] = useState(false);
+
 
   const navItems = [
     { name: "Charm Bar", path: "/charmbar" },
@@ -254,6 +256,20 @@ const NavBar = () => {
     { name: "Anklets", path: "/anklets" },
     { name: "Gift Sets", path: "/giftsets" },
   ];
+
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobileView(window.innerWidth <= 1500);
+    };
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+
+    return () => {
+      window.removeEventListener('resize', checkScreenSize);
+    };
+  }, []);
+  
 
   useEffect(() => {
     const fetchDiscountCampaigns = async () => {
@@ -498,95 +514,141 @@ const NavBar = () => {
         type={snackbarType}
       />
 
-      {/* Desktop Layout */}
-      <div className="hidden md:block">
-         <nav className="px-[9rem] pb-[2rem] pt-[1rem] flex items-center justify-between">
-          {/* Left Section - Language Toggle */}
-          <div className="flex items-center">
-            <div className="p-[3rem]"></div>
-          </div>
+      {!isMobileView ? (
+        <div>
+          <nav className="px-[9rem] pb-[2rem] pt-[1rem] flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="p-[3rem]"></div>
+            </div>
 
-          {/* Center Section - Logo */}
-          <div className="flex-1 flex justify-center">
-            <Link to="/">
-              <img src={logo} alt="Sparklore Logo" className="h-[7rem] object-contain" />
-            </Link>
-          </div>
+            <div className="flex-1 flex justify-center">
+              <Link to="/">
+                <img src={logo} alt="Sparklore Logo" className="h-[7rem] object-contain" />
+              </Link>
+            </div>
 
-          {/* Right Section - Icons */}
-          <div className="flex items-center gap-6 text-gray-700">
-            <Search className="w-5 h-5 cursor-pointer" onClick={() => setShowSearchBar(!showSearchBar)} />
-            {isLoggedInState ? (
-              <LogOut 
-                className="w-5 h-5 cursor-pointer hover:text-[#b87777]" 
-                onClick={() => setShowLogoutConfirm(true)}
-                title="Logout"
+            <div className="flex items-center gap-6 text-gray-700">
+              <Search 
+                className="w-5 h-5 cursor-pointer" 
+                onClick={() => setShowSearchBar(!showSearchBar)} 
               />
-            ) : (
-              <Link to="/login">
-                <User className="w-5 h-5 cursor-pointer hover:text-[#b87777]" />
-              </Link>
-            )}
-            <ShoppingBag 
-              className="w-5 h-5 cursor-pointer" 
-              onClick={handleCartClick} 
-            />
-            {userDetails?.is_staff && (
-              // && userDetails?.is_superuser
-              <Link 
-                to="/admin/dashboard" 
-                className="inline-block px-4 py-2 text-sm font-medium text-white bg-[#b87777] rounded shadow-md hover:bg-[#a06666] transition duration-200 focus:outline-none focus:ring-2 focus:ring-[#b87777] focus:ring-opacity-50"
-              >
-                Admin Dashboard
-              </Link>
-            )}
-          </div>
-        </nav>
+              {isLoggedInState ? (
+                <LogOut 
+                  className="w-5 h-5 cursor-pointer hover:text-[#b87777]" 
+                  onClick={() => setShowLogoutConfirm(true)}
+                  title="Logout"
+                />
+              ) : (
+                <Link to="/login">
+                  <User className="w-5 h-5 cursor-pointer hover:text-[#b87777]" />
+                </Link>
+              )}
+              <ShoppingBag 
+                className="w-5 h-5 cursor-pointer" 
+                onClick={handleCartClick} 
+              />
+            </div>
+          </nav>
 
-        {/* Bottom Navigation Links */}
-        <div className="px-6 pb-[1rem] pt-[0.1rem]">
-          <ul className="flex justify-center md:gap-6 lg:gap-30 uppercase text-xs md:text-lg font-semibold tracking-wider text-center">
-            {navItems.map((item, index) => (
-              <li key={index}>
-                <NavLink
-                  to={item.path}
-                  className={({ isActive }) =>
-                    `pb-2 hover:text-[#b87777] hover:border-b hover:border-[#b87777] transition-colors duration-300 ${
-                      isInitialLoad || !isActive ? "text-gray-800" : "text-[#b87777] font-bold border-b-2 border-[#b87777]"
-                    }`
-                  }
+          <div className="px-6 pb-[1rem] pt-[0.1rem]">
+            <ul className="flex justify-center md:gap-6 lg:gap-30 uppercase text-xs md:text-lg font-semibold tracking-wider text-center">
+              {navItems.map((item, index) => (
+                <li key={index}>
+                  <NavLink
+                    to={item.path}
+                    className={({ isActive }) =>
+                      `pb-2 hover:text-[#b87777] hover:border-b hover:border-[#b87777] transition-colors duration-300 ${
+                        isInitialLoad || !isActive ? "text-gray-800" : "text-[#b87777] font-bold border-b-2 border-[#b87777]"
+                      }`
+                    }
+                  >
+                    {item.name}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {showSearchBar && (
+            <div className="px-[9rem] pt-2 pb-4 animate-fadeIn border-t-2 border-[#e6d4a5]">
+              <form onSubmit={handleSearchSubmit} className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="GIFT SETS...."
+                  className="w-full bg-[#fdfaf3] border-b border-gray-300 text-gray-700 placeholder-gray-400 text-lg tracking-wide px-12 py-3 focus:outline-none"
+                />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />
+                <button
+                  type="submit"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 text-xl"
                 >
-                  {item.name}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
+                  ✕
+                </button>
+              </form>
+            </div>
+          )}
         </div>
-        
-        {showSearchBar && (
-        <div className="px-[9rem] pt-2 pb-4 animate-fadeIn border-t-2 border-[#e6d4a5]">
-          <form onSubmit={handleSearchSubmit} className="relative">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="COUPLE BRACELETS...."
-              className="w-full bg-[#fdfaf3] border-b border-gray-300 text-gray-700 placeholder-gray-400 text-lg tracking-wide px-12 py-3 focus:outline-none"
-            />
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />
-            <button
-              type="submit"
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 text-xl"
-            >
-              ✕
-            </button>
-          </form>
+      ) : (
+        <div>
+          <nav className="px-4 py-4 flex items-center justify-between">
+            <Link to="/">
+              <img src={logo} alt="Sparklore Logo" className="h-12 object-contain" />
+            </Link>
+            <div className="flex items-center gap-4">
+              <Search 
+                className="w-5 h-5 cursor-pointer" 
+                onClick={() => setShowSearchBar(!showSearchBar)} 
+              />
+              {isLoggedInState ? (
+                <LogOut 
+                  className="w-5 h-5 cursor-pointer hover:text-[#b87777]" 
+                  onClick={() => setShowLogoutConfirm(true)}
+                  title="Logout"
+                />
+              ) : (
+                <Link to="/login">
+                  <User className="w-5 h-5 cursor-pointer hover:text-[#b87777]" />
+                </Link>
+              )}
+              <ShoppingBag 
+                className="w-5 h-5 cursor-pointer" 
+                onClick={handleCartClick} 
+              />
+              <Menu 
+                className="w-6 h-6 cursor-pointer" 
+                onClick={() => setDrawerOpen(true)}
+              />
+            </div>
+          </nav>
+
+          {showSearchBar && (
+            <div className="px-4 pt-2 pb-4 animate-fadeIn border-t-2 border-[#e6d4a5]">
+              <form onSubmit={handleSearchSubmit} className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="GIFT SETS...."
+                  className="w-full bg-[#fdfaf3] border-b border-gray-300 text-gray-700 placeholder-gray-400 text-lg tracking-wide px-12 py-3 focus:outline-none"
+                />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />
+                <button
+                  type="submit"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 text-xl"
+                >
+                  ✕
+                </button>
+              </form>
+            </div>
+          )}
         </div>
       )}
 
-      </div>
 
-      {/* Shopping Cart Drawer - use new component */}
+      {/* Use CartDrawer */}
+      <div className="text-start text-black">
       <CartDrawer
         open={drawerCartOpen}
         onClose={() => setDrawerCartOpen(false)}
@@ -607,76 +669,10 @@ const NavBar = () => {
         setSnackbarType={setSnackbarType}
         setShowSnackbar={setShowSnackbar}
       />
-
-
-      {/* Mobile Layout */}
-      <div className="md:hidden">
-          <nav className="px-4 py-4 flex items-center justify-between">
-            <Link to="/">
-              <img src={logo} alt="Sparklore Logo" className="h-12 object-contain" />
-            </Link>
-            <div className="flex items-center gap-4">
-            <Search className="w-5 h-5 cursor-pointer" onClick={() => setShowSearchBar(!showSearchBar)} />
-            {isLoggedInState ? (
-              <LogOut 
-                className="w-5 h-5 cursor-pointer hover:text-[#b87777]" 
-                onClick={() => setShowLogoutConfirm(true)}
-                title="Logout"
-              />
-            ) : (
-              <Link to="/login">
-                <User className="w-5 h-5 cursor-pointer hover:text-[#b87777]" />
-              </Link>
-            )}
-            <ShoppingBag 
-              className="w-5 h-5 cursor-pointer" 
-              onClick={handleCartClick} 
-            />
-            {userDetails?.is_staff && (
-              // && userDetails?.is_superuser
-              <Link 
-                to="/admin/dashboard" 
-                className="inline-block px-4 py-2 text-sm font-medium text-white bg-[#b87777] rounded shadow-md hover:bg-[#a06666] transition duration-200 focus:outline-none focus:ring-2 focus:ring-[#b87777] focus:ring-opacity-50"
-              >
-                Admin
-              </Link>
-            )}
-            <Menu 
-              className="w-6 h-6 cursor-pointer" 
-              onClick={() => setDrawerOpen(true)}
-            />
-          </div>
-          </nav>
-
-        {showSearchBar && (
-          <div className="px-[0.2rem] pt-2 pb-4 animate-fadeIn border-t-2 border-[#e6d4a5]">
-            <form
-              className="relative"
-              onSubmit={handleSearchSubmit}
-            >
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="COUPLE BRACELETS...."
-                className="w-full bg-[#fdfaf3] border-b border-gray-300 text-gray-700 placeholder-gray-400 text-lg tracking-wide px-12 py-3 focus:outline-none"
-              />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />
-              <button
-                type="button"
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 text-xl"
-                onClick={() => setShowSearchBar(false)}
-              >
-                ✕
-              </button>
-            </form>
-          </div>
-        )}
       </div>
 
-      {/* Mobile Drawer */}
       {drawerOpen && (
-        <div className="md:hidden fixed inset-0 z-50 bg-stone-500/30">
+        <div className="fixed inset-0 z-50 bg-stone-500/30">
           <div 
             className="absolute right-0 h-full w-4/5 max-w-xs bg-[#fdfaf3] p-4 shadow-lg"
             style={{ animation: 'slideIn 0.3s ease-out' }}

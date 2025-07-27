@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { BASE_URL, isLoggedIn, addToCart } from "../../utils/api.js";
+import { BASE_URL, isLoggedIn, addToCart, getAuthData } from "../../utils/api.js";
 import Snackbar from '../snackbar.jsx';
 
 // Helper: format IDR currency
@@ -127,24 +127,35 @@ const ProductDetail = (props) => {
     fetchProductAndDiscount();
   }, [productId]);
 
+  // const handleAddToCart = async () => {
+  //   if (!isLoggedIn()) {
+  //     setShowLoginPrompt(true);
+  //     return;
+  //   }
+
+  //   try {
+  //     await addToCart(productId, { quantity: 1 });
+  //     setSnackbarMessage('Item added to cart!');
+  //     setSnackbarType('success');
+  //     setShowSnackbar(true);
+  //     setShowPopup(true);
+  //     setShowCharms(true);
+  //   } catch (error) {
+  //     setSnackbarMessage(error.message || 'Failed to update cart');
+  //     setSnackbarType('error');
+  //     setShowSnackbar(true);
+  //   }
+  // };
+
   const handleAddToCart = async () => {
     if (!isLoggedIn()) {
       setShowLoginPrompt(true);
       return;
     }
 
-    try {
-      await addToCart(productId, { quantity: 1 });
-      setSnackbarMessage('Item added to cart!');
-      setSnackbarType('success');
-      setShowSnackbar(true);
-      setShowPopup(true);
-      setShowCharms(true);
-    } catch (error) {
-      setSnackbarMessage(error.message || 'Failed to update cart');
-      setSnackbarType('error');
-      setShowSnackbar(true);
-    }
+    // Show the message popup first
+    setShowPopup(true);
+    setShowNote(true);
   };
 
   const handleCustomize = () => {
@@ -154,14 +165,44 @@ const ProductDetail = (props) => {
     }
   };
 
-  const handleAddOrSkipCharms = () => {
-    setShowCharms(false);
-    setShowNote(true);
-  };
+  // const handleAddOrSkipCharms = () => {
+  //   setShowCharms(false);
+  //   setShowNote(true);
+  // };
 
-  const handleNoteSubmit = () => {
-    setShowNote(false);
-    setShowPopup(false);
+  // const handleNoteSubmit = () => {
+  //   setShowNote(false);
+  //   setShowPopup(false);
+  // };
+
+  const handleNoteSubmit = async (addMessage) => {
+    try {
+      const authData = getAuthData();
+      if (!authData) throw new Error('Not authenticated');
+
+      // Add to cart with the message (or null if skipping)
+      await addToCart(productId, { 
+        quantity: 1,
+        message: addMessage ? note : null
+      });
+
+      setShowNote(false);
+      setShowPopup(false);
+      setNote('');
+
+      setSnackbarMessage(
+        addMessage 
+          ? 'Item added to cart with message!' 
+          : 'Item added to cart!'
+      );
+      setSnackbarType('success');
+      setShowSnackbar(true);
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      setSnackbarMessage(error.message || 'Failed to add to cart');
+      setSnackbarType('error');
+      setShowSnackbar(true);
+    }
   };
 
   const handleCloseLoginPrompt = () => setShowLoginPrompt(false);
@@ -330,7 +371,7 @@ const ProductDetail = (props) => {
       {/* Popup Overlay */}
       {showPopup && (
         <>
-          {showCharms && (
+          {/* {showCharms && (
           <div className="fixed inset-0 flex items-center justify-center bg-[rgba(0,0,0,0.8)] z-50">
             <div className="bg-[#fdfaf3] p-6 rounded-2xl border-2 border-black text-center max-w-xl w-full">
               <h2 className="text-2xl font-semibold text-[#3b322c]">SURPRISE!</h2>
@@ -357,7 +398,7 @@ const ProductDetail = (props) => {
               </div>
             </div>
           </div>
-        )}
+        )} */}
 
           {showNote && (
             <div className="fixed inset-0 flex items-center justify-center bg-[rgba(0,0,0,0.8)] z-50">
@@ -375,8 +416,18 @@ const ProductDetail = (props) => {
                 <div className="text-right text-sm text-[#3b322c]">{note.length}/65</div>
 
                 <div className="flex gap-4 justify-center mt-4">
-                  <button onClick={handleNoteSubmit} className="bg-[#e9d6a9] text-[#3b322c] font-medium py-2 px-6 rounded-md">Add</button>
-                  <button onClick={handleNoteSubmit} className="border border-[#e9d6a9] text-[#3b322c] font-medium py-2 px-6 rounded-md">Maybe Next Time</button>
+                  <button 
+                    onClick={() => handleNoteSubmit(true)} 
+                    className="bg-[#e9d6a9] text-[#3b322c] font-medium py-2 px-6 rounded-md"
+                  >
+                    Add with Message
+                  </button>
+                  <button 
+                    onClick={() => handleNoteSubmit(false)} 
+                    className="border border-[#e9d6a9] text-[#3b322c] font-medium py-2 px-6 rounded-md"
+                  >
+                    Skip Message
+                  </button>
                 </div>
               </div>
             </div>

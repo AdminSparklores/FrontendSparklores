@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from "react-router-dom";
-import { fetchProduct, fetchCharm, BASE_URL } from '../../utils/api';
+import { fetchProduct, fetchCharm, BASE_URL, getAuthData } from '../../utils/api';
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
@@ -10,20 +10,35 @@ const CheckoutPage = () => {
   const [cartItems, setCartItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [shippingAddress, setShippingAddress] = useState({
-    fullName: '',
+    first_name: '',
+    last_name: '',
     email: '',
-    address: '',
     phone: '',
+    address: '',
+    city: '',
+    postal_code: '',
     province: '',
-    postalCode: ''
+    sendSiteCode: 'JAKARTA',
+    destAreaCode: ''
   });
+
+  // Shipping fee state
+  const [shippingFee, setShippingFee] = useState(0);
+  const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
+  const [shippingError, setShippingError] = useState(null);
+  
+  // Order state
+  const [orderId, setOrderId] = useState(null);
+  const [totalPrice, setTotalPrice] = useState(0);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [paymentError, setPaymentError] = useState(null);
 
   // Newsletter logic
   const [showNewsletterCheckbox, setShowNewsletterCheckbox] = useState(false);
   const [newsletterChecked, setNewsletterChecked] = useState(false);
   const [newsletterLoading, setNewsletterLoading] = useState(false);
   const [newsletterError, setNewsletterError] = useState("");
-  const [formError, setFormError] = useState(null); // For validation
+  const [formError, setFormError] = useState(null);
   const [formTouched, setFormTouched] = useState(false);
 
   // Check newsletter subscription when email changes
@@ -33,7 +48,6 @@ const CheckoutPage = () => {
       setNewsletterError("");
       setNewsletterChecked(false);
 
-      // Only check if email is valid and not empty
       if (!shippingAddress.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shippingAddress.email)) {
         setShowNewsletterCheckbox(false);
         return;
@@ -74,7 +88,25 @@ const CheckoutPage = () => {
           const enhancedItems = await Promise.all(
             selectedItems.map(async (item) => {
               try {
-                const product = await fetchProduct(item.productId || item.id);
+                // Only fetch product details if it's a product (not gift set or charms only)
+                let productDetails = {};
+                if (item.source_type === 'product' && item.productId) {
+                  try {
+                    productDetails = await fetchProduct(item.productId || item.id);
+                  } catch (error) {
+                    console.error(`Failed to fetch product ${item.productId}:`, error);
+                    productDetails = {
+                      name: item.name || 'Product',
+                      images: item.image ? [{ image_url: item.image }] : []
+                    };
+                  }
+                } else {
+                  productDetails = {
+                    name: item.name || (item.source_type === 'gift_set' ? 'Gift Set' : 'Charms'),
+                    images: item.image ? [{ image_url: item.image }] : []
+                  };
+                }
+
                 let charmDetails = [];
                 if (item.charms && item.charms.length > 0) {
                   if (typeof item.charms[0] === 'object') {
@@ -83,27 +115,43 @@ const CheckoutPage = () => {
                     charmDetails = item.charms.map(image => ({ image }));
                   }
                 }
+                
                 return {
                   ...item,
                   id: item.id,
-                  name: product.name,
-                  image: (product.images && product.images.length > 0) ? product.images[0].image_url : item.image,
+                  name: productDetails.name,
+                  image: (productDetails.images && productDetails.images.length > 0) 
+                    ? productDetails.images[0].image_url 
+                    : item.image || 'https://via.placeholder.com/100',
                   price: item.price,
                   originalPrice: item.originalPrice,
                   discount: item.discount,
                   quantity: item.quantity,
                   charms: charmDetails,
-                  message: item.message || ""
+                  message: item.message || "",
+                  source_type: item.source_type
                 };
               } catch (error) {
-                return item;
+                console.error('Error processing item:', item.id, error);
+                return {
+                  ...item,
+                  name: item.name || 'Product',
+                  image: item.image || 'https://via.placeholder.com/100',
+                  price: item.price || 0,
+                  originalPrice: item.originalPrice || item.price || 0,
+                  discount: item.discount || 0,
+                  quantity: item.quantity || 1,
+                  charms: item.charms || [],
+                  message: item.message || "",
+                  source_type: item.source_type || 'product'
+                };
               }
             })
           );
           setCartItems(enhancedItems);
         }
       } catch (error) {
-        //
+        console.error("Error fetching item details:", error);
       } finally {
         setIsLoading(false);
       }
@@ -111,22 +159,6 @@ const CheckoutPage = () => {
 
     fetchItemDetails();
   }, [location.state]);
-
-  // Shipping options with prices
-  const shippingOptions = [
-    { name: "Regular", description: "Est. 2-3 days", price: 15000 },
-    { name: "Express", description: "Est. next day", price: 35000 }
-  ];
-
-  const paymentMethods = [
-    { name: "Virtual Account (BCA)", icon: "🏦" },
-    { name: "QRIS", icon: "📱" }
-  ];
-
-  const [selectedShipping, setSelectedShipping] = useState(null);
-  const [selectedPayment, setSelectedPayment] = useState(null);
-  const [showShippingDropdown, setShowShippingDropdown] = useState(false);
-  const [showPaymentDropdown, setShowPaymentDropdown] = useState(false);
 
   // Calculate prices
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -136,78 +168,253 @@ const CheckoutPage = () => {
     }
     return sum;
   }, 0);
-  const shippingCost = selectedShipping ? selectedShipping.price : 0;
-  const total = subtotal + shippingCost;
+  const total = subtotal + shippingFee;
 
   // Format currency for display
   const formatCurrency = (amount) => {
-    return `Rp. ${amount.toLocaleString('id-ID')},00`;
+    return `Rp ${amount.toLocaleString('id-ID')}`;
+  };
+
+  // Calculate total weight (assuming 1kg per item for simplicity)
+  const calculateTotalWeight = () => {
+    return cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  };
+
+  // Check shipping fee
+   const checkShippingFee = async () => {
+    if (!shippingAddress.destAreaCode || !shippingAddress.city) {
+      setShippingError("Please enter city and area code to calculate shipping");
+      return;
+    }
+
+    setIsCalculatingShipping(true);
+    setShippingError(null);
+
+    try {
+      const weight = calculateTotalWeight();
+      const payload = {
+        weight: weight.toString(),
+        sendSiteCode: shippingAddress.sendSiteCode,
+        destAreaCode: shippingAddress.destAreaCode,
+        cusName: "SPARKLORE",
+        productType: "EZ"
+      };
+
+      console.log('Sending to /api/jnt/tariff/:', payload);
+
+      const response = await fetch(`${BASE_URL}/api/jnt/tariff/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthData()?.token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      console.log('Response from /api/jnt/tariff/:', response);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Error response from /api/jnt/tariff/:', errorData);
+        throw new Error(errorData.message || "Failed to calculate shipping fee");
+      }
+
+      const data = await response.json();
+      console.log('Data from /api/jnt/tariff/:', data);
+
+      if (data.is_success === "true") {
+        const costData = JSON.parse(data.content);
+        if (costData.length > 0) {
+          setShippingFee(parseInt(costData[0].cost));
+        } else {
+          throw new Error("No shipping options available");
+        }
+      } else {
+        throw new Error(data.message || "Failed to calculate shipping fee");
+      }
+    } catch (error) {
+      console.error('Error in checkShippingFee:', error);
+      setShippingError(error.message);
+      setShippingFee(0);
+    } finally {
+      setIsCalculatingShipping(false);
+    }
+  };
+
+  // Create order and get order ID
+  const createOrder = async () => {
+    try {
+      const selectedItemIds = cartItems.map(item => item.id);
+      const payload = {
+        shipping_address: shippingAddress.address,
+        cart_item_ids: selectedItemIds
+      };
+
+      console.log('Sending to api/selective_checkout/:', payload);
+
+      const response = await fetch(`${BASE_URL}/api/selective_checkout/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthData()?.token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      console.log('Response from /selective_checkout/:', response);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Error response from /selective_checkout/:', errorData);
+        throw new Error(errorData.message || "Failed to create order");
+      }
+
+      const data = await response.json();
+      console.log('Data from /selective_checkout/:', data);
+      
+      setOrderId(data.order_id);
+      setTotalPrice(data.total_price);
+      return data;
+    } catch (error) {
+      console.error('Error in createOrder:', error);
+      setPaymentError(error.message);
+      throw error;
+    }
+  };
+
+  // Process payment with Midtrans
+  const processPayment = async () => {
+    setIsProcessingPayment(true);
+    setPaymentError(null);
+
+    try {
+      // First create the order
+      const orderData = await createOrder();
+      
+      // Prepare item details for Midtrans
+      const itemDetails = cartItems.map(item => {
+        let prefix = '';
+        if (item.source_type === 'product') prefix = 'PID-';
+        else if (item.source_type === 'gift_set') prefix = 'GSID-';
+        else if (item.source_type === 'charms_only') prefix = 'CID-';
+        
+        return {
+          id: `${prefix}${item.id}`,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity
+        };
+      });
+
+      // Add shipping as an item if shipping fee > 0
+      if (shippingFee > 0) {
+        itemDetails.push({
+          id: 'SHIPPING',
+          name: 'Shipping Fee',
+          price: shippingFee,
+          quantity: 1
+        });
+      }
+
+      // Prepare payload for Midtrans
+      const payload = {
+        order_id: orderData.order_id.toString(),
+        gross_amount: orderData.total_price + shippingFee,
+        email: shippingAddress.email,
+        first_name: shippingAddress.first_name,
+        last_name: shippingAddress.last_name,
+        phone: shippingAddress.phone,
+        address: shippingAddress.address,
+        city: shippingAddress.city,
+        postal_code: shippingAddress.postal_code,
+        country: "IDN",
+        item_details: itemDetails
+      };
+
+      console.log('Sending to /api/midtrans/token/:', payload);
+
+      const response = await fetch(`${BASE_URL}/api/midtrans/token/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthData()?.token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      console.log('Response from /api/midtrans/token/:', response);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Error response from /api/midtrans/token/:', errorData);
+        throw new Error(errorData.message || "Failed to process payment");
+      }
+
+      const paymentData = await response.json();
+      console.log('Data from /api/midtrans/token/:', paymentData);
+      
+      // Redirect to Midtrans payment page
+      window.location.href = paymentData.redirect_url;
+      
+    } catch (error) {
+      console.error('Error in processPayment:', error);
+      setPaymentError(error.message);
+    } finally {
+      setIsProcessingPayment(false);
+    }
   };
 
   // Validation function for all required fields
   const isFormValid = () => {
-    // All shippingAddress fields except the newsletter checkbox must be filled and not just whitespace
-    for (const key in shippingAddress) {
-      if (
-        typeof shippingAddress[key] === "string" &&
-        shippingAddress[key].trim() === ""
-      ) {
+    const requiredFields = [
+      'first_name', 'last_name', 'email', 'phone', 
+      'address', 'city', 'postal_code', 'province', 'destAreaCode'
+    ];
+    
+    // Check all required fields are filled
+    for (const field of requiredFields) {
+      if (!shippingAddress[field] || shippingAddress[field].trim() === "") {
         return false;
       }
     }
-    // Email format check
+    
+    // Validate email format
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shippingAddress.email)) {
       return false;
     }
-    // Shipping & payment selected
-    if (!selectedShipping || !selectedPayment) {
+    
+    // Validate phone number (minimum 10 digits)
+    if (shippingAddress.phone.replace(/\D/g, '').length < 10) {
       return false;
     }
+    
+    // Shipping fee must be calculated
+    if (shippingFee <= 0) {
+      return false;
+    }
+    
     return true;
   };
 
   const handlePlaceOrder = () => {
     setFormTouched(true);
     if (!isFormValid()) {
-      setFormError("Please fill in all fields and select shipping and payment options with a valid email.");
+      setFormError("Please fill in all required fields and calculate shipping fee");
       return;
     }
     setFormError(null);
-
-    const orderData = {
-      items: cartItems,
-      shipping: selectedShipping,
-      payment: selectedPayment,
-      subtotal: subtotal,
-      discount: discount,
-      shippingCost: shippingCost,
-      total: total,
-      shippingAddress: shippingAddress,
-      newsletterOptIn: showNewsletterCheckbox && newsletterChecked
-    };
-
-    // Route to payment page based on payment option
-    if (selectedPayment.name === "Virtual Account (BCA)") {
-      navigate('/checkout/virtual-account', { state: { orderDetails: orderData } });
-    } else if (selectedPayment.name === "QRIS") {
-      navigate('/checkout/qris', { state: { orderDetails: orderData } });
-    } else {
-      // Fallback to card payment/final checkout
-      navigate('/checkout/payment', { state: { orderDetails: orderData } });
-    }
+    processPayment();
   };
 
   useEffect(() => {
     if (formTouched) {
-      // live update error message for form fields
       if (!isFormValid()) {
-        setFormError("Please fill in all fields and select shipping and payment options with a valid email.");
+        setFormError("Please fill in all required fields and calculate shipping fee");
       } else {
         setFormError(null);
       }
     }
-    // eslint-disable-next-line
-  }, [shippingAddress, selectedShipping, selectedPayment]);
+  }, [shippingAddress, shippingFee, formTouched]);
 
   if (isLoading) {
     return (
@@ -250,21 +457,32 @@ const CheckoutPage = () => {
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="font-medium">Contact Information</h3>
                 </div>
-                <input
-                  type="text"
-                  name="fullName"
-                  value={shippingAddress.fullName}
-                  onChange={handleAddressChange}
-                  placeholder="Your Full Name"
-                  className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 mb-3 bg-[#fdfaf3]"
-                  required
-                />
+                <div className="flex gap-4">
+                  <input
+                    type="text"
+                    name="first_name"
+                    value={shippingAddress.first_name}
+                    onChange={handleAddressChange}
+                    placeholder="First Name *"
+                    className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 mb-3 bg-[#fdfaf3]"
+                    required
+                  />
+                  <input
+                    type="text"
+                    name="last_name"
+                    value={shippingAddress.last_name}
+                    onChange={handleAddressChange}
+                    placeholder="Last Name *"
+                    className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 mb-3 bg-[#fdfaf3]"
+                    required
+                  />
+                </div>
                 <input
                   type="email"
                   name="email"
                   value={shippingAddress.email}
                   onChange={handleAddressChange}
-                  placeholder="your.email@mail.com"
+                  placeholder="Email *"
                   className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 mb-3 bg-[#fdfaf3]"
                   required
                 />
@@ -295,137 +513,98 @@ const CheckoutPage = () => {
                   name="address"
                   value={shippingAddress.address}
                   onChange={handleAddressChange}
-                  placeholder="Your address"
+                  placeholder="Address *"
                   className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 mb-3 bg-[#fdfaf3]"
                   required
                 />
                 <input
-                  type="text"
+                  type="tel"
                   name="phone"
                   value={shippingAddress.phone}
                   onChange={handleAddressChange}
-                  placeholder="+6281234567890"
+                  placeholder="Phone Number * (e.g., 08123456789)"
                   className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 mb-3 bg-[#fdfaf3]"
                   required
                 />
-                <div className="flex gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <input
+                    type="text"
+                    name="city"
+                    value={shippingAddress.city}
+                    onChange={handleAddressChange}
+                    placeholder="City *"
+                    className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 mb-3 bg-[#fdfaf3]"
+                    required
+                  />
+                  <input
+                    type="text"
+                    name="destAreaCode"
+                    value={shippingAddress.destAreaCode}
+                    onChange={handleAddressChange}
+                    placeholder="Area Code * (e.g., KALIDERES)"
+                    className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 mb-3 bg-[#fdfaf3]"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <input
                     type="text"
                     name="province"
                     value={shippingAddress.province}
                     onChange={handleAddressChange}
-                    placeholder="Province, State"
+                    placeholder="Province *"
                     className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 mb-3 bg-[#fdfaf3]"
                     required
                   />
                   <input
                     type="text"
-                    name="postalCode"
-                    value={shippingAddress.postalCode}
+                    name="postal_code"
+                    value={shippingAddress.postal_code}
                     onChange={handleAddressChange}
-                    placeholder="12345"
+                    placeholder="Postal Code *"
                     className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 mb-3 bg-[#fdfaf3]"
                     required
                   />
                 </div>
-              </div>
-
-              {/* Shipping Dropdown */}
-              <div className="relative">
-                <h3 className="font-medium mt-4 mb-2">Shipping Option</h3>
+                <div className="mb-3">
+                  <label className="block text-sm text-gray-600">Country</label>
+                  <input
+                    type="text"
+                    value="Indonesia (IDN)"
+                    className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 bg-[#fdfaf3] cursor-not-allowed"
+                    disabled
+                  />
+                </div>
+                
+                {/* Shipping Fee Check Button */}
                 <button
-                  className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 bg-[#e9d6a9] text-left flex justify-between items-center"
-                  onClick={() => setShowShippingDropdown(!showShippingDropdown)}
-                  type="button"
+                  onClick={checkShippingFee}
+                  disabled={isCalculatingShipping || !shippingAddress.city || !shippingAddress.destAreaCode}
+                  className={`w-full bg-[#e9d6a9] py-2 rounded-md mb-3 ${isCalculatingShipping ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#e3c990]'}`}
                 >
-                  {selectedShipping ? (
-                    <div className="flex justify-between w-full">
-                      <span>{selectedShipping.name} ({selectedShipping.description})</span>
-                      <span>{formatCurrency(selectedShipping.price)}</span>
-                    </div>
-                  ) : (
-                    "Select shipping option"
-                  )}
-                  <svg
-                    className={`w-5 h-5 transition-transform ${showShippingDropdown ? 'rotate-180' : ''}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
+                  {isCalculatingShipping ? 'Calculating...' : 'Check Shipping Fee'}
                 </button>
-                {showShippingDropdown && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-[#f2e9d5] rounded-md shadow-lg">
-                    {shippingOptions.map((option) => (
-                      <div
-                        key={option.name}
-                        className={`px-4 py-3 cursor-pointer hover:bg-[#f3e3bc] ${selectedShipping?.name === option.name ? 'bg-[#f3e3bc]' : ''}`}
-                        onClick={() => {
-                          setSelectedShipping(option);
-                          setShowShippingDropdown(false);
-                        }}
-                      >
-                        <div className="flex justify-between">
-                          <div>
-                            <div className="font-medium">{option.name}</div>
-                            <div className="text-sm text-gray-600">{option.description}</div>
-                          </div>
-                          <div>{formatCurrency(option.price)}</div>
-                        </div>
-                      </div>
-                    ))}
+                
+                {shippingError && (
+                  <div className="text-red-500 text-sm mb-3">{shippingError}</div>
+                )}
+                
+                {shippingFee > 0 && (
+                  <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-3">
+                    <div className="flex justify-between">
+                      <span className="font-medium">Shipping Fee:</span>
+                      <span className="font-bold">{formatCurrency(shippingFee)}</span>
+                    </div>
                   </div>
                 )}
               </div>
-
-              {/* Payment Dropdown */}
-              <div className="relative">
-                <h3 className="font-medium mt-4 mb-2">Payment Option</h3>
-                <button
-                  className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 bg-[#e9d6a9] text-left flex justify-between items-center"
-                  onClick={() => setShowPaymentDropdown(!showPaymentDropdown)}
-                  type="button"
-                >
-                  {selectedPayment ? (
-                    <div className="flex items-center gap-2">
-                      <span>{selectedPayment.icon}</span>
-                      <span>{selectedPayment.name}</span>
-                    </div>
-                  ) : (
-                    "Select payment method"
-                  )}
-                  <svg
-                    className={`w-5 h-5 transition-transform ${showPaymentDropdown ? 'rotate-180' : ''}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                {showPaymentDropdown && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-[#f2e9d5] rounded-md shadow-lg">
-                    {paymentMethods.map((method) => (
-                      <div
-                        key={method.name}
-                        className={`px-4 py-3 cursor-pointer hover:bg-[#f3e3bc] flex items-center gap-2 ${selectedPayment?.name === method.name ? 'bg-[#f3e3bc]' : ''}`}
-                        onClick={() => {
-                          setSelectedPayment(method);
-                          setShowPaymentDropdown(false);
-                        }}
-                      >
-                        <span>{method.icon}</span>
-                        <span>{method.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              
+              {paymentError && (
+                <div className="text-red-500 text-sm mb-3">{paymentError}</div>
+              )}
+              
               {formError && (
-                <div className="text-xs text-red-500 mt-1">{formError}</div>
+                <div className="text-red-500 text-sm mb-3">{formError}</div>
               )}
             </div>
 
@@ -448,7 +627,6 @@ const CheckoutPage = () => {
                     <h4 className="font-medium">{item.name}</h4>
                     <p className="text-sm">x{item.quantity}</p>
                     
-                    {/* Display prices with discount if applicable */}
                     {item.discount > 0 && item.originalPrice ? (
                       <div className="space-y-1">
                         <p className="font-semibold text-[#b87777]">
@@ -513,7 +691,7 @@ const CheckoutPage = () => {
                 
                 <div className="flex justify-between">
                   <span>Shipping</span>
-                  <span>{selectedShipping ? formatCurrency(selectedShipping.price) : "Not selected"}</span>
+                  <span>{shippingFee > 0 ? formatCurrency(shippingFee) : "Not calculated"}</span>
                 </div>
                 
                 <div className="flex justify-between font-semibold pt-2 border-t border-[#f2e9d5]">
@@ -527,9 +705,9 @@ const CheckoutPage = () => {
           <button 
             className="w-full bg-[#e9d6a9] text-lg font-medium py-3 mt-6 rounded-md hover:bg-[#e3c990] transition-colors disabled:opacity-50"
             onClick={handlePlaceOrder}
-            disabled={newsletterLoading || !isFormValid()}
+            disabled={!isFormValid() || isProcessingPayment}
           >
-            Place My Order
+            {isProcessingPayment ? 'Processing...' : 'Place My Order'}
           </button>
         </div>
       </div>

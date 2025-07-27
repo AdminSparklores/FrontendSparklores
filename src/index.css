@@ -41,4 +41,5 @@ html {
 body {
   background-color: white !important;
   color: black !important;
+  overflow-x: hidden;
 }

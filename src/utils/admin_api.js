@@ -126,7 +126,7 @@ export const createLabels = (orderIds) => {
     return Promise.reject({ status: 401, detail: "Not authenticated" });
   }
 
-  return fetch(`${BASE}/admin/orders/create_labels/`, {  // Changed to /admin/orders/
+  return fetch(`${BASE}/orders/create_labels/`, {
     method: "POST",
     headers: { 
       "Content-Type": "application/json",
@@ -135,8 +135,10 @@ export const createLabels = (orderIds) => {
     body: JSON.stringify({ order_ids: orderIds }),
   }).then(response => {
     if (response.ok) {
+      console.log('Success for create labels, this is the response: ', response,);
       return response.blob(); // Assuming it returns a PDF
     }
+
     return handleResponse(response);
   });
 }

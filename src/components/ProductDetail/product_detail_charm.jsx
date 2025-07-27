@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import clsx from "clsx";
-import { BASE_URL, isLoggedIn, addToCart } from "../../utils/api.js";
+import { BASE_URL, isLoggedIn, addToCart, getAuthData } from "../../utils/api.js";
 import Snackbar from '../snackbar.jsx';
 
 // BASE IMAGES
@@ -95,6 +95,37 @@ const ProductDetailCharm = () => {
     fetchCharmAndDiscount();
   }, [productId]);
 
+  const handleNoteSubmit = async (addMessage) => {
+    try {
+      const authData = getAuthData();
+      if (!authData) throw new Error('Not authenticated');
+
+      // Add to cart with the message (or null if skipping)
+      await addToCart(null, { 
+        charms: [productId],
+        quantity: 1,
+        message: addMessage ? note : null
+      });
+
+      setShowNote(false);
+      setShowPopup(false);
+      setNote('');
+
+      setSnackbarMessage(
+        addMessage 
+          ? 'Charm added to cart with message!' 
+          : 'Charm added to cart!'
+      );
+      setSnackbarType('success');
+      setShowSnackbar(true);
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      setSnackbarMessage(error.message || 'Failed to add to cart');
+      setSnackbarType('error');
+      setShowSnackbar(true);
+    }
+  };
+
   // Handler for Add to Cart (checks login)
   const handleAddToCart = async () => {
     if (!isLoggedIn()) {
@@ -102,29 +133,14 @@ const ProductDetailCharm = () => {
       return;
     }
 
-    try {
-      await addToCart(null, { charms: [productId], quantity: 1 });
-      setSnackbarMessage('Charm added to cart!');
-      setSnackbarType('success');
-      setShowSnackbar(true);
-      setShowPopup(true);
-      setShowCharms(true);
-    } catch (error) {
-      setSnackbarMessage(error.message || 'Failed to add charm to cart');
-      setSnackbarType('error');
-      setShowSnackbar(true);
-    }
+    // Show the message popup first
+    setShowPopup(true);
+    setShowNote(true);
   };
 
   const handleAddOrSkipCharms = () => {
     setShowCharms(false);
     setShowNote(true);
-  };
-
-  const handleNoteSubmit = () => {
-    setShowNote(false);
-    setShowPopup(false);
-    // Submit note here if needed
   };
 
   // Login Prompt Handler
@@ -180,10 +196,6 @@ const ProductDetailCharm = () => {
     oldPrice = parseFloat(charm.price);
     discountLabel = `${discountValue}% OFF`;
   }
-
-  // Create thumbnails array (using the same image for all thumbnails since the API only provides one image)
-  // const thumbnails = [charm.image];
-  // --- Thumbnails commented as requested ---
 
   return (
     <div className='bg-[#faf7f0] relative'>
@@ -255,8 +267,18 @@ const ProductDetailCharm = () => {
                 <div className="text-right text-sm text-[#3b322c]">{note.length}/65</div>
 
                 <div className="flex gap-4 justify-center mt-4">
-                  <button onClick={handleNoteSubmit} className="bg-[#e9d6a9] text-[#3b322c] font-medium py-2 px-6 rounded-md">Add Note</button>
-                  <button onClick={handleNoteSubmit} className="border border-[#e9d6a9] text-[#3b322c] font-medium py-2 px-6 rounded-md">Skip</button>
+                  <button 
+                    onClick={() => handleNoteSubmit(true)} 
+                    className="bg-[#e9d6a9] text-[#3b322c] font-medium py-2 px-6 rounded-md"
+                  >
+                    Add with Message
+                  </button>
+                  <button 
+                    onClick={() => handleNoteSubmit(false)} 
+                    className="border border-[#e9d6a9] text-[#3b322c] font-medium py-2 px-6 rounded-md"
+                  >
+                    Skip Message
+                  </button>
                 </div>
               </div>
             </div>
@@ -271,21 +293,6 @@ const ProductDetailCharm = () => {
         </div>
 
         <div className="flex flex-col md:flex-row gap-10">
-          {/* Thumbnail Images */}
-          {/*
-          <div className="flex md:flex-col gap-4 overflow-x-auto md:overflow-visible pb-2 order-2 md:order-1">
-            {thumbnails.map((src, idx) => (
-              <img
-                key={idx}
-                src={src}
-                alt={`Thumbnail ${idx + 1}`}
-                onClick={() => setMainImage(src)}
-                className="flex-shrink-0 w-16 h-16 object-cover rounded cursor-pointer border border-gray-200 hover:border-gray-400 transition"
-              />
-            ))}
-          </div>
-          */}
-
           {/* Main Charm Image */}
           <div className="flex-1 order-1 md:order-2">
             <img

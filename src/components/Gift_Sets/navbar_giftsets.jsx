@@ -213,10 +213,25 @@ const NavBar_GiftSets = () => {
   const [discountMap, setDiscountMap] = useState({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [isMobileView, setIsMobileView] = useState(false);
+
 
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobileView(window.innerWidth <= 1500);
+    };
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+
+    return () => {
+      window.removeEventListener('resize', checkScreenSize);
+    };
+  }, []);
 
   useEffect(() => {
     setIsInitialLoad(false);
@@ -467,185 +482,170 @@ const NavBar_GiftSets = () => {
         </div>
       )}
 
-      {/* Desktop Layout */}
-      <div className="hidden md:block">
-        <nav className="px-[9rem] pb-[2rem] pt-[1rem] flex items-center justify-between">
-          {/* Left Section - Language Toggle */}
-          <div className="flex items-center">
-            {/* <button className="flex items-center border rounded-full text-xs font-medium">
-              <span className="px-3 py-1 bg-white rounded-l-full">EN</span>
-              <span className="px-3 py-1 bg-[#e6d4a5] rounded-r-full">ID</span>
-            </button> */}
-            <div className="p-[3rem]"></div>
-          </div>
+      {!isMobileView ? (
+        <div>
+          <nav className="px-[9rem] pb-[2rem] pt-[1rem] flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="p-[3rem]"></div>
+            </div>
 
-          {/* Center Section - Logo */}
-          <div className="flex-1 flex justify-center">
-            <Link to="/">
-              <img src={logo} alt="Sparklore Logo" className="h-[7rem] object-contain" />
-            </Link>
-          </div>
-
-          {/* Right Section - Icons */}
-          <div className="flex items-center gap-6 text-gray-700">
-            <Search 
-              className="w-5 h-5 cursor-pointer" 
-              onClick={() => setShowSearchBar(!showSearchBar)} 
-            />
-            {isLoggedInState ? (
-              <LogOut 
-                className="w-5 h-5 cursor-pointer hover:text-[#b87777]" 
-                onClick={() => setShowLogoutConfirm(true)}
-                title="Logout"
-              />
-            ) : (
-              <Link to="/login">
-                <User className="w-5 h-5 cursor-pointer hover:text-[#b87777]" />
+            <div className="flex-1 flex justify-center">
+              <Link to="/">
+                <img src={logo} alt="Sparklore Logo" className="h-[7rem] object-contain" />
               </Link>
-            )}
-            <ShoppingBag 
-              className="w-5 h-5 cursor-pointer" 
-              onClick={handleCartClick} 
-            />
-          </div>
-        </nav>
+            </div>
 
-        {/* Bottom Navigation Links */}
-        <div className="px-6 pb-[1rem] pt-[0.1rem]">
-          <ul className="flex justify-center md:gap-6 lg:gap-30 uppercase text-xs md:text-lg font-semibold tracking-wider text-center">
-            {navItems.map((item, index) => (
-              <li key={index}>
-                <NavLink
-                  to={item.path}
-                  className={({ isActive }) =>
-                    `pb-2 hover:text-[#b87777] hover:border-b hover:border-[#b87777] transition-colors duration-300 ${
-                      isInitialLoad || !isActive ? "text-gray-800" : "text-[#b87777] font-bold border-b-2 border-[#b87777]"
-                    }`
-                  }
-                >
-                  {item.name}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Search Bar */}
-        {showSearchBar && (
-          <div className="px-[9rem] pt-2 pb-4 animate-fadeIn border-t-2 border-[#e6d4a5]">
-            <form onSubmit={handleSearchSubmit} className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="GIFT SETS...."
-                className="w-full bg-[#fdfaf3] border-b border-gray-300 text-gray-700 placeholder-gray-400 text-lg tracking-wide px-12 py-3 focus:outline-none"
+            <div className="flex items-center gap-6 text-gray-700">
+              <Search 
+                className="w-5 h-5 cursor-pointer" 
+                onClick={() => setShowSearchBar(!showSearchBar)} 
               />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />
-              <button
-                type="submit"
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 text-xl"
-              >
-                ✕
-              </button>
-            </form>
+              {isLoggedInState ? (
+                <LogOut 
+                  className="w-5 h-5 cursor-pointer hover:text-[#b87777]" 
+                  onClick={() => setShowLogoutConfirm(true)}
+                  title="Logout"
+                />
+              ) : (
+                <Link to="/login">
+                  <User className="w-5 h-5 cursor-pointer hover:text-[#b87777]" />
+                </Link>
+              )}
+              <ShoppingBag 
+                className="w-5 h-5 cursor-pointer" 
+                onClick={handleCartClick} 
+              />
+            </div>
+          </nav>
+
+          <div className="px-6 pb-[1rem] pt-[0.1rem]">
+            <ul className="flex justify-center md:gap-6 lg:gap-30 uppercase text-xs md:text-lg font-semibold tracking-wider text-center">
+              {navItems.map((item, index) => (
+                <li key={index}>
+                  <NavLink
+                    to={item.path}
+                    className={({ isActive }) =>
+                      `pb-2 hover:text-[#b87777] hover:border-b hover:border-[#b87777] transition-colors duration-300 ${
+                        isInitialLoad || !isActive ? "text-gray-800" : "text-[#b87777] font-bold border-b-2 border-[#b87777]"
+                      }`
+                    }
+                  >
+                    {item.name}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
           </div>
-        )}
-      </div>
+
+          {showSearchBar && (
+            <div className="px-[9rem] pt-2 pb-4 animate-fadeIn border-t-2 border-[#e6d4a5]">
+              <form onSubmit={handleSearchSubmit} className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="GIFT SETS...."
+                  className="w-full bg-[#fdfaf3] border-b border-gray-300 text-gray-700 placeholder-gray-400 text-lg tracking-wide px-12 py-3 focus:outline-none"
+                />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />
+                <button
+                  type="submit"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 text-xl"
+                >
+                  ✕
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div>
+          <nav className="px-4 py-4 flex items-center justify-between">
+            <Link to="/">
+              <img src={logo} alt="Sparklore Logo" className="h-12 object-contain" />
+            </Link>
+            <div className="flex items-center gap-4">
+              <Search 
+                className="w-5 h-5 cursor-pointer" 
+                onClick={() => setShowSearchBar(!showSearchBar)} 
+              />
+              {isLoggedInState ? (
+                <LogOut 
+                  className="w-5 h-5 cursor-pointer hover:text-[#b87777]" 
+                  onClick={() => setShowLogoutConfirm(true)}
+                  title="Logout"
+                />
+              ) : (
+                <Link to="/login">
+                  <User className="w-5 h-5 cursor-pointer hover:text-[#b87777]" />
+                </Link>
+              )}
+              <ShoppingBag 
+                className="w-5 h-5 cursor-pointer" 
+                onClick={handleCartClick} 
+              />
+              <Menu 
+                className="w-6 h-6 cursor-pointer" 
+                onClick={() => setDrawerOpen(true)}
+              />
+            </div>
+          </nav>
+
+          {showSearchBar && (
+            <div className="px-4 pt-2 pb-4 animate-fadeIn border-t-2 border-[#e6d4a5]">
+              <form onSubmit={handleSearchSubmit} className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="GIFT SETS...."
+                  className="w-full bg-[#fdfaf3] border-b border-gray-300 text-gray-700 placeholder-gray-400 text-lg tracking-wide px-12 py-3 focus:outline-none"
+                />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />
+                <button
+                  type="submit"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 text-xl"
+                >
+                  ✕
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      )}
+
 
       {/* Use CartDrawer */}
-           <div className="text-start text-black">
-            <CartDrawer
-              open={drawerCartOpen}
-              onClose={() => setDrawerCartOpen(false)}
-              cartItems={cartItems}
-              isLoadingCart={isLoadingCart}
-              cartError={cartError}
-              handleQuantityChange={handleQuantityChange}
-              toggleItemSelection={toggleItemSelection}
-              toggleSelectAll={toggleSelectAll}
-              formatPrice={formatPrice}
-              calculateTotal={calculateTotal}
-              showDeleteConfirm={showDeleteConfirm}
-              itemToDelete={itemToDelete}
-              handleConfirmDelete={handleConfirmDelete}
-              setShowDeleteConfirm={setShowDeleteConfirm}
-              setItemToDelete={setItemToDelete}
-              setSnackbarMessage={setSnackbarMessage}
-              setSnackbarType={setSnackbarType}
-              setShowSnackbar={setShowSnackbar}
-            />
-           </div>
-
-
-      {/* Mobile Layout */}
-      <div className="md:hidden">
-        <nav className="px-4 py-4 flex items-center justify-between">
-          <Link to="/">
-            <img src={logo} alt="Sparklore Logo" className="h-12 object-contain" />
-          </Link>
-          <div className="flex items-center gap-4">
-            <Search 
-              className="w-5 h-5 cursor-pointer" 
-              onClick={() => setShowSearchBar(!showSearchBar)} 
-            />
-            {isLoggedInState ? (
-              <LogOut 
-                className="w-5 h-5 cursor-pointer hover:text-[#b87777]" 
-                onClick={() => setShowLogoutConfirm(true)}
-                title="Logout"
-              />
-            ) : (
-              <Link to="/login">
-                <User className="w-5 h-5 cursor-pointer hover:text-[#b87777]" />
-              </Link>
-            )}
-            <ShoppingBag 
-              className="w-5 h-5 cursor-pointer" 
-              onClick={handleCartClick} 
-            />
-            <Menu 
-              className="w-6 h-6 cursor-pointer" 
-              onClick={() => setDrawerOpen(true)}
-            />
-          </div>
-        </nav>
-
-        {/* Mobile Search Bar */}
-        {showSearchBar && (
-          <div className="px-4 pt-2 pb-4 animate-fadeIn border-t-2 border-[#e6d4a5]">
-            <form onSubmit={handleSearchSubmit} className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="GIFT SETS...."
-                className="w-full bg-[#fdfaf3] border-b border-gray-300 text-gray-700 placeholder-gray-400 text-lg tracking-wide px-12 py-3 focus:outline-none"
-              />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />
-              <button
-                type="submit"
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 text-xl"
-              >
-                ✕
-              </button>
-            </form>
-          </div>
-        )}
+      <div className="text-start text-black">
+      <CartDrawer
+        open={drawerCartOpen}
+        onClose={() => setDrawerCartOpen(false)}
+        cartItems={cartItems}
+        isLoadingCart={isLoadingCart}
+        cartError={cartError}
+        handleQuantityChange={handleQuantityChange}
+        toggleItemSelection={toggleItemSelection}
+        toggleSelectAll={toggleSelectAll}
+        formatPrice={formatPrice}
+        calculateTotal={calculateTotal}
+        showDeleteConfirm={showDeleteConfirm}
+        itemToDelete={itemToDelete}
+        handleConfirmDelete={handleConfirmDelete}
+        setShowDeleteConfirm={setShowDeleteConfirm}
+        setItemToDelete={setItemToDelete}
+        setSnackbarMessage={setSnackbarMessage}
+        setSnackbarType={setSnackbarType}
+        setShowSnackbar={setShowSnackbar}
+      />
       </div>
 
-      {/* Mobile Drawer */}
       {drawerOpen && (
-        <div className="md:hidden fixed inset-0 z-50 bg-stone-500/30">
+        <div className="fixed inset-0 z-50 bg-stone-500/30">
           <div 
             className="absolute right-0 h-full w-4/5 max-w-xs bg-[#fdfaf3] p-4 shadow-lg"
             style={{ animation: 'slideIn 0.3s ease-out' }}
           >
             <div className="flex justify-between items-center mb-8">
-              {/* <button className="flex items-center border rounded-full text-xs font-medium">
-                <span className="px-3 py-1 bg-white rounded-l-full">EN</span>
-                <span className="px-3 py-1 bg-[#e6d4a5] rounded-r-full">ID</span>
-              </button> */}
               <div className="p-[3rem]"></div>
               <button 
                 className="text-gray-700 text-2xl"
@@ -675,7 +675,7 @@ const NavBar_GiftSets = () => {
           </div>
         </div>
       )}
-
+      
       <style jsx>{`
         /* Custom checkbox styling */
         input[type="checkbox"] {

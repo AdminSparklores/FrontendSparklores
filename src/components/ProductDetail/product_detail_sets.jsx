@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { BASE_URL, isLoggedIn, addToCart } from "../../utils/api.js";
+import { BASE_URL, isLoggedIn, addToCart, getAuthData } from "../../utils/api.js";
 import Snackbar from '../snackbar.jsx';
 
 // Helper: format IDR currency
@@ -38,6 +38,9 @@ const ProductDetailSets = () => {
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarType, setSnackbarType] = useState('success');
+  const [showPopup, setShowPopup] = useState(false);
+  const [showNote, setShowNote] = useState(false);
+  const [note, setNote] = useState('');
 
   // Touch handling for swipe
   const touchStartX = useRef(null);
@@ -91,6 +94,37 @@ const ProductDetailSets = () => {
     fetchGiftSet();
   }, [productId]);
 
+  const handleNoteSubmit = async (addMessage) => {
+    try {
+      const authData = getAuthData();
+      if (!authData) throw new Error('Not authenticated');
+
+      // Add to cart with the message (or null if skipping)
+      await addToCart(null, { 
+        gift_set: productId,
+        quantity: 1,
+        message: addMessage ? note : null
+      });
+
+      setShowNote(false);
+      setShowPopup(false);
+      setNote('');
+
+      setSnackbarMessage(
+        addMessage 
+          ? 'Gift set added to cart with message!' 
+          : 'Gift set added to cart!'
+      );
+      setSnackbarType('success');
+      setShowSnackbar(true);
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      setSnackbarMessage(error.message || 'Failed to add to cart');
+      setSnackbarType('error');
+      setShowSnackbar(true);
+    }
+  };
+
   // Handler for Add to Cart (checks login)
   const handleAddToCart = async () => {
     if (!isLoggedIn()) {
@@ -98,16 +132,9 @@ const ProductDetailSets = () => {
       return;
     }
 
-    try {
-      await addToCart(null, { gift_set: productId, quantity: 1 });
-      setSnackbarMessage('Gift set added to cart!');
-      setSnackbarType('success');
-      setShowSnackbar(true);
-    } catch (error) {
-      setSnackbarMessage(error.message || 'Failed to add gift set to cart');
-      setSnackbarType('error');
-      setShowSnackbar(true);
-    }
+    // Show the message popup first
+    setShowPopup(true);
+    setShowNote(true);
   };
 
   const handleCloseLoginPrompt = () => setShowLoginPrompt(false);
@@ -235,6 +262,44 @@ const ProductDetailSets = () => {
         onClose={() => setShowSnackbar(false)}
         type={snackbarType}
       />
+
+      {/* Popup Overlay */}
+      {showPopup && (
+        <>
+          {showNote && (
+            <div className="fixed inset-0 flex items-center justify-center bg-[rgba(0,0,0,0.8)] z-50">
+              <div className="bg-[#fdfaf3] p-6 rounded-2xl border-2 border-black text-center max-w-lg w-full">
+                <h2 className="text-2xl font-semibold text-[#3b322c]">Make It Extra Special</h2>
+                <p className="mt-2 text-[#3b322c]">Write a special notes for someone you love!</p>
+
+                <textarea
+                  maxLength={65}
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Write it and we'll deliver!"
+                  className="w-full mt-4 p-4 border border-[#e9d6a9] rounded-md bg-transparent text-[#3b322c] placeholder-[#3b322c] h-40 resize-none"
+                ></textarea>
+                <div className="text-right text-sm text-[#3b322c]">{note.length}/65</div>
+
+                <div className="flex gap-4 justify-center mt-4">
+                  <button 
+                    onClick={() => handleNoteSubmit(true)} 
+                    className="bg-[#e9d6a9] text-[#3b322c] font-medium py-2 px-6 rounded-md"
+                  >
+                    Add with Message
+                  </button>
+                  <button 
+                    onClick={() => handleNoteSubmit(false)} 
+                    className="border border-[#e9d6a9] text-[#3b322c] font-medium py-2 px-6 rounded-md"
+                  >
+                    Skip Message
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       <div className="max-w-7xl mx-auto px-6 md:px-16 py-10 font-serif text-[#2d2a26]">
         {/* Breadcrumb */}
