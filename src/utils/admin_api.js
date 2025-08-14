@@ -160,3 +160,29 @@ export const createLabels = (orderIds) => {
 //   }).then(handleResponse);
 // }
 
+
+// JNT Cancel API - Enhanced with dynamic remark
+export const cancelJntOrder = (orderId, remark) => {
+  const authData = getAuthData();
+  if (!authData || !authData.token) {
+    return Promise.reject({ status: 401, detail: "Not authenticated" });
+  }
+
+  const payload = {
+    detail: {
+      username: "SPARKLORE",
+      api_key: "SYKNQV",
+      orderid: orderId,
+      remark: remark || "Canceled by user" // Use passed remark
+    }
+  };
+
+  return fetch(`${BASE}/jnt/cancel/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${authData.token}`
+    },
+    body: JSON.stringify(payload)
+  }).then(handleResponse);
+};

@@ -2,7 +2,7 @@ import OrderRow from "./OrderRow";
 
 export default function OrderTable({
   orders, products, giftSets, charms,
-  status, selectedIds, onCheck, onCheckAll
+  status, selectedIds, onCheck, onCheckAll, onCancelOrder, isCanceling  
 }) {
   return (
     <div className="bg-white rounded-xl border border-[#e5cfa4] shadow overflow-x-auto mt-4">
@@ -43,6 +43,9 @@ export default function OrderTable({
               showCheckbox={status === "awaiting_shipment" || status === "collection"}
               checked={selectedIds.includes(order.id)}
               onCheck={onCheck}
+              status={status}
+              isCanceling={isCanceling} 
+              handleCancelOrder={onCancelOrder}
             />
           ))}
         </tbody>

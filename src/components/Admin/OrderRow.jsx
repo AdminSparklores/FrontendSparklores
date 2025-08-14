@@ -6,7 +6,7 @@ import { timeAgo, shortProductName } from "../../utils/orderHelpers";
 
 export default function OrderRow({
   order, products, giftSets, charms,
-  showCheckbox, checked, onCheck
+  showCheckbox, checked, onCheck, status, isCanceling, handleCancelOrder
 }) {
   const [showProductPopup, setShowProductPopup] = useState(false);
   const [showMessagePopup, setShowMessagePopup] = useState(false);
@@ -67,8 +67,27 @@ export default function OrderRow({
           )}
         </td>
         <td className="px-4 py-3">
-          <StatusBadge status={order.fulfillment_status} />
+          <div className="flex items-center gap-2">
+            <StatusBadge status={order.fulfillment_status} />
+
+            {/* Show Cancel Button only in Awaiting Shipment tab and for eligible statuses */}
+            {(order.fulfillment_status === "pending" || order.fulfillment_status === "awaiting_shipment") && 
+            status === "awaiting_shipment" && (
+              <button
+                onClick={() => handleCancelOrder(order.id)}
+                className="px-3 py-1 text-xs font-semibold rounded-lg 
+                          bg-red-600 text-white 
+                          hover:bg-red-700 
+                          disabled:bg-red-300 disabled:cursor-not-allowed 
+                          transition-colors"
+                disabled={isCanceling}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
         </td>
+
       </tr>
 
       {showProductPopup && (
