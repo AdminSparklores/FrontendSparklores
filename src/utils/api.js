@@ -1,7 +1,7 @@
 // src/api.js
 // export const BASE_URL_LOCAL = 'http://localhost:8000';
 // export const BASE_URL = 'http://192.168.1.4:8000';
-export const BASE_URL = 'https://sparkloreofficial.com';
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Helper function to store auth data
 const storeAuthData = (data) => {
@@ -624,5 +624,31 @@ export const fetchRecentGalleryImages = async () => {
   } catch (error) {
     console.error("Error fetching recent gallery images:", error);
     throw error; // Rethrow the error for handling in the component
+  }
+};
+
+
+// Add to api.js
+export const trackOrder = async (awb) => {
+  try {
+    const response = await fetch(`${BASE_URL}/api/track-order/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        awb: awb,
+        eccompanyid: "SPARKLORE"
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to track order');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error tracking order:', error);
+    throw error;
   }
 };

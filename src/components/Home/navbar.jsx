@@ -547,6 +547,14 @@ const NavBar = () => {
                 className="w-5 h-5 cursor-pointer" 
                 onClick={handleCartClick} 
               />
+              {userDetails?.is_staff && (
+                <Link 
+                  to="/admin/dashboard" 
+                  className="inline-block px-4 py-2 text-sm font-medium text-white bg-[#b87777] rounded shadow-md hover:bg-[#a06666] transition duration-200 focus:outline-none focus:ring-2 focus:ring-[#b87777] focus:ring-opacity-50"
+                >
+                  Admin Dashboard
+                </Link>
+              )}
             </div>
           </nav>
 
@@ -616,6 +624,14 @@ const NavBar = () => {
                 className="w-5 h-5 cursor-pointer" 
                 onClick={handleCartClick} 
               />
+              {userDetails?.is_staff && (
+                <Link 
+                  to="/admin/dashboard" 
+                  className="inline-block px-4 py-2 text-sm font-medium text-white bg-[#b87777] rounded shadow-md hover:bg-[#a06666] transition duration-200 focus:outline-none focus:ring-2 focus:ring-[#b87777] focus:ring-opacity-50"
+                >
+                  Admin
+                </Link>
+              )}
               <Menu 
                 className="w-6 h-6 cursor-pointer" 
                 onClick={() => setDrawerOpen(true)}

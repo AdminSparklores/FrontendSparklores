@@ -42,6 +42,7 @@ import AdminDashboardAndOrder from './pages/Admin/dashboard.jsx'
 import AdminDiscount from './pages/Admin/discount_campaign.jsx'
 import AdminBanner from './pages/Admin/page_banner.jsx'
 import AdminGallery from './pages/Admin/photo_gallery.jsx'
+import PaymentProcessing from './pages/PaymentProcessing.jsx'
 
 const router = createBrowserRouter([
   {path:"/", element: <Home/>},
@@ -63,7 +64,8 @@ const router = createBrowserRouter([
   {path:"/checkout/payment", element: <FinalCheckoutPage />},
   {path:"/checkout/virtual-account", element: <FinalCheckoutVAPage/>},
   {path:"/checkout/qris", element: <FinalCheckoutQRISPage/>},
-  {path:"/track-order", element: <TrackingOrder />},
+  // {path:"/track-order", element: <TrackingOrder />},
+  {path:"/track-order/:trackingNumber", element: <TrackingOrder />},
   {path:"/new-arrival", element: <NewArrival />},
   {path:"/jewel-set", element: <JewelSet />},
   {path:"/search", element: <Search />},
@@ -74,6 +76,7 @@ const router = createBrowserRouter([
   {path:"/refund", element: <RefundPage />},
   {path:"/monthly-specials", element: <MonthlySpecials />},
   { path: "/review", element: <UserReviewPage /> },
+  { path: '/payment-processing', element: <PaymentProcessing />},
 
   // admin pages
   { path: "/admin/products", element: <AdminProducts /> },

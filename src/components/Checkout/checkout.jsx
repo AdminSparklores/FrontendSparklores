@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from "react-router-dom";
 import { fetchProduct, fetchCharm, BASE_URL, getAuthData } from '../../utils/api';
 
@@ -40,6 +40,16 @@ const CheckoutPage = () => {
   const [newsletterError, setNewsletterError] = useState("");
   const [formError, setFormError] = useState(null);
   const [formTouched, setFormTouched] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isShowingLoader, setIsShowingLoader] = useState(false);
+  const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
+  const orderDataRef = useRef(null);
+  const [midtransToken, setMidtransToken] = useState(null);
+  const [isPaymentStarted, setIsPaymentStarted] = useState(false);
+  
+
+  // New Page For Payment
+  const [isRedirectingToPayment, setIsRedirectingToPayment] = useState(false);
 
   // Check newsletter subscription when email changes
   useEffect(() => {
@@ -283,88 +293,443 @@ const CheckoutPage = () => {
   };
 
   // Process payment with Midtrans
+  // const processPayment = async () => {
+  //   setIsProcessingPayment(true);
+  //   setPaymentError(null);
+
+  //   try {
+  //     // First create the order
+  //     const orderData = await createOrder();
+      
+  //     // Prepare item details for Midtrans
+  //     const itemDetails = cartItems.map(item => {
+  //       let prefix = '';
+  //       if (item.source_type === 'product') prefix = 'PID-';
+  //       else if (item.source_type === 'gift_set') prefix = 'GSID-';
+  //       else if (item.source_type === 'charms_only') prefix = 'CID-';
+        
+  //       return {
+  //         id: `${prefix}${item.id}`,
+  //         name: item.name,
+  //         price: item.price,
+  //         quantity: item.quantity
+  //       };
+  //     });
+
+  //     // Add shipping as an item if shipping fee > 0
+  //     if (shippingFee > 0) {
+  //       itemDetails.push({
+  //         id: 'SHIPPING',
+  //         name: 'Shipping Fee',
+  //         price: shippingFee,
+  //         quantity: 1
+  //       });
+  //     }
+
+  //     // Prepare payload for Midtrans
+  //     const payload = {
+  //       order_id: orderData.order_id.toString(),
+  //       gross_amount: orderData.total_price + shippingFee,
+  //       email: shippingAddress.email,
+  //       first_name: shippingAddress.first_name,
+  //       last_name: shippingAddress.last_name,
+  //       phone: shippingAddress.phone,
+  //       address: shippingAddress.address,
+  //       city: shippingAddress.city,
+  //       postal_code: shippingAddress.postal_code,
+  //       country: "IDN",
+  //       item_details: itemDetails
+  //     };
+
+  //     console.log('Sending to /api/midtrans/token/:', payload);
+
+  //     const response = await fetch(`${BASE_URL}/api/midtrans/token/`, {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         'Authorization': `Bearer ${getAuthData()?.token}`
+  //       },
+  //       body: JSON.stringify(payload)
+  //     });
+
+  //     console.log('Response from /api/midtrans/token/:', response);
+
+  //     if (!response.ok) {
+  //       const errorData = await response.json().catch(() => ({}));
+  //       console.error('Error response from /api/midtrans/token/:', errorData);
+  //       throw new Error(errorData.message || "Failed to process payment");
+  //     }
+
+  //     const paymentData = await response.json();
+  //     console.log('Data from /api/midtrans/token/:', paymentData);
+      
+  //     // Redirect to Midtrans payment page
+  //     window.location.href = paymentData.redirect_url;
+      
+  //   } catch (error) {
+  //     console.error('Error in processPayment:', error);
+  //     setPaymentError(error.message);
+  //   } finally {
+  //     setIsProcessingPayment(false);
+  //   }
+  // };
+
+  useEffect(() => {
+    const script = document.createElement('script');
+    // Force production URL since sandbox is giving 404 errors
+    script.src = 'https://app.midtrans.com/snap/snap.js';
+    script.setAttribute('data-client-key', "Mid-client-SRDTyOygqxWGAyy7");
+    script.async = true;
+
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  // const processPayment = async () => {
+  //   setIsProcessingPayment(true);
+  //   setPaymentError(null);
+  //   setIsRedirectingToPayment(false);
+
+
+  //   try {
+  //     // First create the order
+  //     const orderData = await createOrder();
+      
+  //     // Prepare item details for Midtrans
+  //     const itemDetails = cartItems.map(item => {
+  //       let prefix = '';
+  //       if (item.source_type === 'product') prefix = 'PID-';
+  //       else if (item.source_type === 'gift_set') prefix = 'GSID-';
+  //       else if (item.source_type === 'charms_only') prefix = 'CID-';
+        
+  //       // Truncate name to 50 characters max for Midtrans
+  //       const truncatedName = item.name.length > 50 
+  //         ? `${item.name.substring(0, 47)}...` 
+  //         : item.name;
+        
+  //       // Ensure price is an integer (Midtrans requirement)
+  //       const price = Math.round(item.price);
+        
+  //       return {
+  //         id: `${prefix}${item.id}`,
+  //         name: truncatedName,
+  //         price: price,
+  //         quantity: item.quantity
+  //       };
+  //     });
+
+  //     // Add shipping as an item if shipping fee > 0
+  //     if (shippingFee > 0) {
+  //       itemDetails.push({
+  //         id: 'SHIPPING',
+  //         name: 'Shipping',
+  //         price: Math.round(shippingFee),
+  //         quantity: 1
+  //       });
+  //     }
+
+  //     // Calculate the exact total from items
+  //     const itemsTotal = itemDetails.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+  //     // Prepare payload for Midtrans
+  //     const payload = {
+  //       order_id: orderData.order_id.toString(),
+  //       gross_amount: itemsTotal, // Use calculated total
+  //       email: shippingAddress.email,
+  //       first_name: shippingAddress.first_name,
+  //       last_name: shippingAddress.last_name,
+  //       phone: shippingAddress.phone,
+  //       address: shippingAddress.address,
+  //       city: shippingAddress.city,
+  //       postal_code: shippingAddress.postal_code,
+  //       country: "IDN",
+  //       item_details: itemDetails
+  //     };
+
+  //     console.log('Sending to /api/midtrans/token/:', payload);
+
+  //     const response = await fetch(`${BASE_URL}/api/midtrans/token/`, {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         'Authorization': `Bearer ${getAuthData()?.token}`
+  //       },
+  //       body: JSON.stringify(payload)
+  //     });
+
+  //     if (!response.ok) {
+  //       const errorData = await response.json().catch(() => ({}));
+  //       console.error('Error response from /api/midtrans/token/:', errorData);
+  //       throw new Error(errorData.error || errorData.message || "Failed to process payment");
+  //     }
+
+  //     const paymentData = await response.json();
+  //     console.log('Data from /api/midtrans/token/:', paymentData);
+
+  //     // Set redirecting state and navigate to loading page
+  //     setIsRedirectingToPayment(true);
+  //     navigate('/payment-processing', { state: { orderId: orderData.order_id } });
+      
+  //     // Redirect to Midtrans payment page
+  //     // window.location.href = paymentData.redirect_url;
+  //     window.open(paymentData.redirect_url, '_blank');
+      
+  //   } catch (error) {
+  //     console.error('Error in processPayment:', error);
+  //     setPaymentError(error.message || "Failed to process payment. Please try again.");
+  //   } finally {
+  //     setIsProcessingPayment(false);
+  //   }
+  // };
+
+  // Validation function for all required fields
+  
+  // const processPayment = async () => {
+  //   setIsProcessingPayment(true);
+  //   setPaymentError(null);
+
+  //   try {
+  //     setIsShowingLoader(true);
+  //     setShowConfirmModal(false);
+  //     // First create the order
+  //     const orderData = await createOrder();
+  //     orderDataRef.current = orderData;
+      
+  //     // Prepare item details for Midtrans
+  //     const itemDetails = cartItems.map(item => {
+  //       let prefix = '';
+  //       if (item.source_type === 'product') prefix = 'PID-';
+  //       else if (item.source_type === 'gift_set') prefix = 'GSID-';
+  //       else if (item.source_type === 'charms_only') prefix = 'CID-';
+        
+  //       // Truncate name to 50 characters max for Midtrans
+  //       const truncatedName = item.name.length > 50 
+  //         ? `${item.name.substring(0, 47)}...` 
+  //         : item.name;
+        
+  //       // Ensure price is an integer (Midtrans requirement)
+  //       const price = Math.round(item.price);
+        
+  //       return {
+  //         id: `${prefix}${item.id}`,
+  //         name: truncatedName,
+  //         price: price,
+  //         quantity: item.quantity
+  //       };
+  //     });
+
+  //     // Add shipping as an item if shipping fee > 0
+  //     if (shippingFee > 0) {
+  //       itemDetails.push({
+  //         id: 'SHIPPING',
+  //         name: 'Shipping',
+  //         price: Math.round(shippingFee),
+  //         quantity: 1
+  //       });
+  //     }
+
+  //     // Calculate the exact total from items
+  //     const itemsTotal = itemDetails.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+  //     // Prepare payload for Midtrans
+  //     const payload = {
+  //       order_id: orderData.order_id.toString(),
+  //       gross_amount: itemsTotal, // Use calculated total
+  //       email: shippingAddress.email,
+  //       first_name: shippingAddress.first_name,
+  //       last_name: shippingAddress.last_name,
+  //       phone: shippingAddress.phone,
+  //       address: shippingAddress.address,
+  //       city: shippingAddress.city,
+  //       postal_code: shippingAddress.postal_code,
+  //       country: "IDN",
+  //       item_details: itemDetails
+  //     };
+
+  //     console.log('Sending to /api/midtrans/token/:', payload);
+
+  //     const response = await fetch(`${BASE_URL}/api/midtrans/token/`, {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         'Authorization': `Bearer ${getAuthData()?.token}`
+  //       },
+  //       body: JSON.stringify(payload)
+  //     });
+
+  //     if (!response.ok) {
+  //       const errorData = await response.json().catch(() => ({}));
+  //       console.error('Error response from /api/midtrans/token/:', errorData);
+  //       throw new Error(errorData.error || errorData.message || "Failed to process payment");
+  //     }
+
+  //     const paymentData = await response.json();
+  //     console.log('Data from /api/midtrans/token/:', paymentData);
+
+  //     // Check if snap.js is loaded
+  //     if (typeof window.snap === 'undefined') {
+  //       throw new Error('Payment gateway failed to load');
+  //     }
+
+  //     console.log('Midtrans token:', paymentData.token);
+    
+  //   // Force production environment
+  //   window.snap.pay(paymentData.token, {
+  //     onSuccess: (result) => {
+  //       console.log('Payment success', result);
+  //       navigate('/payment-success', { state: { orderId: orderData.order_id } });
+  //     },
+  //     onPending: (result) => {
+  //       console.log('Payment pending', result);
+  //       navigate('/payment-pending', { state: { orderId: orderData.order_id } });
+  //     },
+  //     onError: (error) => {
+  //       console.log('Payment error', error);
+  //       setPaymentError('Payment failed. Please try again.');
+  //       setIsShowingLoader(false);
+  //     },
+  //     onClose: () => {
+  //       console.log('User closed Midtrans popup');
+  //       setIsShowingLoader(false);
+  //       setShowCancelConfirmation(true);
+  //     }
+  //   });
+
+  //   } catch (error) {
+  //     console.error('Payment process error:', error);
+  //     setPaymentError(error.message || "Something went wrong.");
+  //     setIsShowingLoader(false);
+  //   } finally {
+  //     setIsProcessingPayment(false);
+  //   }
+  // };
+
   const processPayment = async () => {
     setIsProcessingPayment(true);
     setPaymentError(null);
 
     try {
-      // First create the order
-      const orderData = await createOrder();
-      
-      // Prepare item details for Midtrans
-      const itemDetails = cartItems.map(item => {
-        let prefix = '';
-        if (item.source_type === 'product') prefix = 'PID-';
-        else if (item.source_type === 'gift_set') prefix = 'GSID-';
-        else if (item.source_type === 'charms_only') prefix = 'CID-';
-        
-        return {
-          id: `${prefix}${item.id}`,
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity
-        };
-      });
+      setIsShowingLoader(true);
+      setShowConfirmModal(false);
 
-      // Add shipping as an item if shipping fee > 0
-      if (shippingFee > 0) {
-        itemDetails.push({
-          id: 'SHIPPING',
-          name: 'Shipping Fee',
-          price: shippingFee,
-          quantity: 1
+      let orderData = orderDataRef.current;
+      let token = midtransToken;
+
+      // Step 1: Only create order & fetch token if not already done
+      if (!orderData || !token) {
+        // Create order if not already created
+        if (!orderData) {
+          orderData = await createOrder();
+          orderDataRef.current = orderData;
+        }
+
+        // Fetch Midtrans token if not already fetched
+        const itemDetails = cartItems.map(item => {
+          let prefix = '';
+          if (item.source_type === 'product') prefix = 'PID-';
+          else if (item.source_type === 'gift_set') prefix = 'GSID-';
+          else if (item.source_type === 'charms_only') prefix = 'CID-';
+
+          const truncatedName = item.name.length > 50 
+            ? `${item.name.substring(0, 47)}...` 
+            : item.name;
+
+          const price = Math.round(item.price);
+
+          return {
+            id: `${prefix}${item.id}`,
+            name: truncatedName,
+            price: price,
+            quantity: item.quantity
+          };
         });
+
+        if (shippingFee > 0) {
+          itemDetails.push({
+            id: 'SHIPPING',
+            name: 'Shipping',
+            price: Math.round(shippingFee),
+            quantity: 1
+          });
+        }
+
+        const itemsTotal = itemDetails.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+        const payload = {
+          order_id: orderData.order_id.toString(),
+          gross_amount: itemsTotal,
+          email: shippingAddress.email,
+          first_name: shippingAddress.first_name,
+          last_name: shippingAddress.last_name,
+          phone: shippingAddress.phone,
+          address: shippingAddress.address,
+          city: shippingAddress.city,
+          postal_code: shippingAddress.postal_code,
+          country: "IDN",
+          item_details: itemDetails
+        };
+
+        const response = await fetch(`${BASE_URL}/api/midtrans/token/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getAuthData()?.token}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || errorData.message || "Failed to process payment");
+        }
+
+        const paymentData = await response.json();
+        token = paymentData.token;
+        setMidtransToken(token); // Cache token
       }
 
-      // Prepare payload for Midtrans
-      const payload = {
-        order_id: orderData.order_id.toString(),
-        gross_amount: orderData.total_price + shippingFee,
-        email: shippingAddress.email,
-        first_name: shippingAddress.first_name,
-        last_name: shippingAddress.last_name,
-        phone: shippingAddress.phone,
-        address: shippingAddress.address,
-        city: shippingAddress.city,
-        postal_code: shippingAddress.postal_code,
-        country: "IDN",
-        item_details: itemDetails
-      };
+      // Step 2: Use cached token to open Midtrans popup
+      if (typeof window.snap === 'undefined') {
+        throw new Error('Payment gateway failed to load');
+      }
 
-      console.log('Sending to /api/midtrans/token/:', payload);
+      console.log('Reusing Midtrans token:', token);
 
-      const response = await fetch(`${BASE_URL}/api/midtrans/token/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthData()?.token}`
+      window.snap.pay(token, {
+        onSuccess: (result) => {
+          console.log('Payment success', result);
+          navigate('/payment-success', { state: { orderId: orderData.order_id } });
         },
-        body: JSON.stringify(payload)
+        onPending: (result) => {
+          console.log('Payment pending', result);
+          navigate('/payment-pending', { state: { orderId: orderData.order_id } });
+        },
+        onError: (error) => {
+          console.log('Payment error', error);
+          setPaymentError('Payment failed. Please try again.');
+          setIsShowingLoader(false);
+        },
+        onClose: () => {
+          console.log('User closed Midtrans popup');
+          setIsShowingLoader(false);
+          setShowCancelConfirmation(true);
+          // Do NOT clear token here — let user retry
+        }
       });
 
-      console.log('Response from /api/midtrans/token/:', response);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Error response from /api/midtrans/token/:', errorData);
-        throw new Error(errorData.message || "Failed to process payment");
-      }
-
-      const paymentData = await response.json();
-      console.log('Data from /api/midtrans/token/:', paymentData);
-      
-      // Redirect to Midtrans payment page
-      window.location.href = paymentData.redirect_url;
-      
     } catch (error) {
-      console.error('Error in processPayment:', error);
-      setPaymentError(error.message);
+      console.error('Payment process error:', error);
+      setPaymentError(error.message || "Something went wrong.");
+      setIsShowingLoader(false);
     } finally {
       setIsProcessingPayment(false);
-    }
+    };
   };
-
-  // Validation function for all required fields
+  
+  
   const isFormValid = () => {
     const requiredFields = [
       'first_name', 'last_name', 'email', 'phone', 
@@ -403,7 +768,26 @@ const CheckoutPage = () => {
       return;
     }
     setFormError(null);
-    processPayment();
+    setShowConfirmModal(true); // Show confirmation modal
+  };
+
+  const handleConfirmOrder = () => {
+    setIsPaymentStarted(true); // Lock the form
+    processPayment(); // proceed with payment
+  };
+
+  const handleCancelOrder = () => {
+    setShowConfirmModal(false);
+  };
+
+ const handleConfirmCancel = () => {
+    setShowCancelConfirmation(false);
+    navigate('/'); // ✅ Goes to homepage as defined in main.jsx
+  };
+
+  const handleKeepShopping = () => {
+    setShowCancelConfirmation(false);
+    // That's all — do nothing else
   };
 
   useEffect(() => {
@@ -443,6 +827,75 @@ const CheckoutPage = () => {
   return (
     <div className="min-h-screen bg-[#fdfaf3] p-6 text-[#3b322c]">
       <div className="max-w-6xl mx-auto">
+        
+        
+        {showConfirmModal && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full mx-4">
+              <h3 className="text-lg font-semibold mb-4">Confirm Your Order</h3>
+              <p className="text-sm text-gray-600 mb-6">
+                You will not be able to change your order after placing it. 
+                Are you sure you want to proceed?
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={handleCancelOrder}
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 
+                            hover:bg-gray-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmOrder}
+                  className="px-4 py-2 rounded-lg bg-[#e9d6a9] text-black 
+                            hover:bg-[#c4b182] transition-colors shadow-sm"
+                >
+                  Confirm Order
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+
+        {/* Loading Spinner */}
+        {isShowingLoader && (
+          <div className="fixed inset-0 bg-black/30 bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-lg flex flex-col items-center">
+              <div className="w-10 h-10 border-4 border-t-[#e9d6a9] border-gray-200 rounded-full animate-spin mb-4"></div>
+              <p className="text-gray-700">Processing your order...</p>
+            </div>
+          </div>
+        )}
+
+        {showCancelConfirmation && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full mx-4">
+              <h3 className="text-lg font-semibold mb-4 text-gray-900">Cancel Order?</h3>
+              <p className="text-sm text-gray-600 mb-6">
+                Are you sure you want to cancel your order? You won&apos;t be able to recover it.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={handleKeepShopping}
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 
+                            hover:bg-gray-100 transition-colors"
+                >
+                  Continue Checkout
+                </button>
+                <button
+                  onClick={handleConfirmCancel}
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white 
+                            hover:bg-red-700 transition-colors shadow-sm"
+                >
+                  Yes, Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+
         <nav className="text-sm text-[#c9c3bc] mb-4">
           Home {'>'} Your Cart {'>'} <span className="text-[#3b322c] font-medium">Checkout</span>
         </nav>
@@ -464,8 +917,13 @@ const CheckoutPage = () => {
                     value={shippingAddress.first_name}
                     onChange={handleAddressChange}
                     placeholder="First Name *"
-                    className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 mb-3 bg-[#fdfaf3]"
+                    className={`w-full border rounded-md px-4 py-2 mb-3 bg-[#fdfaf3] ${
+                      isPaymentStarted 
+                        ? 'border-gray-200 cursor-not-allowed text-gray-500' 
+                        : 'border-[#f2e9d5]'
+                    }`}
                     required
+                    disabled={isPaymentStarted} 
                   />
                   <input
                     type="text"
@@ -473,8 +931,13 @@ const CheckoutPage = () => {
                     value={shippingAddress.last_name}
                     onChange={handleAddressChange}
                     placeholder="Last Name *"
-                    className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 mb-3 bg-[#fdfaf3]"
+                    className={`w-full border rounded-md px-4 py-2 mb-3 bg-[#fdfaf3] ${
+                      isPaymentStarted 
+                        ? 'border-gray-200 cursor-not-allowed text-gray-500' 
+                        : 'border-[#f2e9d5]'
+                    }`}
                     required
+                    disabled={isPaymentStarted} 
                   />
                 </div>
                 <input
@@ -483,8 +946,13 @@ const CheckoutPage = () => {
                   value={shippingAddress.email}
                   onChange={handleAddressChange}
                   placeholder="Email *"
-                  className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 mb-3 bg-[#fdfaf3]"
+                  className={`w-full border rounded-md px-4 py-2 mb-3 bg-[#fdfaf3] ${
+                      isPaymentStarted 
+                        ? 'border-gray-200 cursor-not-allowed text-gray-500' 
+                        : 'border-[#f2e9d5]'
+                    }`}
                   required
+                  disabled={isPaymentStarted} 
                 />
                 {showNewsletterCheckbox && (
                   <label className="flex items-center text-sm">
@@ -514,8 +982,13 @@ const CheckoutPage = () => {
                   value={shippingAddress.address}
                   onChange={handleAddressChange}
                   placeholder="Address *"
-                  className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 mb-3 bg-[#fdfaf3]"
+                  className={`w-full border rounded-md px-4 py-2 mb-3 bg-[#fdfaf3] ${
+                      isPaymentStarted 
+                        ? 'border-gray-200 cursor-not-allowed text-gray-500' 
+                        : 'border-[#f2e9d5]'
+                    }`}
                   required
+                  disabled={isPaymentStarted} 
                 />
                 <input
                   type="tel"
@@ -523,8 +996,13 @@ const CheckoutPage = () => {
                   value={shippingAddress.phone}
                   onChange={handleAddressChange}
                   placeholder="Phone Number * (e.g., 08123456789)"
-                  className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 mb-3 bg-[#fdfaf3]"
+                  className={`w-full border rounded-md px-4 py-2 mb-3 bg-[#fdfaf3] ${
+                      isPaymentStarted 
+                        ? 'border-gray-200 cursor-not-allowed text-gray-500' 
+                        : 'border-[#f2e9d5]'
+                    }`}
                   required
+                  disabled={isPaymentStarted} 
                 />
                 <div className="grid grid-cols-2 gap-4">
                   <input
@@ -533,8 +1011,13 @@ const CheckoutPage = () => {
                     value={shippingAddress.city}
                     onChange={handleAddressChange}
                     placeholder="City *"
-                    className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 mb-3 bg-[#fdfaf3]"
+                    className={`w-full border rounded-md px-4 py-2 mb-3 bg-[#fdfaf3] ${
+                      isPaymentStarted 
+                        ? 'border-gray-200 cursor-not-allowed text-gray-500' 
+                        : 'border-[#f2e9d5]'
+                    }`}
                     required
+                    disabled={isPaymentStarted} 
                   />
                   <input
                     type="text"
@@ -542,8 +1025,13 @@ const CheckoutPage = () => {
                     value={shippingAddress.destAreaCode}
                     onChange={handleAddressChange}
                     placeholder="Area Code * (e.g., KALIDERES)"
-                    className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 mb-3 bg-[#fdfaf3]"
+                    className={`w-full border rounded-md px-4 py-2 mb-3 bg-[#fdfaf3] ${
+                      isPaymentStarted 
+                        ? 'border-gray-200 cursor-not-allowed text-gray-500' 
+                        : 'border-[#f2e9d5]'
+                    }`}
                     required
+                    disabled={isPaymentStarted} 
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -553,8 +1041,13 @@ const CheckoutPage = () => {
                     value={shippingAddress.province}
                     onChange={handleAddressChange}
                     placeholder="Province *"
-                    className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 mb-3 bg-[#fdfaf3]"
+                    className={`w-full border rounded-md px-4 py-2 mb-3 bg-[#fdfaf3] ${
+                      isPaymentStarted 
+                        ? 'border-gray-200 cursor-not-allowed text-gray-500' 
+                        : 'border-[#f2e9d5]'
+                    }`}
                     required
+                    disabled={isPaymentStarted} 
                   />
                   <input
                     type="text"
@@ -562,8 +1055,13 @@ const CheckoutPage = () => {
                     value={shippingAddress.postal_code}
                     onChange={handleAddressChange}
                     placeholder="Postal Code *"
-                    className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 mb-3 bg-[#fdfaf3]"
+                    className={`w-full border rounded-md px-4 py-2 mb-3 bg-[#fdfaf3] ${
+                      isPaymentStarted 
+                        ? 'border-gray-200 cursor-not-allowed text-gray-500' 
+                        : 'border-[#f2e9d5]'
+                    }`}
                     required
+                    disabled={isPaymentStarted} 
                   />
                 </div>
                 <div className="mb-3">
@@ -579,8 +1077,12 @@ const CheckoutPage = () => {
                 {/* Shipping Fee Check Button */}
                 <button
                   onClick={checkShippingFee}
-                  disabled={isCalculatingShipping || !shippingAddress.city || !shippingAddress.destAreaCode}
-                  className={`w-full bg-[#e9d6a9] py-2 rounded-md mb-3 ${isCalculatingShipping ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#e3c990]'}`}
+                  disabled={isCalculatingShipping || !shippingAddress.city || !shippingAddress.destAreaCode || isPaymentStarted}
+                  className={`w-full bg-[#e9d6a9] py-2 rounded-md mb-3 ${
+                    isCalculatingShipping || isPaymentStarted
+                      ? 'opacity-50 cursor-not-allowed'
+                      : 'hover:bg-[#e3c990]'
+                  }`}
                 >
                   {isCalculatingShipping ? 'Calculating...' : 'Check Shipping Fee'}
                 </button>
