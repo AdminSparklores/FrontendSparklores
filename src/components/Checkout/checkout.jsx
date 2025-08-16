@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from "react-router-dom";
-import { fetchProduct, fetchCharm, BASE_URL, getAuthData } from '../../utils/api';
+import { fetchProduct, fetchCharm, BASE_URL, getAuthData, fetchJNTLocations  } from '../../utils/api';
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
@@ -46,10 +46,64 @@ const CheckoutPage = () => {
   const orderDataRef = useRef(null);
   const [midtransToken, setMidtransToken] = useState(null);
   const [isPaymentStarted, setIsPaymentStarted] = useState(false);
-  
+  const [jntLocations, setJntLocations] = useState([]);
+  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
+  const [locationsError, setLocationsError] = useState(null);
+  const [showCityDropdown, setShowCityDropdown] = useState(false);
+  const [filteredLocations, setFilteredLocations] = useState([]);
+  const [areaCodeError, setAreaCodeError] = useState(null);
 
-  // New Page For Payment
-  const [isRedirectingToPayment, setIsRedirectingToPayment] = useState(false);
+  useEffect(() => {
+    const loadJNTLocations = async () => {
+      setIsLoadingLocations(true);
+      setLocationsError(null);
+      try {
+        const locations = await fetchJNTLocations();
+        setJntLocations(locations);
+        setFilteredLocations(locations); // Initialize filtered locations
+      } catch (error) {
+        console.error('Failed to load JNT locations:', error);
+        setLocationsError(error.message);
+      } finally {
+        setIsLoadingLocations(false);
+      }
+    };
+
+    loadJNTLocations();
+  }, []);
+
+  const handleCityChange = (e) => {
+    const { value } = e.target;
+    setShippingAddress(prev => ({
+      ...prev,
+      city: value,
+      destAreaCode: '' // Reset area code when city changes
+    }));
+    
+    // Filter locations based on city input
+    if (value) {
+      setFilteredLocations(filterLocationsByCity(jntLocations, value));
+    } else {
+      setFilteredLocations(jntLocations);
+    }
+    
+    setShowCityDropdown(true);
+    setFormTouched(true);
+  };
+
+  const handleCitySelect = (city) => {
+    setShippingAddress(prev => ({
+      ...prev,
+      city,
+      destAreaCode: '' // Reset area code when city changes
+    }));
+    
+    // Filter locations based on selected city
+    setFilteredLocations(filterLocationsByCity(jntLocations, city));
+    setShowCityDropdown(false);
+  };
+
+  
 
   // Check newsletter subscription when email changes
   useEffect(() => {
@@ -82,6 +136,14 @@ const CheckoutPage = () => {
   // Handle shipping address input changes
   const handleAddressChange = (e) => {
     const { name, value } = e.target;
+    
+    if (name === 'destAreaCode' && !shippingAddress.city) {
+      setAreaCodeError("Please select a city/kabupaten first");
+      return;
+    } else {
+      setAreaCodeError(null);
+    }
+
     setShippingAddress(prev => ({
       ...prev,
       [name]: value
@@ -191,9 +253,13 @@ const CheckoutPage = () => {
   };
 
   // Check shipping fee
-   const checkShippingFee = async () => {
-    if (!shippingAddress.destAreaCode || !shippingAddress.city) {
-      setShippingError("Please enter city and area code to calculate shipping");
+    const checkShippingFee = async () => {
+      if (!shippingAddress.city) {
+      setShippingError("Please select a city/kabupaten first");
+      return;
+    }
+    if (!shippingAddress.destAreaCode) {
+      setShippingError("Please select an area code");
       return;
     }
 
@@ -824,6 +890,21 @@ const CheckoutPage = () => {
     );
   }
 
+  const getUniqueCities = (locations) => {
+    const cities = new Set();
+    locations.forEach(location => {
+      cities.add(location.kabupaten_kota);
+    });
+    return Array.from(cities).sort();
+  };
+
+  const filterLocationsByCity = (locations, city) => {
+    if (!city) return locations;
+    return locations.filter(location => 
+      location.kabupaten_kota.toLowerCase().includes(city.toLowerCase())
+    );
+  };
+
   return (
     <div className="min-h-screen bg-[#fdfaf3] p-6 text-[#3b322c]">
       <div className="max-w-6xl mx-auto">
@@ -1005,34 +1086,85 @@ const CheckoutPage = () => {
                   disabled={isPaymentStarted} 
                 />
                 <div className="grid grid-cols-2 gap-4">
-                  <input
-                    type="text"
-                    name="city"
-                    value={shippingAddress.city}
-                    onChange={handleAddressChange}
-                    placeholder="City *"
-                    className={`w-full border rounded-md px-4 py-2 mb-3 bg-[#fdfaf3] ${
-                      isPaymentStarted 
-                        ? 'border-gray-200 cursor-not-allowed text-gray-500' 
-                        : 'border-[#f2e9d5]'
-                    }`}
-                    required
-                    disabled={isPaymentStarted} 
-                  />
-                  <input
-                    type="text"
-                    name="destAreaCode"
-                    value={shippingAddress.destAreaCode}
-                    onChange={handleAddressChange}
-                    placeholder="Area Code * (e.g., KALIDERES)"
-                    className={`w-full border rounded-md px-4 py-2 mb-3 bg-[#fdfaf3] ${
-                      isPaymentStarted 
-                        ? 'border-gray-200 cursor-not-allowed text-gray-500' 
-                        : 'border-[#f2e9d5]'
-                    }`}
-                    required
-                    disabled={isPaymentStarted} 
-                  />
+                  <div className="relative">
+                      <input
+                        type="text"
+                        name="city"
+                        value={shippingAddress.city}
+                        onChange={handleCityChange}
+                        onFocus={() => setShowCityDropdown(true)}
+                        onBlur={() => setTimeout(() => setShowCityDropdown(false), 200)}
+                        placeholder="City/Kabupaten *"
+                        className={`w-full border rounded-md px-4 py-2 mb-3 bg-[#fdfaf3] ${
+                          isPaymentStarted 
+                            ? 'border-gray-200 cursor-not-allowed text-gray-500' 
+                            : 'border-[#f2e9d5]'
+                        }`}
+                        required
+                        disabled={isPaymentStarted} 
+                      />
+                      {showCityDropdown && !isPaymentStarted && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                          {getUniqueCities(jntLocations)
+                            .filter(city => city.toLowerCase().includes(shippingAddress.city.toLowerCase()))
+                            .map((city, index) => (
+                              <div
+                                key={index}
+                                className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                                onClick={() => handleCitySelect(city)}
+                              >
+                                {city}
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+
+                  <div className="relative">
+                    <select
+                      name="destAreaCode"
+                      value={shippingAddress.destAreaCode}
+                      onChange={handleAddressChange}
+                      onClick={() => {
+                        if (!shippingAddress.city) {
+                          setAreaCodeError("Please select a city/kabupaten first");
+                        }
+                      }}
+                      className={`w-full border rounded-md px-4 py-2 mb-3 bg-[#fdfaf3] ${
+                        isPaymentStarted 
+                          ? 'border-gray-200 cursor-not-allowed text-gray-500' 
+                          : 'border-[#f2e9d5]'
+                      } ${
+                        !shippingAddress.city ? 'cursor-not-allowed' : ''
+                      }`}
+                      required
+                      disabled={isPaymentStarted || isLoadingLocations || !shippingAddress.city}
+                    >
+                      <option value="">Select Area Code *</option>
+                      {filteredLocations.map((location) => (
+                        <option key={location.id} value={location.kecamatan_jnt}>
+                          {location.kecamatan_jnt}
+                        </option>
+                      ))}
+                    </select>
+                    {isLoadingLocations && (
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <svg className="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      </div>
+                    )}
+                    {areaCodeError && !shippingAddress.city && (
+                      <div className="text-red-500 text-xs mt-1">{areaCodeError}</div>
+                    )}
+                  </div>
+                {locationsError && (
+                  <div className="text-red-500 text-sm mb-3">
+                    Failed to load area codes. Please try refreshing the page.
+                  </div>
+                )}
+
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <input

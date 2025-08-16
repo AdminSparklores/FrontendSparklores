@@ -1,16 +1,28 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { BASE_URL, fetchProduct, getAuthData } from '../utils/api';
-
-const STATIC_ORDER_ID = 3; // Changed to use order ID 3 as requested
-const STATIC_PRODUCT_ID = 1; // static product id for now
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { 
+  BASE_URL, 
+  validateReviewToken, 
+  fetchOrderDetails, 
+  submitReview,
+  fetchAllProducts,
+  fetchAllGiftSets,
+  fetchAllCharms,
+  submitReviewJSON
+} from '../utils/api';
 
 const ReviewPage = () => {
   const navigate = useNavigate();
-  const [product, setProduct] = useState(null);
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
+  
   const [order, setOrder] = useState(null);
+  const [items, setItems] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [giftSets, setGiftSets] = useState([]);
+  const [charms, setCharms] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
-    user_name: '',
     rating: 0,
     review_text: '',
     image: null,
@@ -18,41 +30,96 @@ const ReviewPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
-  // Fetch product and order info
+  // Fetch all necessary data
   useEffect(() => {
+    if (!token) {
+      setError("Invalid review link - missing token");
+      setLoading(false);
+      return;
+    }
+
     const fetchData = async () => {
       try {
-        // Fetch product
-        const prod = await fetchProduct(STATIC_PRODUCT_ID);
-        setProduct(prod);
+        setLoading(true);
         
-        // Fetch order data
-        const authData = getAuthData();
-        if (!authData) {
-          throw new Error("Authentication required");
-        }
+        // Fetch all reference data first
+        const [productsData, giftSetsData, charmsData] = await Promise.all([
+          fetchAllProducts(),
+          fetchAllGiftSets(),
+          fetchAllCharms()
+        ]);
         
-        const orderResponse = await fetch(`${BASE_URL}/api/orders/${STATIC_ORDER_ID}/`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authData.token}`
-          }
-        });
-        
-        if (!orderResponse.ok) {
-          throw new Error("Failed to load order data");
-        }
-        
-        const orderData = await orderResponse.json();
+        setProducts(productsData);
+        setGiftSets(giftSetsData);
+        setCharms(charmsData);
+
+        // Validate token and get order details
+        const { user_id, order_id, review_token } = await validateReviewToken(token);
+        const orderData = await fetchOrderDetails(order_id, review_token);
         setOrder(orderData);
+
+        // Prepare items for display with full details
+        const orderItems = orderData.items.map(item => {
+          // Handle product items
+          if (item.product) {
+            const product = productsData.find(p => p.id === item.product) || {};
+            return {
+              type: 'product',
+              id: item.product,
+              name: item.product_name || product.name || `Product #${item.product}`,
+              quantity: item.quantity,
+              image: product.images?.[0]?.image_url || 'https://via.placeholder.com/100',
+              price: product.price || '0.00'
+            };
+          }
+          
+          // Handle gift set items
+          if (item.gift_set) {
+            const giftSet = giftSetsData.find(g => g.id === item.gift_set) || {};
+            return {
+              type: 'gift_set',
+              id: item.gift_set,
+              name: item.gift_set_name || giftSet.name || `Gift Set #${item.gift_set}`,
+              quantity: item.quantity,
+              image: giftSet.image_url || giftSet.image || 'https://via.placeholder.com/100',
+              price: giftSet.price || '0.00'
+            };
+          }
+          
+          // Handle charm items
+          if (item.charms && item.charms.length > 0) {
+            const charmDetails = item.charms.map(charmItem => {
+              const charm = charmsData.find(c => c.id === charmItem.charm) || {};
+              return {
+                id: charmItem.charm,
+                name: charmItem.charm_name || charm.name || `Charm #${charmItem.charm}`,
+                image: charm.image || 'https://via.placeholder.com/100'
+              };
+            });
+            
+            return {
+              type: 'charms',
+              charms: charmDetails,
+              quantity: item.quantity,
+              price: charmDetails.reduce((sum, charm) => sum + parseFloat(charm.price || 0), 0)
+            };
+          }
+          
+          return null;
+        }).filter(Boolean);
+
+        setItems(orderItems);
       } catch (err) {
         setError(err.message || "Failed to load data.");
+      } finally {
+        setLoading(false);
       }
     };
+
     fetchData();
-  }, []);
+  }, [token]);
 
   const handleChange = (e) => {
     if (e.target.type === 'file') {
@@ -75,51 +142,112 @@ const ReviewPage = () => {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setError("");
-    setSubmitSuccess(false);
-
-    if (!form.user_name.trim() || !form.review_text.trim() || form.rating < 1) {
-      setError("Please fill all fields and select a rating.");
-      setSubmitting(false);
+  const handleSubmitConfirmation = () => {
+    if (isSubmitDisabled()) {
+      setError("Please complete all required fields before submitting");
       return;
     }
-
-    try {
-      const formData = new FormData();
-      formData.append("user_name", form.user_name);
-      formData.append("rating", form.rating);
-      formData.append("review_text", form.review_text);
-      if (form.image) formData.append("image", form.image);
-      formData.append("products", STATIC_PRODUCT_ID);
-      formData.append("order", STATIC_ORDER_ID);
-
-      const res = await fetch(`${BASE_URL}/api/reviews/`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.detail || "Failed to submit review");
-      }
-      setSubmitSuccess(true);
-      setForm({
-        user_name: '',
-        rating: 0,
-        review_text: '',
-        image: null
-      });
-    } catch (err) {
-      setError(err.message || "Failed to submit review.");
-    } finally {
-      setSubmitting(false);
-    }
+    setShowConfirmation(true);
   };
 
-  // Style helper for stars
+ const handleConfirmSubmit = async () => {
+  setShowConfirmation(false);
+  setSubmitting(true);
+  setError("");
+  setSubmitSuccess(false);
+
+  try {
+    console.log("Order items (raw):", order.items);
+    
+    // Debug: Let's see the full structure of each order item
+    order.items.forEach((item, index) => {
+      console.log(`Item ${index} full structure:`, JSON.stringify(item, null, 2));
+      if (item.charms && item.charms.length > 0) {
+        console.log(`Item ${index} charms:`, item.charms);
+        item.charms.forEach((charm, charmIndex) => {
+          console.log(`  Charm ${charmIndex}:`, charm);
+          console.log(`  Charm keys:`, Object.keys(charm));
+        });
+      }
+    });
+
+    // ✅ Get IDs directly from the original order.items
+    const productIds = order.items
+      .filter(item => item.product)
+      .map(item => item.product);
+
+    const giftSetIds = order.items
+      .filter(item => item.gift_set)
+      .map(item => item.gift_set);
+
+    // ✅ Extract charm IDs - use the actual charm ID (433), not the relationship ID (31)
+    const charmIds = order.items
+      .filter(item => item.charms && item.charms.length > 0)
+      .flatMap(item => {
+        return item.charms.map(charm => {
+          console.log('Processing charm:', charm);
+          console.log('Using charm.charm (actual charm ID):', charm.charm);
+          // Based on the example format, we need the actual charm ID (433)
+          return charm.charm || charm.charm_id;
+        }).filter(id => id !== null);
+      });
+
+    console.log("Submitting product_ids:", productIds);
+    console.log("Submitting charm_ids:", charmIds);
+    console.log("Submitting gift_set_ids:", giftSetIds);
+
+    // ✅ If there's an image, use FormData; otherwise use JSON
+    if (form.image) {
+      // Use FormData for image upload
+      const formData = new FormData();
+      formData.append("token", token);
+      formData.append("rating", form.rating);
+      formData.append("review_text", form.review_text);
+      formData.append("image", form.image);
+      
+      // ✅ Backend expects 'product_ids', 'charm_ids', 'gift_set_ids' as field names
+      // ✅ For FormData with arrays, append each item separately
+      productIds.forEach(id => formData.append("product_ids", id));
+      charmIds.forEach(id => formData.append("charm_ids", id));
+      giftSetIds.forEach(id => formData.append("gift_set_ids", id));
+
+      // Debug: log actual payload
+      for (let [key, value] of formData.entries()) {
+        console.log("FormData entry:", key, value);
+      }
+
+      await submitReview(formData);
+    } else {
+      // Use JSON for cleaner array handling when no image
+      const jsonData = {
+        token: token,
+        rating: form.rating,
+        review_text: form.review_text,
+        product_ids: productIds,
+        charm_ids: charmIds,
+        gift_set_ids: giftSetIds
+      };
+
+      console.log("JSON payload:", jsonData);
+      await submitReviewJSON(jsonData);
+    }
+
+    setSubmitSuccess(true);
+    setForm({
+      rating: 0,
+      review_text: '',
+      image: null
+    });
+
+  } catch (err) {
+    console.error("Review submission error:", err);
+    setError(err.message || "Failed to submit review. Please try again.");
+  } finally {
+    setSubmitting(false);
+  }
+  };
+
+
   const renderStars = () => {
     return (
       <div className="flex gap-1 mt-2 mb-4">
@@ -144,7 +272,6 @@ const ReviewPage = () => {
     );
   };
 
-  // Format date for display
   const formatDate = (dateString) => {
     const options = { 
       year: 'numeric', 
@@ -154,6 +281,119 @@ const ReviewPage = () => {
       minute: '2-digit'
     };
     return new Date(dateString).toLocaleDateString('en-US', options);
+  };
+
+  const isSubmitDisabled = () => {
+    // If order is not loaded or there's an error
+    if (!order || error) return true;
+    
+    // If required fields are not filled
+    if (!form.rating || !form.review_text.trim()) return true;
+    
+    return false;
+  };
+
+  const renderOrderItems = () => {
+      if (loading) {
+    return (
+      <div className="flex justify-center items-center h-32">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#e3c990]"></div>
+      </div>
+    );
+  }
+
+  if (!items || !items.length) {
+    return (
+      <div className="text-center py-8">
+        <div className="text-gray-500 mb-4">You've already submitted a review for this order.</div>
+        <button 
+          onClick={() => navigate('/')}
+          className="px-4 py-2 bg-[#e9d6a9] rounded-md text-[#3b322c] hover:bg-[#e3c990] transition-colors"
+        >
+          Return to Home
+        </button>
+      </div>
+    );
+  }
+
+    return items.map((item, index) => {
+      if (!item) return null;
+      
+      // Handle charm items
+      if (item.type === 'charms') {
+        return (
+          <div key={`charms-${index}`} className="flex gap-4 mb-6 p-4 border border-[#f2e9d5] rounded-lg">
+            <div className="w-24 h-24 bg-[#f2e9d5] rounded-md flex items-center justify-center overflow-hidden">
+              {item.charms[0]?.image ? (
+                <img 
+                  src={item.charms[0].image} 
+                  alt={item.charms[0].name}
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = 'https://via.placeholder.com/100';
+                  }}
+                />
+              ) : (
+                <span className="text-[#3b322c]">Charms</span>
+              )}
+            </div>
+            <div className="flex-1">
+              <h3 className="font-medium text-lg">Custom Charm Set</h3>
+              {item.charms && item.charms.length > 0 && (
+                <ul className="list-disc list-inside text-sm mt-1">
+                  {item.charms.map((charm, i) => (
+                    <li key={i} className="flex items-center gap-2">
+                      {charm.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="mt-2 flex justify-between items-center">
+                <span className="text-[#b87777] font-semibold">
+                  Qty: {item.quantity || 1}
+                </span>
+                <span className="text-[#3b322c] font-medium">
+                  Rp. {parseInt(item.price || 0).toLocaleString('id-ID')},00
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // Handle product and gift set items
+      return (
+        <div key={`${item.type}-${item.id}-${index}`} className="flex gap-4 mb-6 p-4 border border-[#f2e9d5] rounded-lg">
+          <div className="w-24 h-24 bg-[#f2e9d5] rounded-md flex items-center justify-center overflow-hidden">
+            {item.image ? (
+              <img 
+                src={item.image} 
+                alt={item.name}
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = 'https://via.placeholder.com/100';
+                }}
+              />
+            ) : (
+              <span className="text-[#3b322c] capitalize">{item.type?.replace('_', ' ') || 'item'}</span>
+            )}
+          </div>
+          <div className="flex-1">
+            <h3 className="font-medium text-lg">{item.name}</h3>
+            <div className="mt-2 flex justify-between items-center">
+              <span className="text-[#b87777] font-semibold">
+                Qty: {item.quantity || 1}
+              </span>
+              <span className="text-[#3b322c] font-medium">
+                Rp. {parseInt(item.price || 0).toLocaleString('id-ID')},00
+              </span>
+            </div>
+          </div>
+        </div>
+      );
+    });
   };
 
   return (
@@ -168,20 +408,18 @@ const ReviewPage = () => {
             <div className="md:w-1/2 border border-[#f2e9d5] rounded-xl p-6 bg-white">
             <h2 className="text-2xl font-semibold mb-4">Leave a Review</h2>
 
-            <form onSubmit={handleSubmit} encType="multipart/form-data">
-                <div className="mb-3">
-                <label className="block mb-1 font-medium" htmlFor="user_name">Your Name</label>
-                <input
-                    type="text"
-                    id="user_name"
-                    name="user_name"
-                    value={form.user_name}
-                    onChange={handleChange}
-                    placeholder="Enter your name"
-                    className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 bg-[#fdfaf3]"
-                    required
-                />
-                </div>
+            {error && !token && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                {error}
+              </div>
+            )}
+
+            {submitSuccess ? (
+              <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+                Thank you for your review! Your feedback has been submitted successfully.
+              </div>
+            ) : (
+              <form onSubmit={(e) => { e.preventDefault(); handleSubmitConfirmation(); }} encType="multipart/form-data">
                 <div className="mb-3">
                 <label className="block mb-1 font-medium">Your Rating</label>
                 {renderStars()}
@@ -193,15 +431,14 @@ const ReviewPage = () => {
                     name="review_text"
                     value={form.review_text}
                     onChange={handleChange}
-                    placeholder="Share your experience with this product"
+                    placeholder="Share your experience with these products"
                     className="w-full border border-[#f2e9d5] rounded-md px-4 py-2 bg-[#fdfaf3] min-h-[80px]"
                     required
                 />
                 </div>
                 <div className="mb-3">
-                <label className="block mb-1 font-medium">Upload an image</label>
+                <label className="block mb-1 font-medium">Upload an image (optional)</label>
 
-                {/* Hidden input */}
                 <input
                     type="file"
                     id="image"
@@ -210,7 +447,6 @@ const ReviewPage = () => {
                     onChange={handleChange}
                     className="hidden"
                 />
-                {/* Styled label as button */}
                 <label
                     htmlFor="image"
                     className="inline-block cursor-pointer bg-[#f2e9d5] hover:bg-[#e9d6a9] text-[#3b322c] text-sm font-medium py-2 px-4 rounded-md transition-colors"
@@ -229,19 +465,15 @@ const ReviewPage = () => {
                 {error && (
                 <div className="text-xs text-red-500 mb-2">{error}</div>
                 )}
-                {submitSuccess && (
-                <div className="text-xs text-green-600 mb-2">
-                    Thank you for your review!
-                </div>
-                )}
                 <button
-                type="submit"
-                className="w-full bg-[#e9d6a9] text-lg font-medium py-3 mt-2 rounded-md hover:bg-[#e3c990] transition-colors disabled:opacity-50"
-                disabled={submitting}
+                  type="submit"
+                  className="w-full bg-[#e9d6a9] text-lg font-medium py-3 mt-2 rounded-md hover:bg-[#e3c990] transition-colors disabled:opacity-50"
+                  disabled={submitting || isSubmitDisabled()}
                 >
-                {submitting ? "Submitting..." : "Submit Review"}
+                  {submitting ? "Submitting..." : "Submit Review"}
                 </button>
-            </form>
+              </form>
+            )}
             </div>
 
             {/* Right Side - Order Info */}
@@ -249,7 +481,7 @@ const ReviewPage = () => {
             <h2 className="text-2xl font-semibold mb-4">Your Order</h2>
             
             {/* Order Summary */}
-            {order && (
+            {order ? (
               <div className="mb-6 p-4 bg-[#fdfaf3] rounded-lg">
                 <div className="flex justify-between mb-2">
                   <span className="font-medium">Order #:</span>
@@ -267,41 +499,54 @@ const ReviewPage = () => {
                   <span className="font-medium">Payment:</span>
                   <span className="capitalize">{order.payment_status}</span>
                 </div>
-                <div className="flex justify-between mb-2">
-                  <span className="font-medium">Shipping Address:</span>
-                  <span className="text-right">{order.shipping_address}</span>
-                </div>
+                {order.shipping_address && (
+                  <div className="flex justify-between mb-2">
+                    <span className="font-medium">Shipping Address:</span>
+                    <span className="text-right">{order.shipping_address}</span>
+                  </div>
+                )}
                 <div className="border-t border-[#f2e9d5] my-3"></div>
                 <div className="flex justify-between text-lg font-semibold">
                   <span>Total:</span>
                   <span>Rp. {parseInt(order.total_price).toLocaleString('id-ID')},00</span>
                 </div>
               </div>
+            ) : (
+              <div className="mb-6 p-4 bg-[#fdfaf3] rounded-lg">
+                Loading order details...
+              </div>
             )}
 
             {/* Product Info */}
-            {product ? (
-                <div className="flex gap-4">
-                <img
-                    src={product.images?.[0]?.image_url || "https://via.placeholder.com/100"}
-                    alt={product.name}
-                    className="w-24 h-24 object-cover rounded-md border border-[#f2e9d5]"
-                    onError={e => { e.target.onerror = null; e.target.src="https://via.placeholder.com/100"; }}
-                />
-                <div>
-                    <h3 className="font-medium text-lg">{product.name}</h3>
-                    {/* <p className="text-sm">{product.description}</p> */}
-                    <div className="mt-2 text-[#b87777] font-semibold">
-                    Rp. {parseInt(product.price).toLocaleString('id-ID')},00
-                    </div>
-                </div>
-                </div>
-            ) : (
-                <div className="text-red-500">{error || "Loading product..."}</div>
-            )}
+            <h3 className="font-medium text-lg mb-3">Items in this order</h3>
+            {renderOrderItems()}
             </div>
         </div>
         </div>
+
+        {/* Confirmation Modal */}
+        {showConfirmation && (
+          <div className="fixed inset-0 bg-black/30 bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 max-w-md w-full">
+              <h3 className="text-xl font-semibold mb-4">Confirm Review Submission</h3>
+              <p className="mb-6">Are you sure you want to submit this review? You won't be able to edit it after submission.</p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowConfirmation(false)}
+                  className="px-4 py-2 border border-[#3b322c] rounded-md text-[#3b322c] hover:bg-gray-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmSubmit}
+                  className="px-4 py-2 bg-[#e9d6a9] rounded-md text-[#3b322c] hover:bg-[#e3c990]"
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   );
 };

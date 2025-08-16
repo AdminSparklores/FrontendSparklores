@@ -652,3 +652,180 @@ export const trackOrder = async (awb) => {
     throw error;
   }
 };
+
+// API Review Functions
+// Update in api.js
+export const validateReviewToken = async (token) => {
+  const response = await fetch(`${BASE_URL}/api/api/review/validate/?token=${token}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error('Invalid or expired review token');
+  }
+
+  const data = await response.json();
+  // Return both the validation data and the token for subsequent requests
+  return { ...data, review_token: token };
+};
+
+// Update in api.js
+export const fetchOrderDetails = async (orderId, token = null) => {
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+
+  // If we have a token, use it for authorization
+  if (token) {
+    headers['Authorization'] = `Token ${token}`;
+  } 
+  // Otherwise try with regular auth
+  else {
+    const authData = getAuthData();
+    if (authData) {
+      headers['Authorization'] = `Bearer ${authData.token}`;
+    }
+  }
+
+  const response = await fetch(`${BASE_URL}/api/orders/${orderId}/`, {
+    method: 'GET',
+    headers: headers
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch order details');
+  }
+
+  return await response.json();
+};
+
+// Original FormData version with better error handling
+export const submitReview = async (formData) => {
+  try {
+    console.log("Sending FormData to backend...");
+    
+    // Debug: log all FormData entries
+    for (let [key, value] of formData.entries()) {
+      console.log("FormData entry:", key, value);
+    }
+    
+    const response = await fetch(`${BASE_URL}/api/api/review/submit/`, {
+      method: "POST",
+      body: formData, // ✅ fetch automatically sets multipart/form-data with boundary
+    });
+
+    if (!response.ok) {
+      let errorMsg = "Failed to submit review";
+
+      try {
+        // Try to parse JSON error if backend returns structured response
+        const errorData = await response.json();
+        errorMsg = errorData.error || errorData.message || errorMsg;
+        console.error("Backend error response:", errorData);
+      } catch {
+        // If not JSON, fallback to plain text
+        const errorText = await response.text();
+        console.error("Backend error text:", errorText);
+        if (errorText) errorMsg = errorText;
+      }
+
+      throw new Error(errorMsg);
+    }
+
+    // ✅ Return parsed JSON from backend
+    return await response.json();
+  } catch (err) {
+    console.error("Error submitting review:", err);
+    throw err;
+  }
+};
+
+// New JSON version for when no image is uploaded
+export const submitReviewJSON = async (jsonData) => {
+  try {
+    console.log("Sending JSON data to backend:", jsonData);
+    
+    const response = await fetch(`${BASE_URL}/api/api/review/submit/`, {
+      method: "POST",
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(jsonData),
+    });
+
+    if (!response.ok) {
+      let errorMsg = "Failed to submit review";
+
+      try {
+        const errorData = await response.json();
+        errorMsg = errorData.error || errorData.message || errorMsg;
+        console.error("Backend error response:", errorData);
+      } catch {
+        const errorText = await response.text();
+        console.error("Backend error text:", errorText);
+        if (errorText) errorMsg = errorText;
+      }
+
+      throw new Error(errorMsg);
+    }
+
+    return await response.json();
+  } catch (err) {
+    console.error("Error submitting review:", err);
+    throw err;
+  }
+};
+
+export const fetchAllProducts = async () => {
+  const response = await fetch(`${BASE_URL}/api/products/`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch products');
+  }
+
+  return await response.json();
+};
+
+export const fetchAllGiftSets = async () => {
+  const response = await fetch(`${BASE_URL}/api/gift-sets/`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch gift sets');
+  }
+
+  return await response.json();
+};
+
+
+export const fetchJNTLocations = async () => {
+  try {
+    const response = await fetch(`${BASE_URL}/api/api/jnt-locations/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch JNT locations');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching JNT locations:', error);
+    throw error;
+  }
+};
