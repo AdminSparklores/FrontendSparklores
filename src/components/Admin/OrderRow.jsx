@@ -76,13 +76,13 @@ export default function OrderRow({
               <button
                 onClick={() => handleCancelOrder(order.id)}
                 className="px-3 py-1 text-xs font-semibold rounded-lg 
-                          bg-red-600 text-white 
-                          hover:bg-red-700 
-                          disabled:bg-red-300 disabled:cursor-not-allowed 
-                          transition-colors"
+                  bg-red-600 text-white 
+                  hover:bg-red-700 
+                  disabled:bg-red-300 disabled:cursor-not-allowed 
+                  transition-colors"
                 disabled={isCanceling}
               >
-                Cancel
+                {isCanceling ? 'Canceling...' : 'Cancel'}
               </button>
             )}
           </div>

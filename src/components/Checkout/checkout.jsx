@@ -898,11 +898,24 @@ const CheckoutPage = () => {
           });
         },
         onPending: async (result) => {
+          console.log('Payment pending', result);
+          
+          // ✅ Create JNT order so shipment is ready
           const awbNumber = await createJNTOrder(orderData.order_id);
-          const trackingNumber = awbNumber || orderData.order_id;
-          navigate(`/track-order/${trackingNumber}`, {
-            state: { orderId: orderData.order_id, awbNumber, paymentStatus: 'pending' }
-          });
+
+          // ✅ Do NOT navigate — just close loader and let user stay
+          setIsShowingLoader(false);
+          setShowCancelConfirmation(true);
+
+          // Optional: Show a toast or modal to inform user
+          alert(
+            `Your order is pending payment. Please complete the bank transfer.\n` +
+            `Order ID: ${orderData.order_id}\n` +
+            `Complete the payment to proceed with shipping by pressing the "Place My Order" button again.`
+          );
+
+          // Optionally, you can open a modal instead of alert
+          // Or set a state like setPaymentStatus('pending')
         },
         onError: (error) => {
           console.log('Payment error', error);

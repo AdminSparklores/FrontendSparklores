@@ -31,7 +31,13 @@ export default function AdminOrderDashboard() {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelData, setCancelData] = useState({
     orderId: null,
-    remark: "Canceled by user"
+    reason: "Canceled by user"
+  });
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [resultModalData, setResultModalData] = useState({
+    type: 'success', // 'success' or 'error'
+    title: '',
+    message: ''
   });
 
 
@@ -63,7 +69,10 @@ export default function AdminOrderDashboard() {
 
   // Handle individual order cancellation
   const handleCancelOrder = (orderId) => {
-    setCancelData({ orderId, remark: "Canceled by user" });
+    setCancelData({ 
+      orderId, 
+      reason: "Canceled by user"  // ← use 'reason'
+    });
     setShowCancelConfirm(true);
   };
 
@@ -92,20 +101,27 @@ export default function AdminOrderDashboard() {
 
     setConfirmAction(() => async () => {
       try {
-        const blob = await createLabels(selectedIds);
-        const pdfUrl = URL.createObjectURL(blob);
+        setIsCreatingLabels(true);
         
-        // Store the PDF URL and show print confirmation
-        setGeneratedPdfUrl(pdfUrl);
+        const printUrls = await createLabels(selectedIds);
+        
+        if (!Array.isArray(printUrls)) {
+          // If single URL, wrap in array
+          setGeneratedPdfUrl([printUrls]);
+        } else {
+          setGeneratedPdfUrl(printUrls);
+        }
+
         setShowPrintConfirm(true);
 
-        // Refresh orders
         const updatedOrders = await getOrders();
         setOrders(updatedOrders);
         setSelectedIds([]);
       } catch (error) {
         console.error("Label creation error:", error);
-        alert(`Error creating labels: ${error.message || 'Please check console for details'}`);
+        alert(`Error: ${error.message}`);
+      } finally {
+        setIsCreatingLabels(false);
       }
     });
     
@@ -114,39 +130,50 @@ export default function AdminOrderDashboard() {
 
   // Handle print now action
   const handlePrintNow = () => {
-    const printWindow = window.open(generatedPdfUrl, '_blank');
-    
-    if (printWindow) {
-      printWindow.onload = () => {
+    const urls = Array.isArray(generatedPdfUrl) ? generatedPdfUrl : [generatedPdfUrl];
+
+    urls.forEach((url, index) => {
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.top = '-1000px';
+      iframe.style.left = '-1000px';
+      iframe.style.width = '1px';
+      iframe.style.height = '1px';
+
+      // Print this iframe when loaded
+      iframe.onload = () => {
         try {
-          printWindow.print();
+          iframe.contentWindow.print();
         } catch (e) {
-          console.error("Print failed:", e);
-          alert("Print dialog was blocked. Please enable popups and try again.");
+          console.error(`Print failed for URL ${index}:`, e);
         }
       };
-    } else {
-      alert("Popup was blocked. Please enable popups to print.");
-    }
-    
-    // Clean up
+
+      iframe.src = url;
+      document.body.appendChild(iframe);
+
+      // Clean up after delay
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 10000);
+    });
+
     setShowPrintConfirm(false);
-    setTimeout(() => URL.revokeObjectURL(generatedPdfUrl), 1000);
   };
 
   // Handle print later action
   const handlePrintLater = () => {
-    // Create download link
-    const a = document.createElement('a');
-    a.href = generatedPdfUrl;
-    a.download = `labels-${selectedIds.join('-')}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(generatedPdfUrl);
-    }, 100);
-    
+    const urls = Array.isArray(generatedPdfUrl) ? generatedPdfUrl : [generatedPdfUrl];
+    urls.forEach(url => {
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+
     setShowPrintConfirm(false);
   };
 
@@ -236,6 +263,32 @@ const handlePrintReceipts = () => {
           )}
         </div>
 
+        {/* Result Modal for Success/Error */}
+        {showResultModal && (
+          <div className="fixed inset-0 bg-black/30 bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg max-w-sm w-full">
+              <h3 className="text-lg font-semibold mb-4">
+                {resultModalData.title || (resultModalData.type === 'success' ? 'Success' : 'Error')}
+              </h3>
+              <p className={resultModalData.type === 'error' ? 'text-red-600 mb-4' : 'mb-4'}>
+                {resultModalData.message}
+              </p>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => {
+                    setShowResultModal(false);
+                    // Optional: reset after close
+                    setResultModalData({ type: 'success', title: '', message: '' });
+                  }}
+                  className="px-4 py-2 bg-[#bfa170] text-white rounded hover:bg-[#a98c5f]"
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Confirm Dialog for JNT Cancel with Reason Input */}
         {showCancelConfirm && (
           <div className="fixed inset-0 bg-black/30 bg-opacity-50 flex items-center justify-center z-50">
@@ -247,8 +300,8 @@ const handlePrintReceipts = () => {
                 Reason for Cancellation
               </label>
               <textarea
-                value={cancelData.remark}
-                onChange={(e) => setCancelData(prev => ({ ...prev, remark: e.target.value }))}
+                value={cancelData.reason}
+                onChange={(e) => setCancelData(prev => ({ ...prev, reason: e.target.value }))}
                 className="w-full p-2 border border-gray-300 rounded text-sm"
                 rows="3"
                 placeholder="Enter reason for cancellation"
@@ -267,32 +320,47 @@ const handlePrintReceipts = () => {
                     if (!cancelData.orderId) return;
 
                     setIsCanceling(true);
+
                     try {
-                      const result = await cancelJntOrder(cancelData.orderId, cancelData.remark);
-                      
-                      // The response will already be logged by the API function
-                      if (result.success) {
-                        const orderResult = result.detail.find(d => d.orderid === cancelData.orderId);
-                        if (orderResult && orderResult.status === "Sukses") {
-                          alert(`Order ${cancelData.orderId} canceled successfully.`);
-                          const updatedOrders = await getOrders();
-                          setOrders(updatedOrders);
-                          setSelectedIds(selectedIds.filter(id => id !== cancelData.orderId));
-                        } else {
-                          const reason = orderResult?.reason || "Order cancellation failed";
-                          alert(`Order cancellation failed: ${reason}`);
-                        }
-                      } else {
-                        const reason = result.detail?.[0]?.reason || "Unknown error";
-                        alert(`Failed to cancel order: ${reason}`);
-                      }
+                      const result = await cancelJntOrder(cancelData.orderId, cancelData.reason);
+
+                      // ✅ Success: Show success modal
+                      setResultModalData({
+                        type: 'success',
+                        title: 'Cancellation Successful',
+                        message: `Order #${cancelData.orderId} has been canceled successfully.`
+                      });
+
+                      // Refresh orders
+                      const updatedOrders = await getOrders();
+                      setOrders(updatedOrders);
+                      setSelectedIds(selectedIds.filter(id => id !== cancelData.orderId));
                     } catch (error) {
-                      console.error("Cancellation error:", error);
-                      alert(`Error: ${error.message || "Failed to cancel order."}`);
+                      console.error("Cancellation failed:", error);
+
+                      let title = "Cancellation Failed";
+                      let message = error.message;
+
+                      if (message.includes("CANCEL_ORDER")) {
+                        message = `Order #${cancelData.orderId} is already canceled.`;
+                      } else if (message.includes("Tidak dapat dibatalkan")) {
+                        message = `Cancellation not allowed: ${message}`;
+                      } else if (message.includes("Network")) {
+                        message = "Unable to connect. Please check your internet.";
+                      }
+
+                      setResultModalData({
+                        type: 'error',
+                        title,
+                        message
+                      });
                     } finally {
                       setIsCanceling(false);
-                      setShowCancelConfirm(false);
-                      setCancelData({ orderId: null, remark: "" });
+                      setShowCancelConfirm(false); // ✅ Close the confirmation modal
+                      setCancelData({ orderId: null, reason: "Canceled by user" });
+
+                      // ✅ Open the result modal after closing confirm
+                      setShowResultModal(true);
                     }
                   }}
                   disabled={isCanceling}

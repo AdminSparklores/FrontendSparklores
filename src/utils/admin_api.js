@@ -120,6 +120,8 @@ export const getOrders = () => {
 
 
 // Create labels and print documents (for selected orders)
+// admin_api.js - Updated createLabels()
+
 export const createLabels = (orderIds) => {
   const authData = getAuthData();
   if (!authData || !authData.token) {
@@ -133,15 +135,38 @@ export const createLabels = (orderIds) => {
       'Authorization': `Bearer ${authData.token}`
     },
     body: JSON.stringify({ order_ids: orderIds }),
-  }).then(response => {
-    if (response.ok) {
-      console.log('Success for create labels, this is the response: ', response,);
-      return response.blob(); // Assuming it returns a PDF
+  })
+  .then(async (response) => {
+    // Log full response for debugging
+    const text = await response.text(); // Read as text first
+    console.log("Raw response from /orders/create_labels/:", text);
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error("Failed to parse JSON:", e);
+      throw new Error("Invalid response from server");
     }
 
-    return handleResponse(response);
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to create labels');
+    }
+
+    // Log structured data
+    console.log("Parsed response ", data);
+
+    const item = data.responseitems?.[0];
+    if (item && item.success === "true" && item.rotaprinturl) {
+      console.log("✅ Successfully got print URL:", item.rotaprinturl);
+      return item.rotaprinturl;
+    } else {
+      const reason = item?.reason || 'No rotaprinturl or success=false';
+      console.error("❌ JNT label creation failed:", reason, item);
+      throw new Error(reason);
+    }
   });
-}
+};
 
 // Add this to admin_api.js
 // export const updateOrderStatus = (orderId, status) => {
@@ -162,24 +187,25 @@ export const createLabels = (orderIds) => {
 
 
 // JNT Cancel API - Enhanced with proper error handling and logging
-export const cancelJntOrder = async (orderId, remark) => {
+// JNT Cancel API - Fixed to match actual expected format
+export const cancelJntOrder = async (orderId, reason) => {
   const authData = getAuthData();
   if (!authData || !authData.token) {
     console.error('Authentication error: No auth token found');
     throw new Error("Not authenticated");
   }
 
+  // Ensure orderid is sent as string
   const payload = {
     detail: {
-      username: "SPARKLORE",
-      api_key: "SYKNQV",
-      orderid: orderId,
-      remark: remark || "Canceled by user"
+      orderid: String(orderId),
+      reason: reason || "Canceled by user"
     }
   };
 
   try {
     console.log('Sending JNT cancel request:', payload);
+
     const response = await fetch(`${BASE}/jnt/cancel/`, {
       method: "POST",
       headers: {
@@ -189,33 +215,44 @@ export const cancelJntOrder = async (orderId, remark) => {
       body: JSON.stringify(payload)
     });
 
-    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    let result;
+    try {
+      result = await response.json();
+    } catch (jsonError) {
+      console.error("Failed to parse JSON response:", await response.text());
+      throw new Error("Invalid response from server");
+    }
+
     console.log('JNT cancel response:', result);
 
-    if (!response.ok) {
-      // Handle HTTP errors
-      console.error('JNT cancel failed with status:', response.status);
-      throw new Error(result.message || "Failed to cancel order");
-    }
-
-    // Check the success status in the response
     if (!result.success) {
-      const errorReason = result.detail?.[0]?.reason || "Unknown error";
-      console.error('JNT cancel failed:', errorReason);
-      throw new Error(errorReason);
+      const errorMsg = result.desc || result.detail?.[0]?.reason || "Unknown error";
+      console.error('JNT API error:', errorMsg);
+      throw new Error(errorMsg);
     }
 
-    // Check if the specific order was successfully canceled
-    const orderResult = result.detail?.find(d => d.orderid === orderId);
-    if (!orderResult || orderResult.status !== "Sukses") {
-      const errorReason = orderResult?.reason || "Order cancellation failed";
-      console.error('Order cancellation failed:', errorReason);
-      throw new Error(errorReason);
+    // ✅ Fix: Compare as strings
+    const orderResult = result.detail?.find(d => d.orderid === String(orderId));
+    if (!orderResult) {
+      throw new Error(`Order ${orderId} not found in response`);
+    }
+
+    if (orderResult.status !== "Sukses") {
+      const reason = orderResult.reason || "Cancellation failed";
+      console.error('Order cancellation failed:', reason);
+      throw new Error(reason);
     }
 
     return result;
   } catch (error) {
-    console.error('Error in cancelJntOrder:', error);
+    if (error.name === "TypeError" || error.message.includes("fetch")) {
+      console.error("Network error:", error);
+      throw new Error("Network error: Unable to reach the server. Please check your connection.");
+    }
     throw error;
   }
 };

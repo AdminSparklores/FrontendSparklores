@@ -654,6 +654,7 @@ export const trackOrder = async (awb) => {
     if (!response.ok) {
       throw new Error('Failed to track order');
     }
+    console.log('Track order response:', response); // Debug log
 
     return await response.json();
   } catch (error) {
