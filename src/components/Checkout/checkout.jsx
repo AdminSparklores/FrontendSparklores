@@ -408,6 +408,10 @@ const CheckoutPage = () => {
         return phone.replace(/^0/, '+62');
       };
 
+      // Calculate values
+      const productTotal = Math.round(subtotal);
+      const totalCOD = Math.round(subtotal + shippingFee);
+
       const jntPayload = {
         orderid: orderId.toString(),
         receiver_name: `${shippingAddress.first_name} ${shippingAddress.last_name}`.trim(),
