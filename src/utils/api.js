@@ -641,14 +641,13 @@ export const fetchRecentGalleryImages = async () => {
 
 export const trackOrder = async (awb) => {
   try {
-    const response = await fetch(`${BASE_URL}/api/track/`, {
+    const response = await fetch(`${BASE_URL}/api/jnt/track/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         awb: awb,
-        eccompanyid: "SPARKLORE"
       })
     });
 
