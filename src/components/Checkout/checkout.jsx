@@ -52,6 +52,7 @@ const CheckoutPage = () => {
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [filteredLocations, setFilteredLocations] = useState([]);
   const [areaCodeError, setAreaCodeError] = useState(null);
+  const [selectedJNTLocation, setSelectedJNTLocation] = useState(null);
 
   useEffect(() => {
     const loadJNTLocations = async () => {
@@ -146,6 +147,25 @@ const CheckoutPage = () => {
       ...prev,
       [name]: value
     }));
+    setFormTouched(true);
+  };
+  
+  const handleAreaCodeChange = (e) => {
+    const selectedKecamatanJNT = e.target.value;
+
+    // Find the full location object
+    const location = jntLocations.find(loc => 
+      loc.kabupaten_kota === shippingAddress.city && 
+      loc.kecamatan_jnt === selectedKecamatanJNT
+    );
+
+    if (location) {
+      setSelectedJNTLocation(location);
+      setShippingAddress(prev => ({ ...prev, destAreaCode: selectedKecamatanJNT }));
+    } else {
+      setSelectedJNTLocation(null);
+    }
+
     setFormTouched(true);
   };
 
@@ -366,14 +386,18 @@ const CheckoutPage = () => {
 
   const createJNTOrder = async (orderId) => {
     try {
-      // Extract destination_code from first 3 chars of destAreaCode (e.g., JKT from JKT002)
-      const destinationCode = shippingAddress.destAreaCode?.substring(0, 3).toUpperCase() || "JKT";
+      const destinationCode = selectedJNTLocation?.kode_kota_jnt?.trim();
+      const receiverArea = selectedJNTLocation?.kode_jnt_receiver_area?.trim();
+
+      if (!destinationCode || !receiverArea) {
+        throw new Error("JNT destination codes are missing. Please select a valid city and area code.");
+      }
 
       // Build full address
       const fullAddress = [
         shippingAddress.address,
         shippingAddress.city,
-        shippingAddress.destAreaCode,
+        selectedJNTLocation.kecamatan, // Human-readable kecamatan
         shippingAddress.province,
         shippingAddress.postal_code
       ].filter(Boolean).join(', ');
@@ -390,11 +414,11 @@ const CheckoutPage = () => {
         receiver_phone: formatPhone(shippingAddress.receiver_phone),
         receiver_addr: fullAddress,
         receiver_zip: shippingAddress.postal_code,
-        destination_code: destinationCode, // Dynamic
-        receiver_area: shippingAddress.destAreaCode,
+        destination_code: destinationCode,     // ✅ kode_kota_jnt (e.g., "TPK")
+        receiver_area: receiverArea,          // ✅ kode_jnt_receiver_area (e.g., "TPK001")
         item_name: cartItems.map(item => item.name).join(','),
-        cod: Math.round(total).toString(),
-        goodsvalue: Math.round(subtotal).toString()
+        cod: totalCOD.toString(),             // Total with shipping
+        goodsvalue: productTotal.toString()   // Product value only
       };
 
       console.log('Sending to /api/jnt/order/:', jntPayload);
@@ -420,16 +444,35 @@ const CheckoutPage = () => {
 
       if (data.success && data.detail && data.detail.length > 0) {
         const orderDetail = data.detail[0];
+
         if (orderDetail.status === "Sukses" && orderDetail.awb_no) {
           return orderDetail.awb_no;
-        } else if (orderDetail.status === "Error") {
-          console.error('JNT order creation failed:', orderDetail.reason);
+        }
+
+        if (orderDetail.status === "Error") {
+          const reason = orderDetail.reason || "Unknown error";
+          console.error('JNT order creation failed:', reason);
+
+          // Friendly Indonesian error messages
+          if (reason.includes("Kecamatan Penerima Error")) {
+            setPaymentError("Alamat pengiriman tidak dikenali oleh JNT. Pastikan kecamatan sudah benar.");
+          } else if (reason.includes("Orderid tidak boleh sama")) {
+            if (orderDetail.existing_awbno) {
+              return orderDetail.existing_awbno; // ✅ Reuse existing AWB
+            }
+            setPaymentError("Pesanan ini sudah pernah dibuat sebelumnya.");
+          } else {
+            setPaymentError(`Gagal membuat resi: ${reason}`);
+          }
           return null;
         }
       }
+
+      setPaymentError("Respons tidak valid dari JNT.");
       return null;
     } catch (error) {
       console.error('Error in createJNTOrder:', error);
+      setPaymentError("Gagal terhubung ke layanan pengiriman. Kontak Kami untuk tindak lanjut konfirmasi pengiriman ke sparkloremanagement@gmail.com");
       return null;
     }
   };
@@ -893,13 +936,15 @@ const CheckoutPage = () => {
       }
     }
 
+    if (!selectedJNTLocation) {
+      return false; // Must have valid JNT location
+    }
+
     // Validate email
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shippingAddress.email)) {
       return false;
     }
 
-    // ❌ PROBLEM: You're validating `receiver_phone` in state, 
-    // but checking `phone` in requiredFields
     const phoneDigits = shippingAddress.receiver_phone.replace(/\D/g, '');
     if (!shippingAddress.receiver_phone.startsWith('+62') || phoneDigits.length < 7) {
       return false;
@@ -1245,7 +1290,7 @@ const CheckoutPage = () => {
                     <select
                       name="destAreaCode"
                       value={shippingAddress.destAreaCode}
-                      onChange={handleAddressChange}
+                      onChange={handleAreaCodeChange}
                       onClick={() => {
                         if (!shippingAddress.city) {
                           setAreaCodeError("Please select a city/kabupaten first");
