@@ -1,6 +1,6 @@
 import { useState } from "react";
 import StatusBadge from "./StatusBadge2";
-import ProductDetailPopup from "./ProductDetailPopup";
+import ProductDetailPopup from "./ProductDetailPopUp";
 import MessagePopup from "./MessagePopup";
 import { timeAgo, shortProductName } from "../../utils/orderHelpers";
 
