@@ -641,7 +641,7 @@ export const fetchRecentGalleryImages = async () => {
 
 export const trackOrder = async (awb) => {
   try {
-    const response = await fetch(`${BASE_URL}/api/track-order/`, {
+    const response = await fetch(`${BASE_URL}/api/track/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
