@@ -1,7 +1,18 @@
 // src/api.js
 // export const BASE_URL_LOCAL = 'http://localhost:8000';
 // export const BASE_URL = 'http://192.168.1.4:8000';
-export const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+// export const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+let baseURL = import.meta.env.VITE_API_BASE_URL;
+
+// Validasi: pastikan BASE_URL string dan tidak undefined
+if (!baseURL || typeof baseURL !== 'string') {
+  console.error('VITE_API_BASE_URL is not set or not a string:', baseURL);
+  baseURL = 'https://sparkloreofficial.com'; // fallback
+}
+
+// Pastikan tidak ada trailing slash
+export const BASE_URL = baseURL.endsWith('/') ? baseURL.slice(0, -1) : baseURL;
 
 // Helper function to store auth data
 const storeAuthData = (data) => {
