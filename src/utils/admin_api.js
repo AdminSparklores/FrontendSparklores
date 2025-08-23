@@ -161,11 +161,12 @@ export const createLabels = (orderIds) => {
 // }
 
 
-// JNT Cancel API - Enhanced with dynamic remark
-export const cancelJntOrder = (orderId, remark) => {
+// JNT Cancel API - Enhanced with proper error handling and logging
+export const cancelJntOrder = async (orderId, remark) => {
   const authData = getAuthData();
   if (!authData || !authData.token) {
-    return Promise.reject({ status: 401, detail: "Not authenticated" });
+    console.error('Authentication error: No auth token found');
+    throw new Error("Not authenticated");
   }
 
   const payload = {
@@ -173,16 +174,48 @@ export const cancelJntOrder = (orderId, remark) => {
       username: "SPARKLORE",
       api_key: "SYKNQV",
       orderid: orderId,
-      remark: remark || "Canceled by user" // Use passed remark
+      remark: remark || "Canceled by user"
     }
   };
 
-  return fetch(`${BASE}/jnt/cancel/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${authData.token}`
-    },
-    body: JSON.stringify(payload)
-  }).then(handleResponse);
+  try {
+    console.log('Sending JNT cancel request:', payload);
+    const response = await fetch(`${BASE}/jnt/cancel/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authData.token}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+    console.log('JNT cancel response:', result);
+
+    if (!response.ok) {
+      // Handle HTTP errors
+      console.error('JNT cancel failed with status:', response.status);
+      throw new Error(result.message || "Failed to cancel order");
+    }
+
+    // Check the success status in the response
+    if (!result.success) {
+      const errorReason = result.detail?.[0]?.reason || "Unknown error";
+      console.error('JNT cancel failed:', errorReason);
+      throw new Error(errorReason);
+    }
+
+    // Check if the specific order was successfully canceled
+    const orderResult = result.detail?.find(d => d.orderid === orderId);
+    if (!orderResult || orderResult.status !== "Sukses") {
+      const errorReason = orderResult?.reason || "Order cancellation failed";
+      console.error('Order cancellation failed:', errorReason);
+      throw new Error(errorReason);
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Error in cancelJntOrder:', error);
+    throw error;
+  }
 };

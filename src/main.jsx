@@ -43,6 +43,7 @@ import AdminDiscount from './pages/Admin/discount_campaign.jsx'
 import AdminBanner from './pages/Admin/page_banner.jsx'
 import AdminGallery from './pages/Admin/photo_gallery.jsx'
 import PaymentProcessing from './pages/PaymentProcessing.jsx'
+import PaymentCallback from './pages/payment_callback.jsx'
 
 const router = createBrowserRouter([
   {path:"/", element: <Home/>},
@@ -77,6 +78,7 @@ const router = createBrowserRouter([
   {path:"/monthly-specials", element: <MonthlySpecials />},
   { path: "/review", element: <UserReviewPage /> },
   { path: '/payment-processing', element: <PaymentProcessing />},
+  { path: "/payment-callback", element: <PaymentCallback /> },
 
   // admin pages
   { path: "/admin/products", element: <AdminProducts /> },

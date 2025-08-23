@@ -628,7 +628,6 @@ export const fetchRecentGalleryImages = async () => {
 };
 
 
-// Add to api.js
 export const trackOrder = async (awb) => {
   try {
     const response = await fetch(`${BASE_URL}/api/track-order/`, {

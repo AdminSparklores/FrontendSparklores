@@ -269,12 +269,19 @@ const handlePrintReceipts = () => {
                     setIsCanceling(true);
                     try {
                       const result = await cancelJntOrder(cancelData.orderId, cancelData.remark);
-
+                      
+                      // The response will already be logged by the API function
                       if (result.success) {
-                        alert(`Order ${cancelData.orderId} canceled successfully.`);
-                        const updatedOrders = await getOrders();
-                        setOrders(updatedOrders);
-                        setSelectedIds(selectedIds.filter(id => id !== cancelData.orderId));
+                        const orderResult = result.detail.find(d => d.orderid === cancelData.orderId);
+                        if (orderResult && orderResult.status === "Sukses") {
+                          alert(`Order ${cancelData.orderId} canceled successfully.`);
+                          const updatedOrders = await getOrders();
+                          setOrders(updatedOrders);
+                          setSelectedIds(selectedIds.filter(id => id !== cancelData.orderId));
+                        } else {
+                          const reason = orderResult?.reason || "Order cancellation failed";
+                          alert(`Order cancellation failed: ${reason}`);
+                        }
                       } else {
                         const reason = result.detail?.[0]?.reason || "Unknown error";
                         alert(`Failed to cancel order: ${reason}`);

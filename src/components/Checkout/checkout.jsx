@@ -13,7 +13,7 @@ const CheckoutPage = () => {
     first_name: '',
     last_name: '',
     email: '',
-    phone: '',
+    receiver_phone: '',
     address: '',
     city: '',
     postal_code: '',
@@ -102,8 +102,6 @@ const CheckoutPage = () => {
     setFilteredLocations(filterLocationsByCity(jntLocations, city));
     setShowCityDropdown(false);
   };
-
-  
 
   // Check newsletter subscription when email changes
   useEffect(() => {
@@ -321,8 +319,16 @@ const CheckoutPage = () => {
   const createOrder = async () => {
     try {
       const selectedItemIds = cartItems.map(item => item.id);
+      // Concatenate the address fields
+      const fullAddress = [
+        shippingAddress.address,
+        shippingAddress.city,
+        shippingAddress.province,
+        shippingAddress.postal_code
+      ].filter(Boolean).join(', ');
+
       const payload = {
-        shipping_address: shippingAddress.address,
+        shipping_address: fullAddress,
         cart_item_ids: selectedItemIds
       };
 
@@ -355,6 +361,76 @@ const CheckoutPage = () => {
       console.error('Error in createOrder:', error);
       setPaymentError(error.message);
       throw error;
+    }
+  };
+
+  const createJNTOrder = async (orderId) => {
+    try {
+      // Extract destination_code from first 3 chars of destAreaCode (e.g., JKT from JKT002)
+      const destinationCode = shippingAddress.destAreaCode?.substring(0, 3).toUpperCase() || "JKT";
+
+      // Build full address
+      const fullAddress = [
+        shippingAddress.address,
+        shippingAddress.city,
+        shippingAddress.destAreaCode,
+        shippingAddress.province,
+        shippingAddress.postal_code
+      ].filter(Boolean).join(', ');
+
+      // Format phone: convert 08xx → +628xx
+      const formatPhone = (phone) => {
+        if (!phone) return '';
+        return phone.replace(/^0/, '+62');
+      };
+
+      const jntPayload = {
+        orderid: orderId.toString(),
+        receiver_name: `${shippingAddress.first_name} ${shippingAddress.last_name}`.trim(),
+        receiver_phone: formatPhone(shippingAddress.receiver_phone),
+        receiver_addr: fullAddress,
+        receiver_zip: shippingAddress.postal_code,
+        destination_code: destinationCode, // Dynamic
+        receiver_area: shippingAddress.destAreaCode,
+        item_name: cartItems.map(item => item.name).join(','),
+        cod: Math.round(total).toString(),
+        goodsvalue: Math.round(subtotal).toString()
+      };
+
+      console.log('Sending to /api/jnt/order/:', jntPayload);
+
+      const response = await fetch(`${BASE_URL}/api/jnt/order/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthData()?.token}`
+        },
+        body: JSON.stringify(jntPayload)
+      });
+
+      console.log('Response from /api/jnt/order/:', response);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Error response from /api/jnt/order/:', errorData);
+        throw new Error(errorData.message || "Failed to create JNT order");
+      }
+
+      const data = await response.json();
+      console.log('Data from /api/jnt/order/:', data);
+
+      if (data.success && data.detail && data.detail.length > 0) {
+        const orderDetail = data.detail[0];
+        if (orderDetail.status === "Sukses" && orderDetail.awb_no) {
+          return orderDetail.awb_no;
+        } else if (orderDetail.status === "Error") {
+          console.error('JNT order creation failed:', orderDetail.reason);
+          return null;
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Error in createJNTOrder:', error);
+      return null;
     }
   };
 
@@ -735,7 +811,9 @@ const CheckoutPage = () => {
           city: shippingAddress.city,
           postal_code: shippingAddress.postal_code,
           country: "IDN",
-          item_details: itemDetails
+          item_details: itemDetails,
+          callback_url: window.location.origin + "/payment-callback", // or your domain
+          finish_redirect_url: window.location.origin + "/payment-callback"
         };
 
         const response = await fetch(`${BASE_URL}/api/midtrans/token/`, {
@@ -765,13 +843,19 @@ const CheckoutPage = () => {
       console.log('Reusing Midtrans token:', token);
 
       window.snap.pay(token, {
-        onSuccess: (result) => {
-          console.log('Payment success', result);
-          navigate('/payment-success', { state: { orderId: orderData.order_id } });
+        onSuccess: async (result) => {
+          const awbNumber = await createJNTOrder(orderData.order_id);
+          const trackingNumber = awbNumber || orderData.order_id;
+          navigate(`/track-order/${trackingNumber}`, {
+            state: { orderId: orderData.order_id, awbNumber, paymentStatus: 'success' }
+          });
         },
-        onPending: (result) => {
-          console.log('Payment pending', result);
-          navigate('/payment-pending', { state: { orderId: orderData.order_id } });
+        onPending: async (result) => {
+          const awbNumber = await createJNTOrder(orderData.order_id);
+          const trackingNumber = awbNumber || orderData.order_id;
+          navigate(`/track-order/${trackingNumber}`, {
+            state: { orderId: orderData.order_id, awbNumber, paymentStatus: 'pending' }
+          });
         },
         onError: (error) => {
           console.log('Payment error', error);
@@ -798,32 +882,34 @@ const CheckoutPage = () => {
   
   const isFormValid = () => {
     const requiredFields = [
-      'first_name', 'last_name', 'email', 'phone', 
+      'first_name', 'last_name', 'email', 'receiver_phone', 
       'address', 'city', 'postal_code', 'province', 'destAreaCode'
     ];
     
-    // Check all required fields are filled
+    // Check required fields
     for (const field of requiredFields) {
       if (!shippingAddress[field] || shippingAddress[field].trim() === "") {
         return false;
       }
     }
-    
-    // Validate email format
+
+    // Validate email
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shippingAddress.email)) {
       return false;
     }
-    
-    // Validate phone number (minimum 10 digits)
-    if (shippingAddress.phone.replace(/\D/g, '').length < 10) {
+
+    // ❌ PROBLEM: You're validating `receiver_phone` in state, 
+    // but checking `phone` in requiredFields
+    const phoneDigits = shippingAddress.receiver_phone.replace(/\D/g, '');
+    if (!shippingAddress.receiver_phone.startsWith('+62') || phoneDigits.length < 7) {
       return false;
     }
-    
-    // Shipping fee must be calculated
+
+    // Shipping fee
     if (shippingFee <= 0) {
       return false;
     }
-    
+
     return true;
   };
 
@@ -1071,20 +1157,55 @@ const CheckoutPage = () => {
                   required
                   disabled={isPaymentStarted} 
                 />
-                <input
-                  type="tel"
-                  name="phone"
-                  value={shippingAddress.phone}
-                  onChange={handleAddressChange}
-                  placeholder="Phone Number * (e.g., 08123456789)"
-                  className={`w-full border rounded-md px-4 py-2 mb-3 bg-[#fdfaf3] ${
+                <div className="relative">
+                  <input
+                    type="tel"
+                    name="receiver_phone"
+                    value={shippingAddress.receiver_phone}
+                    onChange={(e) => {
+                      const value = e.target.value;
+
+                      // Allow: +, digits, backspace
+                      if (!/^\+?[0-9]*$/.test(value) && value !== '') return;
+
+                      // Prevent multiple + signs
+                      if ((value.match(/\+/g) || []).length > 1) return;
+
+                      // Prevent + in middle
+                      if (value.indexOf('+') > 0) return;
+
+                      // Update state
+                      setShippingAddress(prev => ({ ...prev, receiver_phone: value }));
+                      setFormTouched(true);
+                    }}
+                    onBlur={(e) => {
+                      const value = e.target.value.trim();
+                      if (!value) return;
+
+                      if (value.startsWith('0')) {
+                        // Auto-correct 08xx → +628xx
+                        const corrected = value.replace(/^0/, '+62');
+                        setShippingAddress(prev => ({ ...prev, receiver_phone: corrected }));
+                      } else if (!value.startsWith('+62')) {
+                        // Show error if not valid
+                        setFormError("Phone number must start with +62");
+                      }
+                    }}
+                    placeholder="Phone * (e.g., +628123456789)"
+                    className={`w-full border rounded-md px-4 py-2 mb-3 bg-[#fdfaf3] ${
                       isPaymentStarted 
                         ? 'border-gray-200 cursor-not-allowed text-gray-500' 
                         : 'border-[#f2e9d5]'
-                    }`}
-                  required
-                  disabled={isPaymentStarted} 
-                />
+                    } ${formError && formError.includes('phone') ? 'border-red-500' : ''}`}
+                    required
+                    disabled={isPaymentStarted}
+                  />
+                  {shippingAddress.receiver_phone && !shippingAddress.receiver_phone.startsWith('+62') && (
+                    <p className="text-red-500 text-xs mt-1">
+                      Must start with +62
+                    </p>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="relative">
                       <input
