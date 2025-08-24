@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
-const EMPTY_CART_IMAGE = "https://i.pinimg.com/736x/2e/ac/fa/2eacfa305d7715bdcd86bb4956209038.jpg";
+import { ShoppingCart } from 'lucide-react';
+// const EMPTY_CART_IMAGE = "https://i.pinimg.com/736x/2e/ac/fa/2eacfa305d7715bdcd86bb4956209038.jpg";
 
 const CartDrawer = ({
   open,
@@ -196,11 +197,9 @@ const CartDrawer = ({
         {/* Empty cart state */}
         {!isLoadingCart && cartItems.length === 0 && !cartError && (
           <div className="flex flex-col items-center justify-center py-10 gap-4">
-            <img
-              src={EMPTY_CART_IMAGE}
-              alt="Empty Cart"
-              className="w-24 h-24 opacity-60"
-              style={{ filter: "grayscale(70%)" }}
+            <ShoppingCart 
+              size={64} 
+              className="text-[#b87777] opacity-60" 
             />
             <span className="text-[#b87777] font-semibold text-lg text-center">
               Your cart is empty.

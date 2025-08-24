@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import clsx from "clsx";
 import { useNavigate, Link } from "react-router-dom";
-import { BASE_URL, fetchProduct, isLoggedIn } from "../../utils/api";
+import { BASE_URL, fetchProduct, isLoggedIn, addToCart, getAuthData } from "../../utils/api";
+import Snackbar from '../snackbar.jsx';
 
 // BASE IMAGES
 import baseNecklace from "../../assets/default/basenecklace.png";
@@ -38,6 +39,9 @@ export default function CharmCustomizerFull() {
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [isLoggedInState, setIsLoggedInState] = useState(false);
   const navigate = useNavigate();
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarType, setSnackbarType] = useState('success');
 
   // --- Metal sound effect ---
   const metalAudioRef = useRef(null);
@@ -53,6 +57,18 @@ export default function CharmCustomizerFull() {
       metalAudioRef.current.play();
     }
   };
+
+  useEffect(() => {
+    let timer;
+    if (showSnackbar) {
+      timer = setTimeout(() => {
+        setShowSnackbar(false);
+      }, 3000);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [showSnackbar]);
 
   // Check login state on mount and when auth changes
   useEffect(() => {
@@ -379,12 +395,33 @@ export default function CharmCustomizerFull() {
     }
   }, [charmCount]); // Only runs when charmCount changes
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!isLoggedIn()) {
       setShowLoginPrompt(true);
       return;
     }
-    alert("Added to cart! (Implement actual logic here)");
+
+    try {
+      // Prepare cart data - format it to match what your API expects
+      const cartData = {
+        product: selectedBaseProduct?.id,
+        quantity: 1,
+        charms: charmCount > 0 ? Object.values(selectedCharms).map(charm => charm.id) : []
+      };
+
+      // Call the addToCart API function
+      await addToCart(selectedBaseProduct?.id, cartData);
+
+      // Show success message
+      setSnackbarMessage('Customized item added to cart!');
+      setSnackbarType('success');
+      setShowSnackbar(true);
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      setSnackbarMessage(error.message || 'Failed to add to cart');
+      setSnackbarType('error');
+      setShowSnackbar(true);
+    }
   };
 
   const handleCloseLoginPrompt = () => setShowLoginPrompt(false);
@@ -426,6 +463,12 @@ export default function CharmCustomizerFull() {
 
   return (
     <div className="bg-[#f9f5ef] min-h-screen">
+      <Snackbar
+        message={snackbarMessage}
+        show={showSnackbar}
+        onClose={() => setShowSnackbar(false)}
+        type={snackbarType}
+      />
       {/* LOGIN POPUP */}
       {showLoginPrompt && (
         <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center">
@@ -652,6 +695,7 @@ export default function CharmCustomizerFull() {
             <button
               className="w-full bg-[#e6d5a7] text-center py-2 rounded mb-4 font-medium"
               onClick={handleAddToCart}
+              disabled={!selectedBaseProduct}
             >
               Add to cart
             </button>

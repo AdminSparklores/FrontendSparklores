@@ -128,7 +128,7 @@ export const createLabels = (orderIds) => {
     return Promise.reject({ status: 401, detail: "Not authenticated" });
   }
 
-  return fetch(`${BASE}/orders/create_labels/`, {
+  return fetch(`${BASE}/jnt/print/`, {
     method: "POST",
     headers: { 
       "Content-Type": "application/json",
@@ -139,7 +139,7 @@ export const createLabels = (orderIds) => {
   .then(async (response) => {
     // Log full response for debugging
     const text = await response.text(); // Read as text first
-    console.log("Raw response from /orders/create_labels/:", text);
+    console.log("Raw response from /jnt/print/:", text);
 
     let data;
     try {
