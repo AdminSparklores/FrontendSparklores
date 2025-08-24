@@ -349,7 +349,8 @@ const CheckoutPage = () => {
 
       const payload = {
         shipping_address: fullAddress,
-        cart_item_ids: selectedItemIds
+        cart_item_ids: selectedItemIds,
+        shipping_cost: shippingFee
       };
 
       console.log('Sending to api/selective_checkout/:', payload);

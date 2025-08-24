@@ -1,4 +1,4 @@
-import { BASE_URL, getAuthData } from "./api.js";
+import { BASE_URL, getAuthData, } from "./api.js";
 
 const BASE = `${BASE_URL}/api`
 
@@ -122,49 +122,81 @@ export const getOrders = () => {
 // Create labels and print documents (for selected orders)
 // admin_api.js - Updated createLabels()
 
-export const createLabels = (orderIds) => {
+// admin_api.js
+export const createLabels = async (orders) => {
   const authData = getAuthData();
   if (!authData || !authData.token) {
     return Promise.reject({ status: 401, detail: "Not authenticated" });
   }
 
-  return fetch(`${BASE}/jnt/print/`, {
+  const labelPromises = orders.map(order => {
+    return fetch(`${BASE}/jnt/print/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authData.token}`
+      },
+      body: JSON.stringify({ billcode: order.billcode }),
+    }).then(async (response) => {
+      console.log("📬 Raw response URL:", `${BASE}/jnt/print/`);
+      console.log("📤 Sent payload:", { billcode: order.billcode });
+      console.log("📥 Response status:", response.status);
+      const text = await response.text();
+      console.log("📄 Raw response text:", text);
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        throw new Error("Invalid JSON response from server");
+      }
+
+      if (!response.ok || !data.responseitems?.[0]?.success === "true") {
+        const reason = data.responseitems?.[0]?.reason || data.error || "Unknown error";
+        throw new Error(reason);
+      }
+
+      return data.responseitems[0].rotaprinturl;
+    });
+  });
+
+  return Promise.all(labelPromises).catch(error => {
+    console.error("Failed to create JNT labels:", error);
+    throw new Error(`Label creation failed: ${error.message}`);
+  });
+};
+
+// NEW: Create merged PDF labels using order_ids
+export const createMergedLabels = (orderIds) => {
+  const authData = getAuthData();
+  if (!authData || !authData.token) {
+    return Promise.reject({ status: 401, detail: "Not authenticated" });
+  }
+
+  return fetch(`${BASE}/orders/create_labels/`, {
     method: "POST",
-    headers: { 
+    headers: {
       "Content-Type": "application/json",
-      'Authorization': `Bearer ${authData.token}`
+      "Authorization": `Bearer ${authData.token}`
     },
     body: JSON.stringify({ order_ids: orderIds }),
   })
   .then(async (response) => {
-    // Log full response for debugging
-    const text = await response.text(); // Read as text first
-    console.log("Raw response from /jnt/print/:", text);
-
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch (e) {
-      console.error("Failed to parse JSON:", e);
-      throw new Error("Invalid response from server");
-    }
-
     if (!response.ok) {
-      throw new Error(data.message || 'Failed to create labels');
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || `HTTP ${response.status}`);
     }
 
-    // Log structured data
-    console.log("Parsed response ", data);
-
-    const item = data.responseitems?.[0];
-    if (item && item.success === "true" && item.rotaprinturl) {
-      console.log("✅ Successfully got print URL:", item.rotaprinturl);
-      return item.rotaprinturl;
-    } else {
-      const reason = item?.reason || 'No rotaprinturl or success=false';
-      console.error("❌ JNT label creation failed:", reason, item);
-      throw new Error(reason);
-    }
+    // Expecting a PDF blob
+    return response.blob();
+  })
+  .then(blob => {
+    console.log("✅ Successfully received merged PDF blob");
+    return blob;
+  })
+  .catch(error => {
+    console.error("Failed to create merged labels:", error);
+    throw new Error(`Create labels failed: ${error.message}`);
   });
 };
 

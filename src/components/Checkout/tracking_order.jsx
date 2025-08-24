@@ -10,19 +10,39 @@ import visaLogo from "../../assets/payment/visa.png";
 import check from "../../assets/logo/check.png";
 import truck from "../../assets/logo/truck.png";
 import map from "../../assets/logo/map.png";
-import { trackOrder } from "../../utils/api";
+import { trackOrder, fetchOrderDetailsTrack } from "../../utils/api";
 
 const OrderTrackingPage = ({ trackingNumber }) => {
   const [orderData, setOrderData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [orderDetails, setOrderDetails] = useState(null);
+  const [orderDetailsError, setOrderDetailsError] = useState(null);
+
+
 
   useEffect(() => {
     const fetchOrderData = async () => {
       try {
         setLoading(true);
-        const data = await trackOrder(trackingNumber);
-        setOrderData(data);
+        // First fetch the tracking data
+        const trackingData = await trackOrder(trackingNumber);
+        setOrderData(trackingData);
+        console.log("Fetched tracking data:", trackingData);
+        
+        // Then fetch the order details using the order ID from tracking data
+        if (trackingData.orderid) {
+          console.log("Fetching order details for order ID:", trackingData.orderid);
+          try {
+            const details = await fetchOrderDetailsTrack(trackingData.orderid);
+            setOrderDetails(details);
+            console.log("Fetched order details:", details);
+          } catch (err) {
+            console.error("Failed to fetch order details:", err);
+            setOrderDetailsError("Order details unavailable - authentication required");
+            // Continue even if order details fail - we'll use tracking data
+          }
+        }
       } catch (err) {
         setError(err.message);
       } finally {
@@ -34,6 +54,7 @@ const OrderTrackingPage = ({ trackingNumber }) => {
       fetchOrderData();
     }
   }, [trackingNumber]);
+
 
   if (loading) {
     return (
@@ -130,22 +151,37 @@ const OrderTrackingPage = ({ trackingNumber }) => {
             {/* Left: Payment Status */}
             <div className="border-e border-[#ebdfc8] col-span-1 py-7">
               <div className="text-center py-[2rem]">
-                <img src={check} alt="check" className="inline h-[3rem] align-middle mb-[1rem]" />
+                <img src={check} alt="check" className="inline h-[3rem] align-middle mb-[0.3rem]" />
                 <p className="text-lg font-bold">Payment Successful</p>
               </div>
               <div className="grid grid-cols-2 justify-between pe-[1.5rem]">
                 <div className="col-span-1">
-                  <p className="text-[#83807D] mb-[0.3rem]">Paid by</p>
                   <p className="text-[#83807D] mb-[0.3rem]">Order Time</p>
                   <p className="text-[#83807D] mb-[0.3rem]">Payment Time</p>
                 </div>
                 <div className="col-span-1 text-end">
-                  <img src={visaLogo} alt="VISA" className="inline h-5 align-middle mb-[0.3rem]" />
+                  {/* Order Time */}
                   <p className="text-[#83807D] mb-[0.3rem]">
-                    {orderData.detail?.shipped_date ? formatDateTime(orderData.detail.shipped_date) : 'N/A'}
+                    {orderDetails?.created_at
+                      ? formatDateTime(orderDetails.created_at)
+                      : orderData.detail?.order_date
+                        ? formatDateTime(orderData.detail.order_date)
+                        : orderData.detail?.created_at
+                          ? formatDateTime(orderData.detail.created_at)
+                          : 'N/A'}
                   </p>
+
+                  {/* Payment Time */}
                   <p className="text-[#83807D] mb-[0.3rem]">
-                    {orderData.detail?.shipped_date ? formatDateTime(orderData.detail.shipped_date) : 'N/A'}
+                    {orderDetails?.updated_at
+                      ? formatDateTime(orderDetails.updated_at)
+                      : orderData.detail?.payment_date
+                        ? formatDateTime(orderData.detail.payment_date)
+                        : orderData.detail?.updated_at
+                          ? formatDateTime(orderData.detail.updated_at)
+                          : orderData.detail?.shipped_date
+                            ? formatDateTime(orderData.detail.shipped_date)
+                            : 'N/A'}
                   </p>
                 </div>
               </div>
@@ -201,26 +237,35 @@ const OrderTrackingPage = ({ trackingNumber }) => {
                 />
                 <div className="flex-1">
                   <div className="font-semibold text-base md:text-lg">
-                    {orderData.detail?.itemname || 'Product'}
+                    {orderData.detail?.itemname || 'Custom Jewelry'}
                   </div>
                   <div className="text-xs text-[#b8ab96] font-medium mb-1">
                     x{orderData.detail?.qty || 1}
                   </div>
-                  <div className="text-base font-medium mb-2">
-                    {formatPrice(orderData.detail?.actual_amount || 0)}
-                  </div>
+                  {/* Optional: Show item price if available, otherwise omit or estimate */}
+                  {/* {orderData.detail?.actual_amount && (
+                    <div className="text-base font-medium mb-2">
+                      {formatPrice(orderData.detail.actual_amount)}
+                    </div>
+                  )} */}
                   <div className="text-xs font-semibold">Note</div>
                   <div className="italic text-xs text-[#b8ab96]">
                     "{orderData.detail?.note || 'No note provided'}"
                   </div>
                 </div>
               </div>
-              
-              {/* Total */}
+
+              {/* Total Amount */}
               <div className="pt-2 border-t border-[#ebdfc8] text-right font-semibold text-base me-[1rem]">
                 <span>Total</span>
                 <span className="ml-2 font-serif">
-                  {formatPrice(orderData.detail?.actual_amount || 0)}
+                  {orderDetails?.total_price
+                    ? formatPrice(parseFloat(orderDetails.total_price))
+                    : orderData.detail?.total_price
+                      ? formatPrice(orderData.detail.total_price)
+                      : orderData.detail?.actual_amount
+                        ? formatPrice(orderData.detail.actual_amount)
+                        : 'N/A'}
                 </span>
               </div>
             </div>

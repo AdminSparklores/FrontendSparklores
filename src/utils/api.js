@@ -712,6 +712,23 @@ export const fetchOrderDetails = async (orderId, token = null) => {
   return await response.json();
 };
 
+export const fetchOrderDetailsTrack = async (orderId) => {
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+
+  const response = await fetch(`${BASE_URL}/api/orders/${orderId}/`, {
+    method: 'GET',
+    headers: headers
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch order details');
+  }
+
+  return await response.json();
+};
+
 // Original FormData version with better error handling
 export const submitReview = async (formData) => {
   try {

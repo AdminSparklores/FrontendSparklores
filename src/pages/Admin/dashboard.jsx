@@ -5,7 +5,7 @@ import OrderTable from "../../components/Admin/OrderTable";
 import StatusFilterBar from "../../components/Admin/StatusFilterBar";
 import ConfirmDialog from "../../components/Admin/ConfirmDialog2";
 import PrintConfirmationDialog from "../../components/Admin/PrintConfirmationDialog";
-import { getOrders, getProducts, getGiftSets, getCharms, createLabels, cancelJntOrder } from "../../utils/admin_api";
+import { getOrders, getProducts, getGiftSets, getCharms, createLabels, cancelJntOrder, createMergedLabels } from "../../utils/admin_api";
 
 const ORDER_STATUS = [
   { value: "all", label: "All" },
@@ -39,6 +39,7 @@ export default function AdminOrderDashboard() {
     title: '',
     message: ''
   });
+  const [labelType, setLabelType] = useState("jnt");
 
 
   // Fetch all required data on mount
@@ -92,89 +93,122 @@ export default function AdminOrderDashboard() {
     } 
   };
 
-  // Trigger label creation
-  const handleCreateLabels = () => {
+  // Trigger label creation - BOTH types simultaneously
+  const handleCreateLabels = async () => {
     if (selectedIds.length === 0) {
       alert("Please select at least one order to create labels");
       return;
     }
 
-    setConfirmAction(() => async () => {
-      try {
-        setIsCreatingLabels(true);
-        
-        const printUrls = await createLabels(selectedIds);
-        
-        if (!Array.isArray(printUrls)) {
-          // If single URL, wrap in array
-          setGeneratedPdfUrl([printUrls]);
-        } else {
-          setGeneratedPdfUrl(printUrls);
-        }
+    const selectedOrders = orders.filter(order => selectedIds.includes(order.id));
 
-        setShowPrintConfirm(true);
+    try {
+      setIsCreatingLabels(true);
+      
+      // Call both APIs simultaneously
+      const [statusUpdateResult, jntLabelsResult] = await Promise.allSettled([
+        // This updates order status (createMergedLabels)
+        createMergedLabels(selectedIds),
+        // This creates JNT labels (createLabels)
+        createLabels(selectedOrders)
+      ]);
 
-        const updatedOrders = await getOrders();
-        setOrders(updatedOrders);
-        setSelectedIds([]);
-      } catch (error) {
-        console.error("Label creation error:", error);
-        alert(`Error: ${error.message}`);
-      } finally {
-        setIsCreatingLabels(false);
+      // Handle status update response
+      if (statusUpdateResult.status === 'rejected') {
+        console.error("Status update failed:", statusUpdateResult.reason);
+        // You might want to show an error message for status update failure
+        setResultModalData({
+          type: 'error',
+          title: 'Status Update Failed',
+          message: `Failed to update order status: ${statusUpdateResult.reason.message || 'Unknown error'}`
+        });
+        setShowResultModal(true);
+      } else {
+        console.log("Status update successful");
+        // Status was updated successfully
       }
-    });
-    
-    setShowConfirm(true);
+
+      // Handle JNT labels response
+      if (jntLabelsResult.status === 'rejected') {
+        console.error("JNT label creation failed:", jntLabelsResult.reason);
+        setResultModalData({
+          type: 'error',
+          title: 'Label Creation Failed',
+          message: `Failed to create shipping labels: ${jntLabelsResult.reason.message || 'Unknown error'}`
+        });
+        setShowResultModal(true);
+      } else {
+        // JNT labels created successfully
+        setGeneratedPdfUrl(jntLabelsResult.value);
+        setShowPrintConfirm(true);
+      }
+
+      // Refresh orders regardless of individual API results
+      const updatedOrders = await getOrders();
+      setOrders(updatedOrders);
+      setSelectedIds([]);
+
+    } catch (error) {
+      console.error("Unexpected error:", error);
+      setResultModalData({
+        type: 'error',
+        title: 'Unexpected Error',
+        message: `An unexpected error occurred: ${error.message}`
+      });
+      setShowResultModal(true);
+    } finally {
+      setIsCreatingLabels(false);
+    }
   };
 
   // Handle print now action
   const handlePrintNow = () => {
-    const urls = Array.isArray(generatedPdfUrl) ? generatedPdfUrl : [generatedPdfUrl];
+    if (generatedPdfUrl.jntUrls && Array.isArray(generatedPdfUrl.jntUrls)) {
+      generatedPdfUrl.jntUrls.forEach(url => {
+        const a = document.createElement('a');
+        a.href = url.trim();
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      });
+    }
 
-    urls.forEach((url, index) => {
-      const iframe = document.createElement('iframe');
-      iframe.style.position = 'fixed';
-      iframe.style.top = '-1000px';
-      iframe.style.left = '-1000px';
-      iframe.style.width = '1px';
-      iframe.style.height = '1px';
-
-      // Print this iframe when loaded
-      iframe.onload = () => {
-        try {
-          iframe.contentWindow.print();
-        } catch (e) {
-          console.error(`Print failed for URL ${index}:`, e);
-        }
-      };
-
-      iframe.src = url;
-      document.body.appendChild(iframe);
-
-      // Clean up after delay
-      setTimeout(() => {
-        document.body.removeChild(iframe);
-      }, 10000);
-    });
+    if (generatedPdfUrl.mergedPdfUrl) {
+      const a = document.createElement('a');
+      a.href = generatedPdfUrl.mergedPdfUrl;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
 
     setShowPrintConfirm(false);
   };
 
-  // Handle print later action
+  // Handle print later action for both label types
   const handlePrintLater = () => {
-    const urls = Array.isArray(generatedPdfUrl) ? generatedPdfUrl : [generatedPdfUrl];
-    urls.forEach(url => {
+    if (generatedPdfUrl.mergedPdfUrl) {
       const link = document.createElement('a');
-      link.href = url;
+      link.href = generatedPdfUrl.mergedPdfUrl;
+      link.download = `merged-shipping-labels-${Date.now()}.pdf`;
       link.target = '_blank';
-      link.rel = 'noopener noreferrer';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    });
+    }
+
+    // For JNT URLs, they're already external links, so we can't download them directly
+    // but we can provide the links for the user to save manually
 
     setShowPrintConfirm(false);
+    setTimeout(() => {
+      if (generatedPdfUrl.mergedPdfUrl) {
+        URL.revokeObjectURL(generatedPdfUrl.mergedPdfUrl);
+      }
+    }, 100);
   };
 
   // Add this function to dashboard.jsx
@@ -387,15 +421,42 @@ const handlePrintReceipts = () => {
       
       {/* Print Confirmation Dialog */}
       {showPrintConfirm && (
-        <PrintConfirmationDialog
-          onPrintNow={handlePrintNow}
-          onPrintLater={handlePrintLater}
-          onClose={() => {
-            setShowPrintConfirm(false);
-            URL.revokeObjectURL(generatedPdfUrl);
-          }}
-        />
-      )}
+      <div className="fixed inset-0 bg-black/30 z-[100] flex items-center justify-center">
+        <div className="bg-white rounded-xl p-6 max-w-2xl max-h-96 overflow-y-auto">
+          <h3 className="font-bold text-lg mb-4">Labels Ready</h3>
+          <p className="mb-4 text-sm text-gray-700">
+            Click the links below to open each label in a new tab.
+          </p>
+          <div className="space-y-2 mb-4">
+            {generatedPdfUrl && (Array.isArray(generatedPdfUrl) ? generatedPdfUrl : [generatedPdfUrl]).map((url, i) => (
+              <div key={i}>
+                <a
+                  href={url.trim()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline text-sm"
+                >
+                  📄 Open Label {i + 1}
+                </a>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={() => {
+                setShowPrintConfirm(false);
+                if (generatedPdfUrl && typeof generatedPdfUrl === 'string') {
+                  URL.revokeObjectURL(generatedPdfUrl);
+                }
+              }}
+              className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
       </AdminLayout>
     </AdminRouteGuard>
   );
