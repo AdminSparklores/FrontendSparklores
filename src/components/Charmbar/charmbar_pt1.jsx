@@ -396,10 +396,20 @@ export default function CharmCustomizerFull() {
   }, [charmCount]); // Only runs when charmCount changes
 
   const handleAddToCart = async () => {
+    // Check login status first - before any other validation
     if (!isLoggedIn()) {
       setShowLoginPrompt(true);
+      return; // Exit early if not logged in
+    }
+
+    // Only proceed with validation if user is logged in
+    if (!selectedBaseProduct) {
+      setSnackbarMessage('Please select a base product first');
+      setSnackbarType('error');
+      setShowSnackbar(true);
       return;
     }
+
 
     try {
       // Prepare cart data - format it to match what your API expects
@@ -556,7 +566,7 @@ export default function CharmCustomizerFull() {
                   <span className="text-red-600">{formatIDR(selectedBaseProduct.discount_price)}</span>
                 </p>
               ) : (
-                <p className="text-gray-700">Rp {formatIDR(selectedBaseProduct.price)}</p>
+                <p className="text-gray-700">{formatIDR(selectedBaseProduct.price)}</p>
               )}
               <button 
                 onClick={() => {
@@ -693,7 +703,7 @@ export default function CharmCustomizerFull() {
             {/* --- CHAIN ONLY/0 CHARMS TABS HIDE END --- */}
 
             <button
-              className="w-full bg-[#e6d5a7] text-center py-2 rounded mb-4 font-medium"
+              className="w-full bg-[#e6d5a7] text-center py-2 rounded mb-4 font-medium disabled:bg-[#f0e6cf] disabled:cursor-not-allowed"
               onClick={handleAddToCart}
               disabled={!selectedBaseProduct}
             >

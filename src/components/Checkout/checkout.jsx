@@ -902,7 +902,7 @@ const CheckoutPage = () => {
           console.log('Payment pending', result);
           
           // ✅ Create JNT order so shipment is ready
-          const awbNumber = await createJNTOrder(orderData.order_id);
+          // const awbNumber = await createJNTOrder(orderData.order_id);
 
           // ✅ Do NOT navigate — just close loader and let user stay
           setIsShowingLoader(false);
