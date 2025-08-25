@@ -71,30 +71,45 @@ const Reviews = () => {
         // Sort the reviews immediately after fetching
         reviewsData = sortReviews(reviewsData);
         
-        // Fetch product details for each review
-        const productIds = new Set();
-        reviewsData.forEach(review => {
-          review.products.forEach(productId => productIds.add(productId));
-        });
-        
+        // Extract product details from the reviews themselves
         const productDetailsMap = {};
-        for (const productId of productIds) {
-          try {
-            const product = await fetchProduct(productId);
-            productDetailsMap[productId] = {
-              name: product.name,
-              type: product.label.toUpperCase(),
-              image: getFirstProductImage(product) // Use the first available image
-            };
-          } catch (err) {
-            console.error(`Error fetching product ${productId}:`, err);
-            productDetailsMap[productId] = {
-              name: "Unknown Product",
-              type: "UNKNOWN",
-              image: "/path/to/default/image.png" // Fallback image
-            };
+
+        reviewsData.forEach(review => {
+          // Handle products (which are already full objects in the API response)
+          if (review.products && review.products.length > 0) {
+            review.products.forEach(product => {
+              productDetailsMap[product.id] = {
+                name: product.name,
+                type: product.label?.toUpperCase() || "UNKNOWN",
+                image: product.images && product.images.length > 0 
+                  ? product.images[0].image_url 
+                  : '/path/to/default/image.png'
+              };
+            });
           }
-        }
+          
+          // Handle charms
+          if (review.charms && review.charms.length > 0) {
+            review.charms.forEach(charm => {
+              productDetailsMap[charm.id] = {
+                name: charm.name,
+                type: "CHARM",
+                image: charm.image || '/path/to/default/image.png'
+              };
+            });
+          }
+          
+          // Handle gift sets
+          if (review.gift_sets && review.gift_sets.length > 0) {
+            review.gift_sets.forEach(giftSet => {
+              productDetailsMap[giftSet.id] = {
+                name: giftSet.name,
+                type: "GIFT SET",
+                image: giftSet.image || '/path/to/default/image.png'
+              };
+            });
+          }
+        });
         
         setProductDetails(productDetailsMap);
         setAllReviews(reviewsData);
@@ -107,7 +122,7 @@ const Reviews = () => {
       }
     };
 
-    fetchData();
+  fetchData();
   }, []);
 
   // Handle show more/less reviews
@@ -237,36 +252,113 @@ const Reviews = () => {
               </div>
               <p className="text-gray-700 mt-2">{review.review_text}</p>
 
-              {/* Purchased Products */}
-              <div className="mt-4 border-t border-gray-300 pt-3">
-                {review.products.map((productId, idx) => {
-                  const product = productDetails[productId] || {
-                    name: "Unknown Product",
-                    type: "UNKNOWN",
-                    image: "/path/to/default/image.png"
-                  };
-                  
-                  return (
-                    <div key={`${review.id}-${productId}-${idx}`} className="flex items-start gap-3 mt-2">
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-20 h-20 rounded-md object-cover"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = '/path/to/default/image.png';
-                        }}
-                      />
-                      <div>
-                        <p className="text-gray-800 font-medium mb-2">{product.name}</p>
-                        <span className="text-sm text-[#e8d6a8] px-2 py-1 rounded-md border-3 border-[#e8d6a8]">
-                          {product.type}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              {/* Purchased Products - Only show if there are products, charms, or gift sets */}
+              {(review.products && review.products.length > 0) ||
+              (review.charms && review.charms.length > 0) ||
+              (review.gift_sets && review.gift_sets.length > 0) ? (
+                <div className="mt-4 border-t border-gray-300 pt-3">
+                  {/* Show products */}
+                  {review.products && review.products.length > 0 && (
+                    <>
+                      {review.products.map((product, idx) => {
+                        const productDetail = productDetails[product.id] || {
+                          name: product.name || "Unknown Product",
+                          type: product.label?.toUpperCase() || "UNKNOWN",
+                          image: product.images && product.images.length > 0 
+                            ? product.images[0].image_url 
+                            : '/path/to/default/image.png'
+                        };
+                        
+                        return (
+                          <div key={`${review.id}-${product.id}-${idx}`} className="flex items-start gap-3 mt-2">
+                            <img
+                              src={productDetail.image}
+                              alt={productDetail.name}
+                              className="w-20 h-20 rounded-md object-cover"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = '/path/to/default/image.png';
+                              }}
+                            />
+                            <div>
+                              <p className="text-gray-800 font-medium mb-2">{productDetail.name}</p>
+                              <span className="text-sm text-[#e8d6a8] px-2 py-1 rounded-md border-3 border-[#e8d6a8]">
+                                {productDetail.type}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+
+                  {/* Show charms */}
+                  {review.charms && review.charms.length > 0 && (
+                    <>
+                      {review.charms.map((charm, idx) => {
+                        const charmDetail = productDetails[charm.id] || {
+                          name: charm.name || "Unknown Charm",
+                          type: "CHARM",
+                          image: charm.image || '/path/to/default/image.png'
+                        };
+                        
+                        return (
+                          <div key={`${review.id}-charm-${charm.id}-${idx}`} className="flex items-start gap-3 mt-2">
+                            <img
+                              src={charmDetail.image}
+                              alt={charmDetail.name}
+                              className="w-20 h-20 rounded-md object-cover"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = '/path/to/default/image.png';
+                              }}
+                            />
+                            <div>
+                              <p className="text-gray-800 font-medium mb-2">{charmDetail.name}</p>
+                              <span className="text-sm text-[#e8d6a8] px-2 py-1 rounded-md border-3 border-[#e8d6a8]">
+                                {charmDetail.type}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+
+                  {/* Show gift sets */}
+                  {review.gift_sets && review.gift_sets.length > 0 && (
+                    <>
+                      {review.gift_sets.map((giftSet, idx) => {
+                        const giftSetDetail = productDetails[giftSet.id] || {
+                          name: giftSet.name || "Unknown Gift Set",
+                          type: "GIFT SET",
+                          image: giftSet.image || '/path/to/default/image.png'
+                        };
+                        
+                        return (
+                          <div key={`${review.id}-giftset-${giftSet.id}-${idx}`} className="flex items-start gap-3 mt-2">
+                            <img
+                              src={giftSetDetail.image}
+                              alt={giftSetDetail.name}
+                              className="w-20 h-20 rounded-md object-cover"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = '/path/to/default/image.png';
+                              }}
+                            />
+                            <div>
+                              <p className="text-gray-800 font-medium mb-2">{giftSetDetail.name}</p>
+                              <span className="text-sm text-[#e8d6a8] px-2 py-1 rounded-md border-3 border-[#e8d6a8]">
+                                {giftSetDetail.type}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+              ) : null}
             </div>
           </div>
         ))}

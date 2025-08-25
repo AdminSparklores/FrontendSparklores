@@ -15,6 +15,65 @@ const ORDER_STATUS = [
   { value: "shipped", label: "Shipped" },
 ];
 
+// Pagination component
+const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+  const maxVisiblePages = 5;
+  
+  const getPageNumbers = () => {
+    const pages = [];
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    
+    return pages;
+  };
+
+  return (
+    <div className="flex justify-center items-center mt-6 space-x-2">
+      <button
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        className="px-3 py-1 rounded border border-[#e5cfa4] text-[#bfa170] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#f8f4ed]"
+      >
+        Previous
+      </button>
+      
+      {getPageNumbers().map(page => (
+        <button
+          key={page}
+          onClick={() => onPageChange(page)}
+          className={`px-3 py-1 rounded border ${
+            currentPage === page
+              ? "bg-[#bfa170] text-white border-[#bfa170]"
+              : "border-[#e5cfa4] text-[#bfa170] hover:bg-[#f8f4ed]"
+          }`}
+        >
+          {page}
+        </button>
+      ))}
+      
+      <button
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        className="px-3 py-1 rounded border border-[#e5cfa4] text-[#bfa170] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#f8f4ed]"
+      >
+        Next
+      </button>
+      
+      <span className="ml-4 text-sm text-gray-600">
+        Page {currentPage} of {totalPages}
+      </span>
+    </div>
+  );
+};
+
 export default function AdminOrderDashboard() {
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
@@ -40,7 +99,10 @@ export default function AdminOrderDashboard() {
     message: ''
   });
   const [labelType, setLabelType] = useState("jnt");
-
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10); // You can make this configurable
 
   // Fetch all required data on mount
   useEffect(() => {
@@ -49,6 +111,11 @@ export default function AdminOrderDashboard() {
     getGiftSets().then(setGiftSets);
     getCharms().then(setCharms);
   }, []);
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter]);
 
   // Filtering by status
   const filteredOrders = orders.filter(order => {
@@ -68,6 +135,12 @@ export default function AdminOrderDashboard() {
     }
   });
 
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+
   // Handle individual order cancellation
   const handleCancelOrder = (orderId) => {
     setCancelData({ 
@@ -86,11 +159,18 @@ export default function AdminOrderDashboard() {
   };
   
   const handleCheckAll = () => {
-    if (selectedIds.length === filteredOrders.length) {
+    if (selectedIds.length === paginatedOrders.length) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(filteredOrders.map(order => order.id));
+      setSelectedIds(paginatedOrders.map(order => order.id));
     } 
+  };
+
+  // Handle page change
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    // Clear selection when changing pages
+    setSelectedIds([]);
   };
 
   // Trigger label creation - BOTH types simultaneously
@@ -211,43 +291,47 @@ export default function AdminOrderDashboard() {
     }, 100);
   };
 
-  // Add this function to dashboard.jsx
-const handlePrintReceipts = () => {
-  if (selectedIds.length === 0) {
-    alert("Please select at least one order to print receipts");
-    return;
-  }
+  // Print receipts function for collection tab
+  const handlePrintReceipts = async () => {
+    if (selectedIds.length === 0) {
+      alert("Please select at least one order to print receipts");
+      return;
+    }
 
-  // Here you would implement the actual receipt printing logic
-  console.log("Printing receipts for:", selectedIds);
-  alert(`Preparing to print receipts for ${selectedIds.length} order(s)`);
-  
-  // For now, we'll just clear the selection
-  setSelectedIds([]);
-};
+    try {
+      setIsCreatingLabels(true);
+      
+      // Get selected orders with their billcodes
+      const selectedOrders = orders.filter(order => selectedIds.includes(order.id));
+      
+      // Call the JNT print API for each selected order
+      const jntLabelsResult = await createLabels(selectedOrders);
 
-// Update the action bar section to show different buttons based on status:
-{selectedIds.length > 0 && (
-  <div className="flex gap-3 mt-4">
-    {statusFilter === "awaiting_shipment" && (
-      <button
-        onClick={handleCreateLabels}
-        className="bg-[#e5cfa4] px-6 py-2 rounded text-white font-bold"
-        disabled={isCreatingLabels}
-      >
-        {isCreatingLabels ? 'Creating...' : 'Create Label & Print Document'}
-      </button>
-    )}
-    {statusFilter === "collection" && (
-      <button
-        onClick={handlePrintReceipts}
-        className="bg-[#e5cfa4] px-6 py-2 rounded text-white font-bold"
-      >
-        Print Receipts
-      </button>
-    )}
-  </div>
-)}
+      // Handle JNT labels response
+      if (Array.isArray(jntLabelsResult) && jntLabelsResult.length > 0) {
+        setGeneratedPdfUrl(jntLabelsResult);
+        setShowPrintConfirm(true);
+      } else {
+        setResultModalData({
+          type: 'error',
+          title: 'Print Failed',
+          message: 'Failed to generate receipts. Please try again.'
+        });
+        setShowResultModal(true);
+      }
+
+    } catch (error) {
+      console.error("Print receipts error:", error);
+      setResultModalData({
+        type: 'error',
+        title: 'Print Error',
+        message: `Failed to print receipts: ${error.message || 'Unknown error'}`
+      });
+      setShowResultModal(true);
+    } finally {
+      setIsCreatingLabels(false);
+    }
+  };
 
   return (
     <AdminRouteGuard>
@@ -255,6 +339,25 @@ const handlePrintReceipts = () => {
         <div className="mx-auto max-w-full">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-xl font-bold text-[#bfa170]">Order Management</h1>
+            <div className="flex items-center space-x-2">
+              <label htmlFor="itemsPerPage" className="text-sm text-gray-600">
+                Orders per page:
+              </label>
+              <select
+                id="itemsPerPage"
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1); // Reset to first page when changing items per page
+                }}
+                className="border border-[#e5cfa4] rounded px-2 py-1 text-sm"
+              >
+                <option value="5">5</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+              </select>
+            </div>
           </div>
           <StatusFilterBar
             status={statusFilter}
@@ -262,7 +365,7 @@ const handlePrintReceipts = () => {
             orderStatus={ORDER_STATUS}
           />
           <OrderTable
-            orders={filteredOrders}
+            orders={paginatedOrders}
             products={products}
             giftSets={giftSets}
             charms={charms}
@@ -270,9 +373,19 @@ const handlePrintReceipts = () => {
             selectedIds={selectedIds}
             onCheck={handleCheck}
             onCheckAll={handleCheckAll}
-            onCancelOrder={handleCancelOrder}   // ← Add this
+            onCancelOrder={handleCancelOrder}
             isCanceling={isCanceling}   
           />
+          
+          {/* Pagination */}
+          {filteredOrders.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+            />
+          )}
+          
           {/* Action bar for selected checkboxes */}
           {selectedIds.length > 0 && (
             <div className="flex gap-3 mt-4">
@@ -289,8 +402,9 @@ const handlePrintReceipts = () => {
                 <button
                   onClick={handlePrintReceipts}
                   className="bg-[#e5cfa4] px-6 py-2 rounded text-white font-bold"
+                  disabled={isCreatingLabels}
                 >
-                  Print Receipts
+                  {isCreatingLabels ? 'Printing...' : 'Print Receipts'}
                 </button>
               )}
             </div>
