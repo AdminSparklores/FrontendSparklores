@@ -713,7 +713,7 @@ export default function CharmCustomizerFull() {
 
             {/* --- CHARM PICKER HIDE START --- */}
             {charmCount > 0 && (
-              <div className="space-y-4 md:max-h-[21vw] sm:max-h-[40vw] overflow-y-auto pr-2">
+              <div className="space-y-4 md:max-h-[21vw] sm:max-h-[40vw] overflow-y-auto pr-2 mobile-charm-picker">
                 {Object.entries(groupedCharms).map(([category, labels]) => (
                   <div key={category} className="mb-2">
                     <button
@@ -862,6 +862,16 @@ export default function CharmCustomizerFull() {
           <p className="text-center py-8">No recommendations available</p>
         )}
       </div>
+
+      {/* Mobile-specific CSS */}
+      <style jsx>{`
+        @media (max-width: 768px) {
+          .mobile-charm-picker {
+            max-height: 350px !important;
+            overflow-y: auto;
+          }
+        }
+      `}</style>
     </div>
   );
 }

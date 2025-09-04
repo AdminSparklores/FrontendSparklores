@@ -2,14 +2,14 @@ import { NavLink, Link } from "react-router-dom";
 import logo from "../../assets/logo/sparklore_logo.png";
 
 const links = [
-  { name: "Orders", to: "/admin/dashboard", icon: "📋" },
+  { name: "Orders", to: "/adminDashboard/dashboard", icon: "📋" },
 //   { name: "Dashboard", to: "/admin/dashboard", icon: "🏠" },
-  { name: "Products", to: "/admin/products", icon: "📦" },
-  { name: "Charms", to: "/admin/charms", icon: "💎" },
-  { name: "Gift Sets", to: "/admin/giftsets", icon: "🎁" },
-  { name: "Discount Campaign", to: "/admin/discount", icon: "📢" },
-  { name: "Footer Gallery", to: "/admin/photoGallery", icon: "📸" },
-  { name: "Page Banners", to: "/admin/pageBanner", icon: "📷" },
+  { name: "Products", to: "/adminDashboard/products", icon: "📦" },
+  { name: "Charms", to: "/adminDashboard/charms", icon: "💎" },
+  { name: "Gift Sets", to: "/adminDashboard/giftsets", icon: "🎁" },
+  { name: "Discount Campaign", to: "/adminDashboard/discount", icon: "📢" },
+  { name: "Footer Gallery", to: "/adminDashboard/photoGallery", icon: "📸" },
+  { name: "Page Banners", to: "/adminDashboard/pageBanner", icon: "📷" },
 
 
 ];

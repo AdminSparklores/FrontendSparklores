@@ -81,13 +81,13 @@ const router = createBrowserRouter([
   { path: "/payment-callback", element: <PaymentCallback /> },
 
   // admin pages
-  { path: "/admin/products", element: <AdminProducts /> },
-  { path: "/admin/charms", element: <AdminCharms /> },
-  { path: "/admin/giftsets", element: <AdminGiftSets /> },
-  { path: "/admin/dashboard", element: <AdminDashboardAndOrder /> },
-  { path: "/admin/discount", element: <AdminDiscount /> },
-  { path: "/admin/photoGallery", element: <AdminGallery /> },
-  { path: "/admin/pageBanner", element: <AdminBanner /> },
+  { path: "/adminDashboard/products", element: <AdminProducts /> },
+  { path: "/adminDashboard/charms", element: <AdminCharms /> },
+  { path: "/adminDashboard/giftsets", element: <AdminGiftSets /> },
+  { path: "/adminDashboard/dashboard", element: <AdminDashboardAndOrder /> },
+  { path: "/adminDashboard/discount", element: <AdminDiscount /> },
+  { path: "/adminDashboard/photoGallery", element: <AdminGallery /> },
+  { path: "/adminDashboard/pageBanner", element: <AdminBanner /> },
 
   {path:"*", element: <NotFound/>},
   
