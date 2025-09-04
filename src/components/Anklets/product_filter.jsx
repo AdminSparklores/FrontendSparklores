@@ -10,6 +10,7 @@ import {
 import { cn } from "../../utils/utils.js";
 import { BASE_URL, isLoggedIn, addToCart } from "../../utils/api.js"; // Import necessary functions
 import Snackbar from '../snackbar.jsx'; // Import Snackbar component
+import ImageWithFallback from "../ImageWithFallback.jsx";
 
 export default function ProductGrid() {
   const navigate = useNavigate();
@@ -389,7 +390,7 @@ export default function ProductGrid() {
                   onMouseLeave={() => setHoveredProductId(null)}
                 >
                   <div className="relative">
-                    <img
+                    <ImageWithFallback
                       src={currentImage}
                       alt={product.name}
                       className={`rounded-md w-full h-auto object-cover ${

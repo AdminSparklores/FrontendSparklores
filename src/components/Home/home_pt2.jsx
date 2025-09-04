@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { isLoggedIn, addToCart, BASE_URL } from "../../utils/api";
 import Snackbar from '../snackbar.jsx';
+import ImageWithFallback from "../ImageWithFallback.jsx";
 
 // Helper: format IDR currency
 const formatIDR = (value) =>
@@ -221,7 +222,7 @@ const HomePart2 = () => {
                 background: "#f7f3e9"
               }}>
                 {/* Show only the currentImage */}
-                <img
+                <ImageWithFallback
                   src={currentImage}
                   alt={p.name}
                   className={`rounded-lg w-full h-full object-cover absolute top-0 left-0 transition-opacity duration-500 ${p.stock === 0 ? 'grayscale' : ''} opacity-100 z-10`}

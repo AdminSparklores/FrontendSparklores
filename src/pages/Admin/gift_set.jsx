@@ -8,6 +8,7 @@ import {
   deleteGiftSet,
   getProducts,
 } from "../../utils/admin_api";
+import ImageWithFallback from "../../components/ImageWithFallback";
 
 const LABEL_OPTIONS = [
   { value: "forUs", label: "For Us" },
@@ -17,19 +18,42 @@ const LABEL_OPTIONS = [
   { value: "null", label: "No Label" },
 ];
 
+// Items per page configuration
+const ITEMS_PER_PAGE = 10;
+
 export default function AdminGiftSets() {
   const [giftSets, setGiftSets] = useState([]);
   const [products, setProducts] = useState([]);
   const [editing, setEditing] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     Promise.all([getGiftSets(), getProducts()]).then(([sets, prods]) => {
-      setGiftSets(sets);
+      // Sort gift sets from latest to oldest
+      const sortedGiftSets = sets.sort((a, b) => {
+        // If you have a createdAt field, use it for sorting
+        if (a.createdAt && b.createdAt) {
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        }
+        // Fallback: sort by ID in descending order (assuming newer items have higher IDs)
+        return b.id - a.id;
+      });
+      
+      setGiftSets(sortedGiftSets);
       setProducts(prods);
+      setTotalPages(Math.ceil(sortedGiftSets.length / ITEMS_PER_PAGE));
       setLoading(false);
     });
   }, []);
+
+  // Calculate the current page items
+  const getCurrentPageItems = () => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return giftSets.slice(startIndex, endIndex);
+  };
 
   const handleSave = async (data, imageFile) => {
     setLoading(true);
@@ -63,7 +87,17 @@ export default function AdminGiftSets() {
       }
       setEditing(null);
       const updatedGiftSets = await getGiftSets();
-      setGiftSets(updatedGiftSets);
+      
+      // Sort gift sets from latest to oldest
+      const sortedGiftSets = updatedGiftSets.sort((a, b) => {
+        if (a.createdAt && b.createdAt) {
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        }
+        return b.id - a.id;
+      });
+      
+      setGiftSets(sortedGiftSets);
+      setTotalPages(Math.ceil(sortedGiftSets.length / ITEMS_PER_PAGE));
     } catch (error) {
       console.error("Error saving gift set:", error);
     } finally {
@@ -76,14 +110,118 @@ export default function AdminGiftSets() {
       setLoading(true);
       await deleteGiftSet(id);
       const updatedGiftSets = await getGiftSets();
-      setGiftSets(updatedGiftSets);
+      
+      // Sort gift sets from latest to oldest
+      const sortedGiftSets = updatedGiftSets.sort((a, b) => {
+        if (a.createdAt && b.createdAt) {
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        }
+        return b.id - a.id;
+      });
+      
+      setGiftSets(sortedGiftSets);
+      setTotalPages(Math.ceil(sortedGiftSets.length / ITEMS_PER_PAGE));
+      
+      // If the current page becomes empty after deletion, go to the previous page
+      if (getCurrentPageItems().length === 0 && currentPage > 1) {
+        setCurrentPage(currentPage - 1);
+      }
+      
       setLoading(false);
     }
   };
 
+  // Pagination controls component
+  const PaginationControls = () => {
+    if (totalPages <= 1) return null;
+    
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+    
+    return (
+      <div className="flex justify-center items-center mt-6 space-x-2">
+        <button
+          onClick={() => setCurrentPage(1)}
+          disabled={currentPage === 1}
+          className="px-3 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          «
+        </button>
+        <button
+          onClick={() => setCurrentPage(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="px-3 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          ‹
+        </button>
+        
+        {startPage > 1 && (
+          <>
+            <button
+              onClick={() => setCurrentPage(1)}
+              className="px-3 py-1 rounded border"
+            >
+              1
+            </button>
+            {startPage > 2 && <span className="px-2">...</span>}
+          </>
+        )}
+        
+        {pageNumbers.map(page => (
+          <button
+            key={page}
+            onClick={() => setCurrentPage(page)}
+            className={`px-3 py-1 rounded border ${
+              currentPage === page ? "bg-[#e5cfa4] text-white" : ""
+            }`}
+          >
+            {page}
+          </button>
+        ))}
+        
+        {endPage < totalPages && (
+          <>
+            {endPage < totalPages - 1 && <span className="px-2">...</span>}
+            <button
+              onClick={() => setCurrentPage(totalPages)}
+              className="px-3 py-1 rounded border"
+            >
+              {totalPages}
+            </button>
+          </>
+        )}
+        
+        <button
+          onClick={() => setCurrentPage(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="px-3 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          ›
+        </button>
+        <button
+          onClick={() => setCurrentPage(totalPages)}
+          disabled={currentPage === totalPages}
+          className="px-3 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          »
+        </button>
+      </div>
+    );
+  };
+
   return (
     <AdminRouteGuard>
-        <AdminLayout>
+      <AdminLayout>
         <div className="mx-auto max-w-full">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-xl font-bold text-[#bfa170]">Gift Sets</h1>
@@ -115,40 +253,50 @@ export default function AdminGiftSets() {
                     <td colSpan={9} className="text-center py-4">Loading...</td>
                   </tr>
                 )}
-                {!loading &&
-                  giftSets.map((set) => (
-                    <tr key={set.id} className="border-b hover:bg-[#f8f4ed] transition">
-                      <td className="p-4 font-medium">{set.name}</td>
-                      <td>{set.label}</td>
-                      <td>{set.price}</td>
-                      <td>{set.stock}</td>
-                      <td>{set.discount}</td>
-                      <td>{set.is_monthly_special ? "Yes" : "No"}</td>
-                      <td>
-                        {set.image_url && (
-                          <img src={set.image_url || set.image} alt={set.name} className="h-10 w-10 object-contain rounded shadow" />
-                        )}
-                      </td>
-                      <td className="max-w-[180px] truncate">
-                        {(set.products || []).map((p) => p.name).join(", ")}
-                      </td>
-                      <td>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setEditing(set)}
-                            className="bg-[#e5cfa4] hover:bg-[#d1b98a] text-white px-3 py-1 rounded font-semibold shadow transition"
-                          >Edit</button>
-                          <button
-                            onClick={() => handleDelete(set.id)}
-                            className="bg-red-500 hover:bg-red-400 text-white px-3 py-1 rounded font-semibold shadow transition"
-                          >Delete</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                {!loading && getCurrentPageItems().map((set) => (
+                  <tr key={set.id} className="border-b hover:bg-[#f8f4ed] transition">
+                    <td className="p-4 font-medium">{set.name}</td>
+                    <td>{set.label}</td>
+                    <td>{set.price}</td>
+                    <td>{set.stock}</td>
+                    <td>{set.discount}</td>
+                    <td>{set.is_monthly_special ? "Yes" : "No"}</td>
+                    <td>
+                      {set.image_url && (
+                        <img src={set.image_url || set.image} alt={set.name} className="h-10 w-10 object-contain rounded shadow" />
+                      )}
+                    </td>
+                    <td className="max-w-[180px] truncate">
+                      {(set.products || []).map((p) => p.name).join(", ")}
+                    </td>
+                    <td>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setEditing(set)}
+                          className="bg-[#e5cfa4] hover:bg-[#d1b98a] text-white px-3 py-1 rounded font-semibold shadow transition"
+                        >Edit</button>
+                        <button
+                          onClick={() => handleDelete(set.id)}
+                          className="bg-red-500 hover:bg-red-400 text-white px-3 py-1 rounded font-semibold shadow transition"
+                        >Delete</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination Controls */}
+          <PaginationControls />
+          
+          {/* Page Info */}
+          {!loading && giftSets.length > 0 && (
+            <div className="text-center mt-2 text-sm text-gray-600">
+              Showing {getCurrentPageItems().length} of {giftSets.length} gift sets
+            </div>
+          )}
+          
           {editing && (
             <GiftSetModal
               giftSet={editing}
@@ -160,10 +308,10 @@ export default function AdminGiftSets() {
         </div>
       </AdminLayout>
     </AdminRouteGuard>
-    
   );
 }
 
+// GiftSetModal component remains the same
 function GiftSetModal({ giftSet, allProducts, onClose, onSave }) {
   const [form, setForm] = useState({
     ...giftSet,
@@ -265,7 +413,7 @@ function GiftSetModal({ giftSet, allProducts, onClose, onSave }) {
           <div className="flex gap-2 items-center">
             {(form.image_url || form.image) && (
               <div className="relative group">
-                <img src={form.image_url || form.image} alt="Current" className="h-16 rounded shadow" />
+                <ImageWithFallback src={form.image_url || form.image} alt="Current" className="h-16 rounded shadow" />
                 <button
                   type="button"
                   onClick={handleRemoveImage}

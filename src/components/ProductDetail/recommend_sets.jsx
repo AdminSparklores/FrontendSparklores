@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { BASE_URL } from "../../utils/api.js";
 import { useNavigate } from "react-router-dom";
+import ImageWithFallback from "../ImageWithFallback.jsx";
 
 // Utility: Rupiah formatter
 const formatIDR = (amount) =>
@@ -83,7 +84,7 @@ const RecommendSets = () => {
                   onClick={() => navigate(`/products-sets/${item.id}`)} // Navigate to set detail page with set id
                   className="relative group min-w-[15rem] cursor-pointer hover:scale-105 transition-transform"
                 >
-                  <img
+                  <ImageWithFallback
                     src={item.image_url || item.image}
                     alt={item.name}
                     className="w-[15rem] h-[15rem] object-cover shadow-md rounded"

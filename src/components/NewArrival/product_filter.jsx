@@ -10,6 +10,7 @@ import {
 import { cn } from "../../utils/utils.js";
 import { BASE_URL, isLoggedIn, addToCart } from "../../utils/api.js";
 import Snackbar from '../snackbar.jsx';
+import ImageWithFallback from "../ImageWithFallback.jsx";
 
 // Helper: format IDR currency
 const formatIDR = (value) =>
@@ -451,7 +452,7 @@ export default function ProductNewArrival() {
                   onClick={() => item.stock > 0 && handleProductClick(item)}
                 >
                   <div className="relative">
-                    <img
+                    <ImageWithFallback
                       src={item.image}
                       alt={item.name}
                       className={`rounded-md w-full h-auto object-cover ${

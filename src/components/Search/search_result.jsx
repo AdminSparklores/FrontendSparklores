@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Star, Plus } from "lucide-react";
 import { BASE_URL, fetchAllCharms } from "../../utils/api.js";
+import ImageWithFallback from "../ImageWithFallback.jsx";
 
 // Helper: format IDR currency
 const formatIDR = (value) =>
@@ -250,7 +251,7 @@ export default function SearchProduct() {
               onClick={() => item.stock > 0 && handleProductClick(item.id, item.itemType)}
             >
               <div className="relative">
-                <img
+                <ImageWithFallback
                   src={item.image}
                   alt={item.name}
                   className={`rounded-md w-full h-auto object-cover ${item.stock === 0 ? 'grayscale' : ''}`}

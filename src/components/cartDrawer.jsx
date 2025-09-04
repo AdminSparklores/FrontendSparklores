@@ -77,7 +77,7 @@ const CartDrawer = ({
 
         {!cartError && !isLoadingCart && cartItems.length > 0 && (
           <div className="space-y-8">
-            {cartItems.map((item) => (
+            {[...cartItems].reverse().map((item) => (
               <div key={item.id} className="flex flex-col gap-2">
                 <div className="flex gap-4">
                   <input 

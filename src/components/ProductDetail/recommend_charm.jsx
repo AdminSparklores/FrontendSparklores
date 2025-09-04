@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { BASE_URL } from "../../utils/api.js";
 import { useNavigate } from "react-router-dom"; // Import useNavigate for navigation
+import ImageWithFallback from "../ImageWithFallback.jsx";
 
 // Utility: Rupiah formatter
 const formatIDR = (amount) =>
@@ -80,7 +81,7 @@ const RecommendCharm = () => {
                   onClick={() => navigate(`/products-charm/${item.id}`)} // Navigate to charm detail page
                   className="relative group min-w-[15rem] cursor-pointer hover:scale-105 transition-transform"
                 >
-                  <img
+                  <ImageWithFallback
                     src={item.image}
                     alt={item.name}
                     className="w-[15rem] h-[15rem] object-cover shadow-md rounded"

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { fetchRecentGalleryImages } from "../../utils/api.js"; // Import the fetch function
+import ImageWithFallback from "../ImageWithFallback.jsx";
 
 const JewelryGallery = () => {
   const [images, setImages] = useState([]); // State to hold fetched images
@@ -47,7 +48,7 @@ const JewelryGallery = () => {
       <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-3 gap-4">
         {images.map((image) => (
           <div key={image.id} className="rounded-lg overflow-hidden">
-            <img
+            <ImageWithFallback
               src={image.image}
               alt={image.alt_text}
               className="w-full h-full object-cover"

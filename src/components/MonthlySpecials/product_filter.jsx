@@ -4,6 +4,7 @@ import { LayoutGrid, Rows2, Plus } from "lucide-react";
 import { cn } from "../../utils/utils.js";
 import { BASE_URL, isLoggedIn, addToCart } from "../../utils/api.js";
 import Snackbar from '../snackbar.jsx';
+import ImageWithFallback from "../ImageWithFallback.jsx";
 
 export default function ProductGrid() {
   const navigate = useNavigate();
@@ -164,7 +165,7 @@ export default function ProductGrid() {
               onClick={() => handleCardClick(giftSet.id)}
             >
               <div className="relative w-full">
-                <img
+                <ImageWithFallback
                   src={giftSet.image_url || giftSet.image}
                   alt={giftSet.name}
                   className="rounded-md w-full h-auto object-cover"

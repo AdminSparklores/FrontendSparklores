@@ -20,17 +20,40 @@ const LABEL_OPTIONS = [
   { value: "null", label: "No Label" },
 ];
 
+// Items per page configuration
+const ITEMS_PER_PAGE = 10;
+
 export default function AdminCharms() {
   const [charms, setCharms] = useState([]);
   const [editing, setEditing] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     getCharms().then((data) => {
-      setCharms(data);
+      // Sort charms from latest to oldest (assuming there's a createdAt field)
+      const sortedCharms = data.sort((a, b) => {
+        // If you have a createdAt field, use it for sorting
+        if (a.createdAt && b.createdAt) {
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        }
+        // Fallback: sort by ID in descending order (assuming newer items have higher IDs)
+        return b.id - a.id;
+      });
+      
+      setCharms(sortedCharms);
+      setTotalPages(Math.ceil(sortedCharms.length / ITEMS_PER_PAGE));
       setLoading(false);
     });
   }, []);
+
+  // Calculate the current page items
+  const getCurrentPageItems = () => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return charms.slice(startIndex, endIndex);
+  };
 
   const handleSave = async (data, imageFile) => {
     setLoading(true);
@@ -45,12 +68,10 @@ export default function AdminCharms() {
       }
     });
 
-
     // Only include image if a new one is selected
     if (imageFile instanceof File) {
       formData.append("image", imageFile);
     }
-
 
     try {
       if (data.id) {
@@ -63,7 +84,17 @@ export default function AdminCharms() {
       }
       setEditing(null);
       const updatedCharms = await getCharms();
-      setCharms(updatedCharms);
+      
+      // Sort charms from latest to oldest
+      const sortedCharms = updatedCharms.sort((a, b) => {
+        if (a.createdAt && b.createdAt) {
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        }
+        return b.id - a.id;
+      });
+      
+      setCharms(sortedCharms);
+      setTotalPages(Math.ceil(sortedCharms.length / ITEMS_PER_PAGE));
     } catch (error) {
       console.error("Error saving charm:", error);
     } finally {
@@ -76,14 +107,118 @@ export default function AdminCharms() {
       setLoading(true);
       await deleteCharm(id);
       const updatedCharms = await getCharms();
-      setCharms(updatedCharms);
+      
+      // Sort charms from latest to oldest
+      const sortedCharms = updatedCharms.sort((a, b) => {
+        if (a.createdAt && b.createdAt) {
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        }
+        return b.id - a.id;
+      });
+      
+      setCharms(sortedCharms);
+      setTotalPages(Math.ceil(sortedCharms.length / ITEMS_PER_PAGE));
+      
+      // If the current page becomes empty after deletion, go to the previous page
+      if (getCurrentPageItems().length === 0 && currentPage > 1) {
+        setCurrentPage(currentPage - 1);
+      }
+      
       setLoading(false);
     }
   };
 
+  // Pagination controls component
+  const PaginationControls = () => {
+    if (totalPages <= 1) return null;
+    
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+    
+    return (
+      <div className="flex justify-center items-center mt-6 space-x-2">
+        <button
+          onClick={() => setCurrentPage(1)}
+          disabled={currentPage === 1}
+          className="px-3 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          «
+        </button>
+        <button
+          onClick={() => setCurrentPage(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="px-3 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          ‹
+        </button>
+        
+        {startPage > 1 && (
+          <>
+            <button
+              onClick={() => setCurrentPage(1)}
+              className="px-3 py-1 rounded border"
+            >
+              1
+            </button>
+            {startPage > 2 && <span className="px-2">...</span>}
+          </>
+        )}
+        
+        {pageNumbers.map(page => (
+          <button
+            key={page}
+            onClick={() => setCurrentPage(page)}
+            className={`px-3 py-1 rounded border ${
+              currentPage === page ? "bg-[#e5cfa4] text-white" : ""
+            }`}
+          >
+            {page}
+          </button>
+        ))}
+        
+        {endPage < totalPages && (
+          <>
+            {endPage < totalPages - 1 && <span className="px-2">...</span>}
+            <button
+              onClick={() => setCurrentPage(totalPages)}
+              className="px-3 py-1 rounded border"
+            >
+              {totalPages}
+            </button>
+          </>
+        )}
+        
+        <button
+          onClick={() => setCurrentPage(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="px-3 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          ›
+        </button>
+        <button
+          onClick={() => setCurrentPage(totalPages)}
+          disabled={currentPage === totalPages}
+          className="px-3 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          »
+        </button>
+      </div>
+    );
+  };
+
   return (
     <AdminRouteGuard>
-        <AdminLayout>
+      <AdminLayout>
         <div className="mx-auto max-w-full">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-xl font-bold text-[#bfa170]">Charms</h1>
@@ -115,38 +250,48 @@ export default function AdminCharms() {
                     <td colSpan={9} className="text-center py-4">Loading...</td>
                   </tr>
                 )}
-                {!loading &&
-                  charms.map((charm) => (
-                    <tr key={charm.id} className="border-b hover:bg-[#f8f4ed] transition">
-                      <td className="p-4 font-medium">{charm.name}</td>
-                      <td>{charm.category}</td>
-                      <td>{charm.label}</td>
-                      <td>{charm.price}</td>
-                      <td>{charm.stock}</td>
-                      <td>{charm.rating}</td>
-                      <td>{charm.discount}</td>
-                      <td>
-                        {charm.image && (
-                          <img src={charm.image} alt={charm.name} className="h-10 w-10 object-contain rounded shadow" />
-                        )}
-                      </td>
-                      <td>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setEditing(charm)}
-                            className="bg-[#e5cfa4] hover:bg-[#d1b98a] text-white px-3 py-1 rounded font-semibold shadow transition"
-                          >Edit</button>
-                          <button
-                            onClick={() => handleDelete(charm.id)}
-                            className="bg-red-500 hover:bg-red-400 text-white px-3 py-1 rounded font-semibold shadow transition"
-                          >Delete</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                {!loading && getCurrentPageItems().map((charm) => (
+                  <tr key={charm.id} className="border-b hover:bg-[#f8f4ed] transition">
+                    <td className="p-4 font-medium">{charm.name}</td>
+                    <td>{charm.category}</td>
+                    <td>{charm.label}</td>
+                    <td>{charm.price}</td>
+                    <td>{charm.stock}</td>
+                    <td>{charm.rating}</td>
+                    <td>{charm.discount}</td>
+                    <td>
+                      {charm.image && (
+                        <img src={charm.image} alt={charm.name} className="h-10 w-10 object-contain rounded shadow" />
+                      )}
+                    </td>
+                    <td>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setEditing(charm)}
+                          className="bg-[#e5cfa4] hover:bg-[#d1b98a] text-white px-3 py-1 rounded font-semibold shadow transition"
+                        >Edit</button>
+                        <button
+                          onClick={() => handleDelete(charm.id)}
+                          className="bg-red-500 hover:bg-red-400 text-white px-3 py-1 rounded font-semibold shadow transition"
+                        >Delete</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination Controls */}
+          <PaginationControls />
+          
+          {/* Page Info */}
+          {!loading && charms.length > 0 && (
+            <div className="text-center mt-2 text-sm text-gray-600">
+              Showing {getCurrentPageItems().length} of {charms.length} charms
+            </div>
+          )}
+          
           {editing && (
             <CharmModal
               charm={editing}
@@ -157,10 +302,10 @@ export default function AdminCharms() {
         </div>
       </AdminLayout>
     </AdminRouteGuard>
-    
   );
 }
 
+// CharmModal component remains the same
 function CharmModal({ charm, onClose, onSave }) {
   const [form, setForm] = useState({
     ...charm,
@@ -237,8 +382,24 @@ function CharmModal({ charm, onClose, onSave }) {
             Choose Photo
             <input type="file" id="charm-image-upload" accept="image/*" ref={fileRef} onChange={handleFile} className="hidden" />
           </label>
-          {form.image && <img src={form.image} alt="Current" className="h-16 mt-2 rounded shadow" />}
-          {file && <div className="mt-1 text-xs text-green-600">{file.name}</div>}
+
+          {/* Show New Image Preview if file selected, otherwise show existing image */}
+          {(file || form.image) && (
+            <div className="mt-3 rounded shadow w-48 h-48 overflow-hidden border border-gray-200 relative">
+              <img
+                src={file ? URL.createObjectURL(file) : form.image}
+                alt="Preview"
+                className="object-cover w-full h-full"
+              />
+            </div>
+          )}
+
+          {/* Show filename if new file selected */}
+          {file && (
+            <div className="mt-1 text-xs text-green-600 flex items-center gap-1">
+              📎 {file.name}
+            </div>
+          )}
         </div>
         <div className="flex justify-end gap-3 mt-6">
           <button type="button" className="px-4 py-2 rounded bg-gray-100 font-semibold" onClick={onClose}>Cancel</button>

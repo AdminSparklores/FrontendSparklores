@@ -3,6 +3,7 @@ import { Link, NavLink } from "react-router-dom";
 import product1 from "../../assets/default/homeproduct1.png";
 import product2 from "../../assets/default/homeproduct2.png";
 import product3 from "../../assets/default/homeproduct3.png";
+import ImageWithFallback from "../ImageWithFallback";
 
 const GiftSetPart1 = () => {
   const productData = [
@@ -59,7 +60,7 @@ const GiftSetPart1 = () => {
                     <div className="relative h-full w-full overflow-hidden rounded-lg">
                       {/* Dark overlay for mobile */}
                       <div className="absolute inset-0 bg-black/40 z-10"></div>
-                      <img
+                      <ImageWithFallback
                         src={product.image}
                         alt={product.alt}
                         className="absolute inset-0 w-full h-full object-cover rounded-lg"
@@ -85,7 +86,7 @@ const GiftSetPart1 = () => {
                       backgroundPosition: "0 0",
                     }}>
                     <div className="relative overflow-hidden rounded-lg aspect-[1/1.2]">
-                      <img
+                      <ImageWithFallback
                         src={product.image}
                         alt={product.alt}
                         className="absolute inset-0 w-full h-full object-cover rounded-lg transition-transform duration-500 group-hover:scale-110"

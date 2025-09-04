@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { isLoggedIn, addToCart, BASE_URL } from "../../utils/api";
 import Snackbar from '../snackbar.jsx';
+import ImageWithFallback from "../ImageWithFallback.jsx";
 
 // Helper: format IDR currency
 const formatIDR = (value) =>
@@ -59,8 +60,8 @@ const HomePart3 = () => {
           }
         });
 
-        // Map and sort products by sold_stok (highest to lowest)
-        const sortedProducts = productsData
+        // Map and sort products by sold_stok (highest to lowest), then take only top 10
+        const top10BestSellers = productsData
           .map(product => ({
             ...product,
             id: product.id,
@@ -74,10 +75,11 @@ const HomePart3 = () => {
             stock: product.stock,
             soldStock: product.sold_stok || 0
           }))
-          .sort((a, b) => b.soldStock - a.soldStock);
+          .sort((a, b) => b.soldStock - a.soldStock)
+          .slice(0, 20); // Only take the top 10 best sellers
 
         setDiscountMap(discountMap);
-        setProducts(sortedProducts);
+        setProducts(top10BestSellers);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -200,7 +202,7 @@ const HomePart3 = () => {
                 }}
               >
                 {/* Show only the currentImage */}
-                <img
+                <ImageWithFallback
                   src={currentImage}
                   alt={product.name}
                   className={`rounded-lg w-full h-full object-cover absolute top-0 left-0 transition-opacity duration-500 ${product.stock === 0 ? 'grayscale' : ''} opacity-100 z-10`}

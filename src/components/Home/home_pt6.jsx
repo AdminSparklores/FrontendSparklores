@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Star, ChevronDown, ChevronUp } from "lucide-react";
 import { BASE_URL, fetchProduct } from "../../utils/api.js";
+import ImageWithFallback from "../ImageWithFallback.jsx";
 
 const Reviews = () => {
   const [allReviews, setAllReviews] = useState([]);
@@ -225,7 +226,7 @@ const Reviews = () => {
           >
             {/* Review Image */}
             {review.image && (
-              <img
+              <ImageWithFallback
                 src={review.image}
                 alt={review.user_name}
                 className="w-full h-64 object-cover rounded-md"
@@ -271,7 +272,7 @@ const Reviews = () => {
                         
                         return (
                           <div key={`${review.id}-${product.id}-${idx}`} className="flex items-start gap-3 mt-2">
-                            <img
+                            <ImageWithFallback
                               src={productDetail.image}
                               alt={productDetail.name}
                               className="w-20 h-20 rounded-md object-cover"
@@ -304,7 +305,7 @@ const Reviews = () => {
                         
                         return (
                           <div key={`${review.id}-charm-${charm.id}-${idx}`} className="flex items-start gap-3 mt-2">
-                            <img
+                            <ImageWithFallback
                               src={charmDetail.image}
                               alt={charmDetail.name}
                               className="w-20 h-20 rounded-md object-cover"
@@ -337,7 +338,7 @@ const Reviews = () => {
                         
                         return (
                           <div key={`${review.id}-giftset-${giftSet.id}-${idx}`} className="flex items-start gap-3 mt-2">
-                            <img
+                            <ImageWithFallback
                               src={giftSetDetail.image}
                               alt={giftSetDetail.name}
                               className="w-20 h-20 rounded-md object-cover"

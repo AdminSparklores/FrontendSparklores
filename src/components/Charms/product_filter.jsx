@@ -4,6 +4,7 @@ import { Star, Plus, SlidersHorizontal, LayoutGrid, Rows2 } from "lucide-react";
 import { cn } from "../../utils/utils.js";
 import { fetchAllCharms, isLoggedIn, addToCart } from "../../utils/api.js";
 import Snackbar from '../snackbar.jsx';
+import ImageWithFallback from "../ImageWithFallback.jsx";
 
 const ProductGrid = () => {
   const navigate = useNavigate();
@@ -242,7 +243,7 @@ const ProductGrid = () => {
             onClick={() => product.stock > 0 && handleProductClick(product.id)}
           >
             <div className="relative">
-              <img
+              <ImageWithFallback
                 src={product.image}
                 alt={product.name}
                 className={`rounded-md w-full h-auto object-cover ${

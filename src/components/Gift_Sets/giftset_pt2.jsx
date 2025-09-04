@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import background from "../../assets/default/giftset_bg.jpeg";
+import ImageWithFallback from "../ImageWithFallback";
 
 const ValentinesPromo = () => {
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ const ValentinesPromo = () => {
 
         {/* Right image section */}
         <div className="flex justify-center">
-          <img
+          <ImageWithFallback
             src={background}
             alt="Monthly Specials Jewellery Set"
             className="w-full h-auto object-cover"

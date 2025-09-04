@@ -7,6 +7,7 @@ import Snackbar from '../snackbar.jsx';
 
 // BASE IMAGES
 import baseNecklace from "../../assets/default/basenecklace.png";
+import ImageWithFallback from '../ImageWithFallback.jsx';
 
 // Function to format numbers as Indonesian Rupiah
 const formatIDR = (amount) => {
@@ -295,7 +296,7 @@ const ProductDetailCharm = () => {
         <div className="flex flex-col md:flex-row gap-10">
           {/* Main Charm Image */}
           <div className="flex-1 order-1 md:order-2">
-            <img
+            <ImageWithFallback
               src={mainImage}
               alt={charm.name}
               className="w-full max-w-lg rounded-lg shadow-md"

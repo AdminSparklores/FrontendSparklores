@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { BASE_URL, isLoggedIn, addToCart, getAuthData } from "../../utils/api.js";
 import Snackbar from '../snackbar.jsx';
+import ImageWithFallback from '../ImageWithFallback.jsx';
 
 // Helper: format IDR currency
 const formatIDR = (amount) => {
@@ -339,7 +340,7 @@ const ProductDetailJewelSets = () => {
               `}
             >
               {thumbnails.map((src, idx) => (
-                <img
+                <ImageWithFallback
                   key={idx}
                   src={src}
                   alt={`Thumbnail ${idx + 1}`}
@@ -366,7 +367,7 @@ const ProductDetailJewelSets = () => {
               }}
             >
               {thumbnails.map((src, idx) => (
-                <img
+                <ImageWithFallback
                   key={idx}
                   src={src}
                   alt={`Thumbnail ${idx + 1}`}
@@ -422,7 +423,7 @@ const ProductDetailJewelSets = () => {
                 <ArrowIcon direction="left" />
               </button>
             )}
-            <img
+            <ImageWithFallback
               src={mainImage}
               alt={giftSet.name}
               className="w-full max-w-lg rounded-lg shadow-md object-contain"

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { BASE_URL } from "../../utils/api.js";
 import { useNavigate } from "react-router-dom";
+import ImageWithFallback from "../ImageWithFallback.jsx";
 
 
 // Utility: Rupiah formatter
@@ -87,7 +88,7 @@ const Recommend = ({ setBaseImage }) => {
                   }
                   className="relative group min-w-[15rem] cursor-pointer hover:scale-105 transition-transform"
                 >
-                  <img
+                  <ImageWithFallback
                     src={
                       item.images && item.images.length > 0
                         ? item.images[0].image_url

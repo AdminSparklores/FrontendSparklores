@@ -290,8 +290,8 @@ const CheckoutPage = () => {
         weight: weight.toString(),
         sendSiteCode: shippingAddress.sendSiteCode,
         destAreaCode: shippingAddress.destAreaCode,
-        cusName: "SPARKLORE",
-        productType: "EZ"
+        // cusName: "SPARKLORE",
+        // productType: "EZ"
       };
 
       console.log('Sending to /api/jnt/tariff/:', payload);

@@ -10,6 +10,7 @@ import {
   fetchAllCharms,
   submitReviewJSON
 } from '../utils/api';
+import ImageWithFallback from './ImageWithFallback';
 
 const ReviewPage = () => {
   const navigate = useNavigate();
@@ -325,7 +326,7 @@ const ReviewPage = () => {
           <div key={`charms-${index}`} className="flex gap-4 mb-6 p-4 border border-[#f2e9d5] rounded-lg">
             <div className="w-24 h-24 bg-[#f2e9d5] rounded-md flex items-center justify-center overflow-hidden">
               {item.charms[0]?.image ? (
-                <img 
+                <ImageWithFallback 
                   src={item.charms[0].image} 
                   alt={item.charms[0].name}
                   className="w-full h-full object-contain"
@@ -367,7 +368,7 @@ const ReviewPage = () => {
         <div key={`${item.type}-${item.id}-${index}`} className="flex gap-4 mb-6 p-4 border border-[#f2e9d5] rounded-lg">
           <div className="w-24 h-24 bg-[#f2e9d5] rounded-md flex items-center justify-center overflow-hidden">
             {item.image ? (
-              <img 
+              <ImageWithFallback 
                 src={item.image} 
                 alt={item.name}
                 className="w-full h-full object-contain"
@@ -455,7 +456,7 @@ const ReviewPage = () => {
                 </label>
 
                 {form.image && (
-                    <img
+                    <ImageWithFallback
                     src={URL.createObjectURL(form.image)}
                     alt="Preview"
                     className="mt-2 w-20 h-20 object-cover rounded-md border border-[#e9d6a9]"

@@ -395,7 +395,7 @@ export default function AdminOrderDashboard() {
                   className="bg-[#e5cfa4] px-6 py-2 rounded text-white font-bold"
                   disabled={isCreatingLabels}
                 >
-                  {isCreatingLabels ? 'Creating...' : 'Create Label & Print Document'}
+                  {isCreatingLabels ? 'Creating...' : 'Create Label & Move to Collection'}
                 </button>
               )}
               {statusFilter === "collection" && (

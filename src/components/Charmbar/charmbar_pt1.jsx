@@ -10,6 +10,7 @@ import baseNecklace from "../../assets/default/basenecklace.png";
 
 // Metal sound effect (you need to put a short .mp3/.wav file in your public/assets or src/assets)
 import metalSfx from "../../assets/audio/metal_sfx2.mp3"; // <-- you must provide this file
+import ImageWithFallback from "../ImageWithFallback.jsx";
 
 const formatIDR = (amount) => {
   return new Intl.NumberFormat('id-ID', {
@@ -214,7 +215,7 @@ export default function CharmCustomizerFull() {
       }`}
       onClick={() => product.stock > 0 && handleBaseProductSelect(product)}
     >
-      <img 
+      <ImageWithFallback 
         src={product.img} 
         alt={product.text} 
         className={`w-[15rem] h-[15rem] object-cover shadow-md rounded ${product.stock === 0 ? 'grayscale' : ''}`} 
@@ -617,7 +618,7 @@ export default function CharmCustomizerFull() {
           <div className="bg-white rounded p-4 relative overflow-hidden" style={{ width: '100%', maxWidth: '500px',maxHeight: '500px', aspectRatio: '1/1' }}>
             <div className="relative w-full h-full flex items-center justify-center">
               <div className="relative" style={{ width: '100%', height: '100%' }}>
-                <img 
+                <ImageWithFallback 
                   src={baseImage} 
                   alt="Base" 
                   className="absolute w-full h-full object-contain" 
@@ -639,7 +640,7 @@ export default function CharmCustomizerFull() {
                             ...getCharmPosition(i, charmCount)
                           }}
                         >
-                          <img
+                          <ImageWithFallback
                             src={selectedCharms[i + 1].image}
                             alt={`Charm ${i + 1}`}
                             className="w-full h-full object-contain"
@@ -735,7 +736,7 @@ export default function CharmCustomizerFull() {
                                   className="relative cursor-pointer group" 
                                   onClick={() => handleCharmSelect(charm)}
                                 >
-                                  <img
+                                  <ImageWithFallback
                                     src={charm.image}
                                     alt={charm.name}
                                     className="hover:scale-105 transition rounded border p-1 w-full"
@@ -760,7 +761,7 @@ export default function CharmCustomizerFull() {
                                   className="relative cursor-pointer group" 
                                   onClick={() => handleCharmSelect(charm)}
                                 >
-                                  <img
+                                  <ImageWithFallback
                                     src={charm.image}
                                     alt={charm.name}
                                     className="hover:scale-105 transition rounded border p-1 w-full"
@@ -785,7 +786,7 @@ export default function CharmCustomizerFull() {
                                   className="relative cursor-pointer group" 
                                   onClick={() => handleCharmSelect(charm)}
                                 >
-                                  <img
+                                  <ImageWithFallback
                                     src={charm.image}
                                     alt={charm.name}
                                     className="hover:scale-105 transition rounded border p-1 w-full"
@@ -810,7 +811,7 @@ export default function CharmCustomizerFull() {
                                   className="relative cursor-pointer group" 
                                   onClick={() => handleCharmSelect(charm)}
                                 >
-                                  <img
+                                  <ImageWithFallback
                                     src={charm.image}
                                     alt={charm.name}
                                     className="hover:scale-105 transition rounded border p-1 w-full"
