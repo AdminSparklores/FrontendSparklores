@@ -243,13 +243,15 @@ const ProductGrid = () => {
             onClick={() => product.stock > 0 && handleProductClick(product.id)}
           >
             <div className="relative">
-              <ImageWithFallback
-                src={product.image}
-                alt={product.name}
-                className={`rounded-md w-full h-auto object-cover ${
-                  product.stock === 0 ? 'grayscale' : ''
-                }`}
-              />
+              <div className="aspect-square overflow-hidden rounded-md">
+                <ImageWithFallback
+                  src={product.image}
+                  alt={product.name}
+                  className={`rounded-md w-full h-auto object-cover ${
+                    product.stock === 0 ? 'grayscale' : ''
+                  }`}
+                />
+              </div>             
               
               {product.discount > 0 && (
                 <div className="absolute top-2 right-2 bg-[#b87777] text-white text-xs font-bold px-2 py-1 rounded">

@@ -164,16 +164,18 @@ export default function ProductGrid() {
               className="p-2 rounded-lg hover:shadow-md transition duration-200 relative cursor-pointer"
               onClick={() => handleCardClick(giftSet.id)}
             >
-              <div className="relative w-full">
-                <ImageWithFallback
-                  src={giftSet.image_url || giftSet.image}
-                  alt={giftSet.name}
-                  className="rounded-md w-full h-auto object-cover"
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = '../../assets/default/banner_home.jpeg';
-                  }}
-                />
+              <div className="relative">
+                <div className="aspect-square overflow-hidden rounded-md">
+                  <ImageWithFallback
+                    src={giftSet.image_url || giftSet.image}
+                    alt={giftSet.name}
+                    className="rounded-md w-full h-auto object-cover"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = '../../assets/default/banner_home.jpeg';
+                    }}
+                  />
+                </div>
                 {/* Add to cart button */}
                 <div className="absolute bottom-2 right-2 bg-white p-1 rounded-b-xs">
                   <button 

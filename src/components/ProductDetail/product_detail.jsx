@@ -529,16 +529,18 @@ const ProductDetail = (props) => {
                 <ArrowIcon direction="left" />
               </button>
             )}
-            <ImageWithFallback
-              src={mainImage}
-              alt={product.name}
-              className="w-full max-w-lg rounded-lg shadow-md object-contain"
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = '/path/to/default/image.png';
-              }}
-              draggable={false}
-            />
+            <div className="aspect-square overflow-hidden rounded-md">
+              <ImageWithFallback
+                src={mainImage}
+                alt={product.name}
+                className="w-full max-w-lg rounded-lg shadow-md object-contain"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = '/path/to/default/image.png';
+                }}
+                draggable={false}
+              />
+            </div>
             {totalImages > 1 && showArrows && (
               <button
                 aria-label="Next image"

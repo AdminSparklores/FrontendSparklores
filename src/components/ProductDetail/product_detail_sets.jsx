@@ -377,12 +377,14 @@ const ProductDetailSets = () => {
                 <ArrowIcon direction="left" />
               </button>
             )}
-            <ImageWithFallback
-              src={mainImage}
-              alt={giftSet.name}
-              className="w-full max-w-lg rounded-lg shadow-md object-contain"
-              draggable={false}
-            />
+            <div className="aspect-square overflow-hidden rounded-md">
+              <ImageWithFallback
+                src={mainImage}
+                alt={giftSet.name}
+                className="w-full max-w-lg rounded-lg shadow-md object-contain"
+                draggable={false}
+              />
+            </div>
             {totalImages > 1 && showArrows && (
               <button
                 aria-label="Next image"

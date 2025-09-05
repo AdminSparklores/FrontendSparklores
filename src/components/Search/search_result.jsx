@@ -24,6 +24,9 @@ export default function SearchProduct() {
   // Discount campaign map: productId (string) -> discount item
   const [discountMap, setDiscountMap] = useState({});
 
+  // Hover state for showing the second image
+  const [hoveredItemId, setHoveredItemId] = useState(null);
+
   // Fetch all products, charms, and gift sets from API on component mount
   useEffect(() => {
     const fetchData = async () => {
@@ -103,9 +106,10 @@ export default function SearchProduct() {
             discount: discount,
             discountLabel,
             rating: parseFloat(product.rating) || 0,
-            image: (product.images && product.images.length > 0)
-              ? product.images[0].image_url
-              : "/assets/default/banner_home.jpeg",
+            // Store all images instead of just the first one
+            images: product.images && product.images.length > 0
+              ? product.images.map(img => img.image_url)
+              : ["/assets/default/banner_home.jpeg"],
             stock: product.stock,
             soldStock: product.sold_stok || 0,
             category: product.category,
@@ -122,12 +126,12 @@ export default function SearchProduct() {
           type: set.label ? set.label.toUpperCase() : "-",
           price: `Rp ${parseFloat(set.price).toLocaleString('id-ID')}`,
           originalPrice: null,
-          discount: 0,
+          discount: set.discount,
           discountLabel: "",
-          rating: 0,
+          rating: set.rating ? parseFloat(set.rating) : 0,
           image: set.image_url || set.image || "/assets/default/banner_home.jpeg",
-          stock: 99, // Assume always available
-          soldStock: 0,
+          stock: set.stock, // Assume always available
+          soldStock: set.sold_stock || 0,
           category: "gift_set",
           createdAt: set.created_at,
           itemType: 'gift-set'
@@ -244,92 +248,104 @@ export default function SearchProduct() {
       {/* Items Grid */}
       <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
         {currentItems.length > 0 ? (
-          currentItems.map((item) => (
-            <div
-              key={`${item.itemType}-${item.id}`}
-              className={`p-2 rounded-lg hover:shadow-md transition duration-200 relative ${item.stock === 0 ? 'opacity-70' : 'cursor-pointer'}`}
-              onClick={() => item.stock > 0 && handleProductClick(item.id, item.itemType)}
-            >
-              <div className="relative">
-                <ImageWithFallback
-                  src={item.image}
-                  alt={item.name}
-                  className={`rounded-md w-full h-auto object-cover ${item.stock === 0 ? 'grayscale' : ''}`}
-                  onError={e => { e.target.onerror = null; e.target.src = "/assets/default/banner_home.jpeg"; }}
-                />
-                {/* Discount badge (products/campaign or charms) */}
-                {item.discount > 0 && (
-                  <div className="absolute top-2 right-2 bg-[#b87777] text-white text-xs font-bold px-2 py-1 rounded">
-                    {item.discountLabel || `${item.discount}% OFF`}
+          currentItems.map((item) => {
+            // Hover logic for showing the second image
+            const isHovered = hoveredItemId === `${item.itemType}-${item.id}`;
+            const showImageIdx = isHovered && item.images.length > 1 ? 1 : 0;
+            const currentImage = item.images[showImageIdx] || "/assets/default/banner_home.jpeg";
+
+            return (
+              <div
+                key={`${item.itemType}-${item.id}`}
+                className={`p-2 rounded-lg hover:shadow-md transition duration-200 relative ${item.stock === 0 ? 'opacity-70' : 'cursor-pointer'}`}
+                onClick={() => item.stock > 0 && handleProductClick(item.id, item.itemType)}
+                onMouseEnter={() => setHoveredItemId(`${item.itemType}-${item.id}`)}
+                onMouseLeave={() => setHoveredItemId(null)}
+              >
+                <div className="relative">
+                  <div className="aspect-square overflow-hidden rounded-md">
+                    <ImageWithFallback
+                      src={currentImage}
+                      alt={item.name}
+                      className={`rounded-md w-full h-auto object-cover ${item.stock === 0 ? 'grayscale' : ''}`}
+                      onError={e => { e.target.onerror = null; e.target.src = "/assets/default/banner_home.jpeg"; }}
+                    />
                   </div>
-                )}
-                {/* Stock Status Badge */}
-                {item.stock === 0 ? (
-                  <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">
-                    SOLD OUT
-                  </div>
-                ) : item.stock < 10 && item.itemType !== "gift-set" ? (
-                  <div className="absolute top-2 left-2 bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded">
-                    LOW STOCK
-                  </div>
-                ) : null}
-                {/* Best Seller Badge (for products) */}
-                {item.itemType === "product" && item.soldStock > 0 && (
-                  <div className="absolute top-2 right-2 bg-[#c3a46f] text-white text-xs font-bold px-2 py-1 rounded">
-                    BEST SELLER
-                  </div>
-                )}
-                {/* Only show add to cart button if item is in stock */}
-                {item.stock > 0 && (
-                  <div className="absolute bottom-2 right-2 bg-white p-1 rounded-b-xs">
-                    <button 
-                      className="bg-white text-[#c3a46f] border border-[#c3a46f] p-1 rounded-full"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Add to cart logic here
-                      }}
-                    >
-                      <Plus size={16} />
-                    </button>
-                  </div>
-                )}
-              </div>
-              <div className="text-center mt-2">
-                <p className="text-sm font-semibold uppercase text-[#403c39] leading-tight">
-                  {item.name}
-                </p>
-                <p className="text-[10px] mt-1">
-                  <span className="px-2 py-[2px] text-[#c3a46f] bg-[#f1ede5] border border-[#c3a46f] rounded-sm">
-                    {item.type}
-                  </span>
-                </p>
-                <div className="flex justify-center mt-1">
-                  {Array(5)
-                    .fill(0)
-                    .map((_, i) => (
-                      <Star
-                        key={i}
-                        size={14}
-                        className={i < Math.round(item.rating) ? "text-yellow-500" : "text-gray-300"}
-                      />
-                    ))}
-                  <span className="text-xs text-gray-500 ml-1">
-                    ({item.rating && item.rating.toFixed ? item.rating.toFixed(1) : "0.0"})
-                  </span>
-                </div>
-                <div className="mt-1">
-                  <p className="text-sm font-medium text-[#403c39]">
-                    {item.price}
-                  </p>
-                  {item.originalPrice && (
-                    <p className="text-xs text-gray-400 line-through">
-                      {item.originalPrice}
-                    </p>
+                  
+                  {/* Discount badge (products/campaign or charms) */}
+                  {item.discount > 0 && (
+                    <div className="absolute top-2 right-2 bg-[#b87777] text-white text-xs font-bold px-2 py-1 rounded">
+                      {item.discountLabel || `${item.discount}% OFF`}
+                    </div>
+                  )}
+                  {/* Stock Status Badge */}
+                  {item.stock === 0 ? (
+                    <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">
+                      SOLD OUT
+                    </div>
+                  ) : item.stock < 10 && item.itemType !== "gift-set" ? (
+                    <div className="absolute top-2 left-2 bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded">
+                      LOW STOCK
+                    </div>
+                  ) : null}
+                  {/* Best Seller Badge (for products) */}
+                  {item.itemType === "product" && item.soldStock > 0 && (
+                    <div className="absolute top-2 right-2 bg-[#c3a46f] text-white text-xs font-bold px-2 py-1 rounded">
+                      BEST SELLER
+                    </div>
+                  )}
+                  {/* Only show add to cart button if item is in stock */}
+                  {item.stock > 0 && (
+                    <div className="absolute bottom-2 right-2 bg-white p-1 rounded-b-xs">
+                      <button 
+                        className="bg-white text-[#c3a46f] border border-[#c3a46f] p-1 rounded-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Add to cart logic here
+                        }}
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
                   )}
                 </div>
+                <div className="text-center mt-2">
+                  <p className="text-sm font-semibold uppercase text-[#403c39] leading-tight">
+                    {item.name}
+                  </p>
+                  <p className="text-[10px] mt-1">
+                    <span className="px-2 py-[2px] text-[#c3a46f] bg-[#f1ede5] border border-[#c3a46f] rounded-sm">
+                      {item.type}
+                    </span>
+                  </p>
+                  <div className="flex justify-center mt-1">
+                    {Array(5)
+                      .fill(0)
+                      .map((_, i) => (
+                        <Star
+                          key={i}
+                          size={14}
+                          className={i < Math.round(item.rating) ? "text-yellow-500" : "text-gray-300"}
+                        />
+                      ))}
+                    <span className="text-xs text-gray-500 ml-1">
+                      ({item.rating && item.rating.toFixed ? item.rating.toFixed(1) : "0.0"})
+                    </span>
+                  </div>
+                  <div className="mt-1">
+                    <p className="text-sm font-medium text-[#403c39]">
+                      {item.price}
+                    </p>
+                    {item.originalPrice && (
+                      <p className="text-xs text-gray-400 line-through">
+                        {item.originalPrice}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         ) : (
           <div className="col-span-full text-center py-10">
             <p className="text-lg text-gray-600">

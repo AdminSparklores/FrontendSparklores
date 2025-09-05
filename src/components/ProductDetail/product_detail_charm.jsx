@@ -295,7 +295,7 @@ const ProductDetailCharm = () => {
 
         <div className="flex flex-col md:flex-row gap-10">
           {/* Main Charm Image */}
-          <div className="flex-1 order-1 md:order-2">
+          <div className="flex-1 order-1 md:order-2 aspect-square overflow-hidden rounded-md">
             <ImageWithFallback
               src={mainImage}
               alt={charm.name}

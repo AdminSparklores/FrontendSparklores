@@ -452,17 +452,19 @@ export default function ProductNewArrival() {
                   onClick={() => item.stock > 0 && handleProductClick(item)}
                 >
                   <div className="relative">
-                    <ImageWithFallback
-                      src={item.image}
-                      alt={item.name}
-                      className={`rounded-md w-full h-auto object-cover ${
-                        item.stock === 0 ? 'grayscale' : ''
-                      }`}
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = '../../assets/default/banner_home.jpeg';
-                      }}
-                    />
+                    <div className="aspect-square overflow-hidden rounded-md">
+                      <ImageWithFallback
+                        src={item.image}
+                        alt={item.name}
+                        className={`rounded-md w-full h-auto object-cover ${
+                          item.stock === 0 ? 'grayscale' : ''
+                        }`}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = '../../assets/default/banner_home.jpeg';
+                        }}
+                      />
+                    </div>
 
                     {/* Stock Status Badge */}
                     {item.stock <= 0 ? (

@@ -38,7 +38,10 @@ export default function BraceletGrid() {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarType, setSnackbarType] = useState('success');
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
-  
+
+  // Hover logic for showing the second image
+  const [hoveredProductId, setHoveredProductId] = useState(null);
+
   // Helper function to get the first image URL from a product
   const getFirstProductImage = (product) => {
     if (product.images && product.images.length > 0) {
@@ -375,7 +378,10 @@ export default function BraceletGrid() {
               const showBestSeller = product.isBestSeller;
               const showDiscount = !!discountLabel;
               // HOVER LOGIC
-              const currentImage = getFirstProductImage(product);
+              const isHovered = hoveredProductId === product.id;
+              const imageList = product.images && product.images.length > 0 ? product.images : [{ image_url: product.image }];
+              const showImageIdx = isHovered && imageList.length > 1 ? 1 : 0;
+              const currentImage = imageList[showImageIdx] ? imageList[showImageIdx].image_url : '../../assets/default/banner_home.jpeg';
 
               return (
                 <div
@@ -384,19 +390,23 @@ export default function BraceletGrid() {
                     product.stock === 0 ? 'opacity-70' : 'cursor-pointer'
                   }`}
                   onClick={() => product.stock > 0 && handleProductClick(product.id)}
+                  onMouseEnter={() => setHoveredProductId(product.id)}
+                  onMouseLeave={() => setHoveredProductId(null)}
                 >
                   <div className="relative">
-                    <ImageWithFallback
-                      src={currentImage}
-                      alt={product.name}
-                      className={`rounded-md w-full h-auto object-cover ${
-                        product.stock === 0 ? 'grayscale' : ''
-                      }`}
-                      onError={(e) => {
-                        e.target.onerror = null; // Prevent infinite loop
-                        e.target.src = '../../assets/default/banner_home.jpeg'; // Fallback image
-                      }}
-                    />
+                    <div className="aspect-square overflow-hidden rounded-md">
+                      <ImageWithFallback
+                        src={currentImage}
+                        alt={product.name}
+                        className={`rounded-md w-full h-auto object-cover ${
+                          product.stock === 0 ? 'grayscale' : ''
+                        }`}
+                        onError={(e) => {
+                          e.target.onerror = null; // Prevent infinite loop
+                          e.target.src = '../../assets/default/banner_home.jpeg'; // Fallback image
+                        }}
+                      />
+                    </div>
                     
                     {/* Stock Status Badge */}
                     {product.stock === 0 ? (

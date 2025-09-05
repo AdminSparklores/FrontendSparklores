@@ -215,15 +215,17 @@ export default function CharmCustomizerFull() {
       }`}
       onClick={() => product.stock > 0 && handleBaseProductSelect(product)}
     >
-      <ImageWithFallback 
-        src={product.img} 
-        alt={product.text} 
-        className={`w-[15rem] h-[15rem] object-cover shadow-md rounded ${product.stock === 0 ? 'grayscale' : ''}`} 
-        onError={(e) => {
-          e.target.onerror = null;
-          e.target.src = '../../assets/default/banner_home.jpeg';
-        }}
-      />
+      <div className="aspect-square overflow-hidden rounded-md">
+        <ImageWithFallback 
+          src={product.img} 
+          alt={product.text} 
+          className={`w-[15rem] h-[15rem] object-cover shadow-md rounded ${product.stock === 0 ? 'grayscale' : ''}`} 
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = '../../assets/default/banner_home.jpeg';
+          }}
+        />
+      </div>
       {product.stock === 0 ? (
         <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">SOLD OUT</div>
       ) : product.stock < 10 ? (

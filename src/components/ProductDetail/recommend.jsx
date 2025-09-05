@@ -88,15 +88,17 @@ const Recommend = ({ setBaseImage }) => {
                   }
                   className="relative group min-w-[15rem] cursor-pointer hover:scale-105 transition-transform"
                 >
-                  <ImageWithFallback
-                    src={
-                      item.images && item.images.length > 0
-                        ? item.images[0].image_url
-                        : "/default-image.png"
-                    }
-                    alt={item.name}
-                    className="w-[15rem] h-[15rem] object-cover shadow-md rounded"
-                  />
+                  <div className="aspect-square overflow-hidden rounded-md">
+                    <ImageWithFallback
+                      src={
+                        item.images && item.images.length > 0
+                          ? item.images[0].image_url
+                          : "/default-image.png"
+                      }
+                      alt={item.name}
+                      className="w-[15rem] h-[15rem] object-cover shadow-md rounded"
+                    />
+                  </div>
                   <div className="absolute inset-0 bg-[#f5f5dc] opacity-0 group-hover:opacity-80 flex flex-col justify-center items-center transition-opacity">
                     <span className="text-lg font-bold text-center px-2">
                       {item.name}
