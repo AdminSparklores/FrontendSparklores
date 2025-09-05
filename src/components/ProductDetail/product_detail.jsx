@@ -603,6 +603,14 @@ const ProductDetail = (props) => {
                   </>
                 )}
               </ul>
+              {product.charms ? (
+                <ul>
+                  <li className="mt-2 text-sm text-[#b87777] italic">* Rasio ukuran charm tidak 100% akurat, mohon dimengerti jika ada perbedaan sedikit dengan aslinya</li>
+                </ul>
+                ) : (
+                  <>
+                  </>
+                )}
             </div>
           </div>
         </div>

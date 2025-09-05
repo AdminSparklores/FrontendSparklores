@@ -843,6 +843,9 @@ export default function CharmCustomizerFull() {
             {/* --- CHAIN ONLY/0 CHARMS MESSAGE SHOW END --- */}
           </div>
         </div>
+        <ul className="mt-10">
+          <li className="mt-2 text-sm text-[#b87777] italic">* Rasio ukuran charm tidak 100% akurat, mohon dimengerti jika ada perbedaan sedikit dengan aslinya</li>
+        </ul>
 
         {/* RECOMMENDATIONS */}
         <h2 className="text-2xl font-serif font-semibold mb-6 mt-20">YOU MIGHT ALSO LIKE...</h2>
