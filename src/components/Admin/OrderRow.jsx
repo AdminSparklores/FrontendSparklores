@@ -19,6 +19,25 @@ export default function OrderRow({
   // Check if any item has a message
   const hasMessages = items.some(item => item.message);
 
+  // Payment status logic
+  const getPaymentStatus = () => {
+    if (order.billcode) {
+      return { status: "paid", label: "Paid", className: "bg-green-100 text-green-800" };
+    }
+    
+    // Check if order is older than 3 hours
+    const orderDate = new Date(order.created_at);
+    const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
+    
+    if (orderDate < threeHoursAgo) {
+      return { status: "canceled", label: "Canceled by User", className: "bg-red-100 text-red-800" };
+    }
+    
+    return { status: "not_paid", label: "Not Paid", className: "bg-yellow-100 text-yellow-800" };
+  };
+
+  const paymentStatus = getPaymentStatus();
+
   return (
     <>
       <tr className="border-b hover:bg-[#f8f4ed] transition">
@@ -66,8 +85,13 @@ export default function OrderRow({
             </div>
           )}
         </td>
+        <td className="px-4 py-3 text-center">
+          <span className={`px-2 py-1 rounded text-xs font-medium ${paymentStatus.className}`}>
+            {paymentStatus.label}
+          </span>
+        </td>
         <td className="px-4 py-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-center">
             <StatusBadge status={order.fulfillment_status} />
 
             {/* Show Cancel Button only in Awaiting Shipment tab and for eligible statuses */}

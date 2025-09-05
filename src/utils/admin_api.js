@@ -103,13 +103,36 @@ export const deleteCharm = (id) =>
   }).then(handleResponse);
 
 // ORDERS
-export const getOrders = () => {
+// export const getOrders = () => {
+//   const authData = getAuthData();
+//   if (!authData || !authData.token) {
+//     return Promise.reject({ status: 401, detail: "Not authenticated" });
+//   }
+
+//   return fetch(`${BASE}/admin/orders-table/`, {
+//     method: 'GET',
+//     headers: {
+//       'Content-Type': 'application/json',
+//       'Authorization': `Bearer ${authData.token}`
+//     }
+//   }).then(handleResponse);
+// };
+
+// ORDERS - Updated to support date filtering
+export const getOrders = (startDate = null, endDate = null) => {
   const authData = getAuthData();
   if (!authData || !authData.token) {
     return Promise.reject({ status: 401, detail: "Not authenticated" });
   }
 
-  return fetch(`${BASE}/admin/orders-table/`, {
+  // Build query parameters
+  const params = new URLSearchParams();
+  if (startDate) params.append('start_date', startDate);
+  if (endDate) params.append('end_date', endDate);
+
+  const url = `${BASE}/admin/orders-table/${params.toString() ? `?${params.toString()}` : ''}`;
+
+  return fetch(url, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',

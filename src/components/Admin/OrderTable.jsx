@@ -26,12 +26,13 @@ export default function OrderTable({
                 <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3">Products</th>
                 <th className="px-4 py-3">Message</th>
+                <th className="px-4 py-3">Payment Status</th>
                 <th className="px-4 py-3">Status</th>
             </tr>
             </thead>
         <tbody>
           {orders.length === 0 && (
-            <tr><td colSpan={8} className="text-center py-4">No orders found.</td></tr>
+            <tr><td colSpan={9} className="text-center py-4">No orders found.</td></tr>
           )}
           {orders.map(order => (
             <OrderRow

@@ -403,10 +403,13 @@ const CheckoutPage = () => {
         shippingAddress.postal_code
       ].filter(Boolean).join(', ');
 
-      // Format phone: convert 08xx → +628xx
+       // Format phone: convert 8xx → +628xx
       const formatPhone = (phone) => {
         if (!phone) return '';
-        return phone.replace(/^0/, '+62');
+        // Remove any non-digit characters first
+        const digitsOnly = phone.replace(/\D/g, '');
+        // Add +62 prefix to numbers starting with 8
+        return digitsOnly.startsWith('8') ? `+62${digitsOnly}` : phone;
       };
 
       // Calculate values
@@ -416,7 +419,7 @@ const CheckoutPage = () => {
       const jntPayload = {
         orderid: orderId.toString(),
         receiver_name: `${shippingAddress.first_name} ${shippingAddress.last_name}`.trim(),
-        receiver_phone: formatPhone(shippingAddress.receiver_phone),
+        receiver_phone: formatPhone(shippingAddress.receiver_phone), // This will convert 8xx to +628xx
         receiver_addr: fullAddress,
         receiver_zip: shippingAddress.postal_code,
         destination_code: destinationCode,     // ✅ kode_kota_jnt (e.g., "TPK")
@@ -963,8 +966,9 @@ const CheckoutPage = () => {
       return false;
     }
 
+    // Check if phone starts with 8 (Indonesian mobile) and has at least 7 digits
     const phoneDigits = shippingAddress.receiver_phone.replace(/\D/g, '');
-    if (!shippingAddress.receiver_phone.startsWith('+62') || phoneDigits.length < 7) {
+    if (!shippingAddress.receiver_phone.startsWith('8') || phoneDigits.length < 7) {
       return false;
     }
 
@@ -1220,55 +1224,50 @@ const CheckoutPage = () => {
                   required
                   disabled={isPaymentStarted} 
                 />
-                <div className="relative">
+                <div className="flex items-center mb-2">
+                  {/* Prefix Box */}
+                  <div className="flex items-center justify-center px-3 h-11 bg-[#f6efe2] border border-[#e8dcc5] rounded-l-lg text-gray-700 text-sm font-medium">
+                    +62
+                  </div>
+
+                  {/* Input Field */}
                   <input
                     type="tel"
                     name="receiver_phone"
                     value={shippingAddress.receiver_phone}
                     onChange={(e) => {
                       const value = e.target.value;
-
-                      // Allow: +, digits, backspace
-                      if (!/^\+?[0-9]*$/.test(value) && value !== '') return;
-
-                      // Prevent multiple + signs
-                      if ((value.match(/\+/g) || []).length > 1) return;
-
-                      // Prevent + in middle
-                      if (value.indexOf('+') > 0) return;
-
-                      // Update state
-                      setShippingAddress(prev => ({ ...prev, receiver_phone: value }));
+                      if (!/^\d*$/.test(value) && value !== '') return;
+                      const digitsOnly = value.replace(/\D/g, '');
+                      setShippingAddress(prev => ({ ...prev, receiver_phone: digitsOnly }));
                       setFormTouched(true);
                     }}
                     onBlur={(e) => {
                       const value = e.target.value.trim();
                       if (!value) return;
-
-                      if (value.startsWith('0')) {
-                        // Auto-correct 08xx → +628xx
-                        const corrected = value.replace(/^0/, '+62');
-                        setShippingAddress(prev => ({ ...prev, receiver_phone: corrected }));
-                      } else if (!value.startsWith('+62')) {
-                        // Show error if not valid
-                        setFormError("Phone number must start with +62");
+                      if (!value.startsWith('8')) {
+                        setFormError("Indonesian mobile numbers should start with 8");
                       }
                     }}
-                    placeholder="Phone * (e.g., +628123456789)"
-                    className={`w-full border rounded-md px-4 py-2 mb-3 bg-[#fdfaf3] ${
-                      isPaymentStarted 
+                    placeholder="811678977 *"
+                    className={`flex-1 h-11 border rounded-r-lg px-4 bg-[#fdfaf3] transition-all duration-200 ease-in-out focus:ring-2 focus:ring-[#e8dcc5] focus:border-[#d6c9ab]
+                      ${isPaymentStarted 
                         ? 'border-gray-200 cursor-not-allowed text-gray-500' 
-                        : 'border-[#f2e9d5]'
-                    } ${formError && formError.includes('phone') ? 'border-red-500' : ''}`}
+                        : 'border-[#e8dcc5]'
+                    } ${formError && formError.includes('phone') ? 'border-red-500 focus:ring-red-300' : ''}`}
                     required
                     disabled={isPaymentStarted}
                   />
-                  {shippingAddress.receiver_phone && !shippingAddress.receiver_phone.startsWith('+62') && (
-                    <p className="text-red-500 text-xs mt-1">
-                      Must start with +62
-                    </p>
-                  )}
                 </div>
+
+                {/* Error Message */}
+                {shippingAddress.receiver_phone && !shippingAddress.receiver_phone.startsWith('8') && (
+                  <p className="text-red-500 text-xs mt-1 ml-1">
+                    Indonesian mobile numbers should start with 8
+                  </p>
+                )}
+
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="relative">
                       <input

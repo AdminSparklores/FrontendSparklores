@@ -5,6 +5,7 @@ import OrderTable from "../../components/Admin/OrderTable";
 import StatusFilterBar from "../../components/Admin/StatusFilterBar";
 import ConfirmDialog from "../../components/Admin/ConfirmDialog2";
 import PrintConfirmationDialog from "../../components/Admin/PrintConfirmationDialog";
+import FilterBar from "../../components/Admin/FilterBar";
 import { getOrders, getProducts, getGiftSets, getCharms, createLabels, cancelJntOrder, createMergedLabels } from "../../utils/admin_api";
 
 const ORDER_STATUS = [
@@ -76,6 +77,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
 
 export default function AdminOrderDashboard() {
   const [orders, setOrders] = useState([]);
+  const [allOrders, setAllOrders] = useState([]);
   const [products, setProducts] = useState([]);
   const [giftSets, setGiftSets] = useState([]);
   const [charms, setCharms] = useState([]);
@@ -99,6 +101,11 @@ export default function AdminOrderDashboard() {
     message: ''
   });
   const [labelType, setLabelType] = useState("jnt");
+
+   // NEW: Filter states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dateFilter, setDateFilter] = useState({ startDate: null, endDate: null });
+  const [isLoading, setIsLoading] = useState(false);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -106,33 +113,92 @@ export default function AdminOrderDashboard() {
 
   // Fetch all required data on mount
   useEffect(() => {
-    getOrders().then(setOrders);
+    fetchOrders();
     getProducts().then(setProducts);
     getGiftSets().then(setGiftSets);
     getCharms().then(setCharms);
   }, []);
 
-  // Reset to page 1 when filter changes
+
+   // NEW: Function to fetch orders with optional date filtering
+  const fetchOrders = async (startDate = null, endDate = null) => {
+    setIsLoading(true);
+    try {
+      const ordersData = await getOrders(startDate, endDate);
+      setAllOrders(ordersData);
+      setOrders(ordersData);
+    } catch (error) {
+      console.error("Failed to fetch orders:", error);
+      setResultModalData({
+        type: 'error',
+        title: 'Fetch Error',
+        message: 'Failed to load orders. Please try again.'
+      });
+      setShowResultModal(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+   // Reset to page 1 when filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter]);
+  }, [statusFilter, searchQuery, dateFilter]);
 
   // Filtering by status
-  const filteredOrders = orders.filter(order => {
-    const status = order.fulfillment_status?.toLowerCase(); // Normalize to lowercase
+  const filteredOrders = allOrders.filter(order => {
+    // Status filter
+    const status = order.fulfillment_status?.toLowerCase();
+    let statusMatch = false;
     
     switch (statusFilter) {
       case "awaiting_shipment":
-        return status === "pending" || status === "awaiting_shipment";
+        statusMatch = status === "pending" || status === "awaiting_shipment";
+        break;
       case "collection":
-        return status === "collection";
+        statusMatch = status === "collection";
+        break;
       case "on_shipment":
-        return status === "on_shipment";
+        statusMatch = status === "on_shipment";
+        break;
       case "shipped":
-        return status === "shipped";
-      default: // "all" case
-        return true;
+        statusMatch = status === "shipped";
+        break;
+      default:
+        statusMatch = true;
     }
+
+    if (!statusMatch) return false;
+
+    // Date filter
+    if (dateFilter.startDate || dateFilter.endDate) {
+      const orderDate = new Date(order.created_at);
+      if (dateFilter.startDate && orderDate < new Date(dateFilter.startDate)) {
+        return false;
+      }
+      if (dateFilter.endDate) {
+        const endDate = new Date(dateFilter.endDate);
+        endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (orderDate > endDate) {
+          return false;
+        }
+      }
+    }
+
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      return (
+        order.id.toString().includes(query) ||
+        order.user_email?.toLowerCase().includes(query) ||
+        order.product_summary?.some(item => 
+          item.product_name?.toLowerCase().includes(query) ||
+          item.gift_set_name?.toLowerCase().includes(query)
+        )
+      );
+    }
+
+    return true;
   });
 
   // Pagination calculations
@@ -140,6 +206,25 @@ export default function AdminOrderDashboard() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+
+  // NEW: Handle date filter
+  const handleDateFilter = (startDate, endDate) => {
+    setDateFilter({ startDate, endDate });
+    // If you want to fetch from server with date filter, use:
+    // fetchOrders(startDate, endDate);
+  };
+
+  // NEW: Handle search
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+  };
+
+  // NEW: Reset all filters
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setDateFilter({ startDate: null, endDate: null });
+    fetchOrders(); // Refetch all orders without filters
+  };
 
   // Handle individual order cancellation
   const handleCancelOrder = (orderId) => {
@@ -173,73 +258,110 @@ export default function AdminOrderDashboard() {
     setSelectedIds([]);
   };
 
+  // Validate if orders can be moved to Collection
+const validateOrdersForCollection = (selectedOrders) => {
+  const invalidOrders = selectedOrders.filter(order => {
+    // Check if billcode exists
+    if (!order.billcode) return true;
+
+    // Check if billcode is canceled
+    // Assume: if order.jnt_status includes "cancel" or is marked canceled, block it
+    // You may adjust this condition based on actual field
+    const isCanceled = order.jnt_status?.toLowerCase().includes('cancel') ||
+                       order.fulfillment_status === 'canceled' ||
+                       order.billcode_status?.toLowerCase() === 'canceled';
+
+    return isCanceled;
+  });
+
+  return invalidOrders;
+};
+
   // Trigger label creation - BOTH types simultaneously
-  const handleCreateLabels = async () => {
-    if (selectedIds.length === 0) {
-      alert("Please select at least one order to create labels");
-      return;
-    }
+  // Updated: handleCreateLabels with validation
+const handleCreateLabels = async () => {
+  if (selectedIds.length === 0) {
+    alert("Please select at least one order to create labels");
+    return;
+  }
 
-    const selectedOrders = orders.filter(order => selectedIds.includes(order.id));
+  const selectedOrders = orders.filter(order => selectedIds.includes(order.id));
 
-    try {
-      setIsCreatingLabels(true);
-      
-      // Call both APIs simultaneously
-      const [statusUpdateResult, jntLabelsResult] = await Promise.allSettled([
-        // This updates order status (createMergedLabels)
-        createMergedLabels(selectedIds),
-        // This creates JNT labels (createLabels)
-        createLabels(selectedOrders)
-      ]);
+  // Validate all selected orders
+  const invalidOrders = validateOrdersForCollection(selectedOrders);
 
-      // Handle status update response
-      if (statusUpdateResult.status === 'rejected') {
-        console.error("Status update failed:", statusUpdateResult.reason);
-        // You might want to show an error message for status update failure
-        setResultModalData({
-          type: 'error',
-          title: 'Status Update Failed',
-          message: `Failed to update order status: ${statusUpdateResult.reason.message || 'Unknown error'}`
-        });
-        setShowResultModal(true);
-      } else {
-        console.log("Status update successful");
-        // Status was updated successfully
-      }
+  if (invalidOrders.length > 0) {
+    const failedOrderIds = invalidOrders.map(o => `#${o.id}`).join(", ");
+    const reasons = invalidOrders.map(o => {
+      if (!o.billcode) return `Order #${o.id}: No billcode found`;
+      return `Order #${o.id}: Billcode is canceled or invalid`;
+    }).join("; ");
 
-      // Handle JNT labels response
-      if (jntLabelsResult.status === 'rejected') {
-        console.error("JNT label creation failed:", jntLabelsResult.reason);
-        setResultModalData({
-          type: 'error',
-          title: 'Label Creation Failed',
-          message: `Failed to create shipping labels: ${jntLabelsResult.reason.message || 'Unknown error'}`
-        });
-        setShowResultModal(true);
-      } else {
-        // JNT labels created successfully
-        setGeneratedPdfUrl(jntLabelsResult.value);
-        setShowPrintConfirm(true);
-      }
+    setResultModalData({
+      type: 'error',
+      title: 'Cannot Move to Collection',
+      message: `We couldn't move all selected orders to Collection because some don’t have a valid shipping label or have already been canceled.
 
-      // Refresh orders regardless of individual API results
-      const updatedOrders = await getOrders();
-      setOrders(updatedOrders);
-      setSelectedIds([]);
+    Orders affected: ${failedOrderIds}
 
-    } catch (error) {
-      console.error("Unexpected error:", error);
+    Please deselect these orders and try again with only valid ones.`
+    });
+    setShowResultModal(true);
+    return;
+  }
+
+  try {
+    setIsCreatingLabels(true);
+    
+    // Call both APIs simultaneously
+    const [statusUpdateResult, jntLabelsResult] = await Promise.allSettled([
+      createMergedLabels(selectedIds),
+      createLabels(selectedOrders)
+    ]);
+
+    // Handle status update response
+    if (statusUpdateResult.status === 'rejected') {
+      console.error("Status update failed:", statusUpdateResult.reason);
       setResultModalData({
         type: 'error',
-        title: 'Unexpected Error',
-        message: `An unexpected error occurred: ${error.message}`
+        title: 'Status Update Failed',
+        message: `Failed to update order status: ${statusUpdateResult.reason.message || 'Unknown error'}`
       });
       setShowResultModal(true);
-    } finally {
-      setIsCreatingLabels(false);
     }
-  };
+
+    // Handle JNT labels response
+    if (jntLabelsResult.status === 'rejected') {
+      console.error("JNT label creation failed:", jntLabelsResult.reason);
+      setResultModalData({
+        type: 'error',
+        title: 'Label Creation Failed',
+        message: `Failed to create shipping labels: ${jntLabelsResult.reason.message || 'Unknown error'}`
+      });
+      setShowResultModal(true);
+    } else {
+      setGeneratedPdfUrl(jntLabelsResult.value);
+      setShowPrintConfirm(true);
+    }
+
+    // Refresh orders
+    const updatedOrders = await getOrders();
+    setOrders(updatedOrders);
+    setAllOrders(updatedOrders);
+    setSelectedIds([]);
+
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    setResultModalData({
+      type: 'error',
+      title: 'Unexpected Error',
+      message: `An unexpected error occurred: ${error.message}`
+    });
+    setShowResultModal(true);
+  } finally {
+    setIsCreatingLabels(false);
+  }
+};
 
   // Handle print now action
   const handlePrintNow = () => {
@@ -348,7 +470,7 @@ export default function AdminOrderDashboard() {
                 value={itemsPerPage}
                 onChange={(e) => {
                   setItemsPerPage(Number(e.target.value));
-                  setCurrentPage(1); // Reset to first page when changing items per page
+                  setCurrentPage(1);
                 }}
                 className="border border-[#e5cfa4] rounded px-2 py-1 text-sm"
               >
@@ -359,32 +481,51 @@ export default function AdminOrderDashboard() {
               </select>
             </div>
           </div>
+
+          {/* NEW: Filter Bar */}
+          <FilterBar
+            onDateFilter={handleDateFilter}
+            onSearch={handleSearch}
+            onReset={handleResetFilters}
+            searchQuery={searchQuery}
+          />
+
           <StatusFilterBar
             status={statusFilter}
             setStatus={setStatusFilter}
             orderStatus={ORDER_STATUS}
           />
-          <OrderTable
-            orders={paginatedOrders}
-            products={products}
-            giftSets={giftSets}
-            charms={charms}
-            status={statusFilter}
-            selectedIds={selectedIds}
-            onCheck={handleCheck}
-            onCheckAll={handleCheckAll}
-            onCancelOrder={handleCancelOrder}
-            isCanceling={isCanceling}   
-          />
-          
-          {/* Pagination */}
-          {filteredOrders.length > 0 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-            />
+
+          {isLoading ? (
+            <div className="text-center py-8">
+              <p>Loading orders...</p>
+            </div>
+          ) : (
+            <>
+              <OrderTable
+                orders={paginatedOrders}
+                products={products}
+                giftSets={giftSets}
+                charms={charms}
+                status={statusFilter}
+                selectedIds={selectedIds}
+                onCheck={handleCheck}
+                onCheckAll={handleCheckAll}
+                onCancelOrder={handleCancelOrder}
+                isCanceling={isCanceling}   
+              />
+              
+              {/* Pagination */}
+              {filteredOrders.length > 0 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                />
+              )}
+            </>
           )}
+          
           
           {/* Action bar for selected checkboxes */}
           {selectedIds.length > 0 && (
@@ -413,22 +554,47 @@ export default function AdminOrderDashboard() {
 
         {/* Result Modal for Success/Error */}
         {showResultModal && (
-          <div className="fixed inset-0 bg-black/30 bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg max-w-sm w-full">
-              <h3 className="text-lg font-semibold mb-4">
-                {resultModalData.title || (resultModalData.type === 'success' ? 'Success' : 'Error')}
-              </h3>
-              <p className={resultModalData.type === 'error' ? 'text-red-600 mb-4' : 'mb-4'}>
-                {resultModalData.message}
-              </p>
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+            <div className="bg-white p-6 rounded-xl max-w-md w-full shadow-xl max-h-[80vh] overflow-y-auto">
+              
+              {/* Icon + Title */}
+              <div className="flex items-center gap-3 mb-5">
+                {resultModalData.type === 'success' ? (
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-green-100 text-green-600">
+                    ✓
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-red-100 text-red-600">
+                    ⚠
+                  </div>
+                )}
+                <h3 className="text-lg font-semibold text-[#bfa170]">
+                  {resultModalData.title || (resultModalData.type === 'success' ? 'Success' : 'Error')}
+                </h3>
+              </div>
+
+              {/* Message */}
+              <div className="text-gray-700 text-sm leading-relaxed space-y-3 mb-6">
+                {resultModalData.message.split("\n").map((line, idx) => (
+                  <p key={idx}>{line}</p>
+                ))}
+
+                {/* Special styling if failedOrderIds exist */}
+                {resultModalData.message.includes("Orders affected:") && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-md p-3 text-xs text-gray-600 mt-2">
+                    {resultModalData.message.match(/Orders affected: (.*)/)?.[1]}
+                  </div>
+                )}
+              </div>
+
+              {/* Action */}
               <div className="flex justify-end">
                 <button
                   onClick={() => {
                     setShowResultModal(false);
-                    // Optional: reset after close
                     setResultModalData({ type: 'success', title: '', message: '' });
                   }}
-                  className="px-4 py-2 bg-[#bfa170] text-white rounded hover:bg-[#a98c5f]"
+                  className="w-full sm:w-auto px-5 py-2.5 bg-[#bfa170] text-white rounded-lg hover:bg-[#a98c5f] transition-colors font-medium"
                 >
                   OK
                 </button>
@@ -436,7 +602,7 @@ export default function AdminOrderDashboard() {
             </div>
           </div>
         )}
-
+      
         {/* Confirm Dialog for JNT Cancel with Reason Input */}
         {showCancelConfirm && (
           <div className="fixed inset-0 bg-black/30 bg-opacity-50 flex items-center justify-center z-50">
@@ -520,6 +686,7 @@ export default function AdminOrderDashboard() {
             </div>
           </div>
         )}
+        
 
         {/* Confirm Dialog for label creation */}
       {showConfirm && (
@@ -532,6 +699,7 @@ export default function AdminOrderDashboard() {
           }}
         />
       )}
+      
       
       {/* Print Confirmation Dialog */}
       {showPrintConfirm && (
@@ -570,7 +738,8 @@ export default function AdminOrderDashboard() {
           </div>
         </div>
       </div>
-    )}
+      )}
+    
       </AdminLayout>
     </AdminRouteGuard>
   );
