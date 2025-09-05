@@ -2,7 +2,7 @@ import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { Search, User, ShoppingBag, Menu, LogOut } from "lucide-react";
 import logo from "../../assets/logo/sparklore_logo.png";
 import { useState, useEffect } from "react";
-import banner from "../../assets/default/navbar_earrings_bg.png";
+import banner from "../../assets/default/image_placeholder.png";
 import product1 from "../../assets/default/homeproduct1.png";
 import { isLoggedIn, logout, fetchCart, updateCartItemQuantity, deleteCartItem, BASE_URL, fetchProduct, fetchCharm, fetchPageBanner } from "../../utils/api.js";
 import Snackbar from '../snackbar.jsx';
@@ -239,7 +239,7 @@ const NavBar_Earrings = () => {
     setIsInitialLoad(false);
     const getBannerImage = async () => {
       try {
-        const imageUrl = await fetchPageBanner("earring");
+        const imageUrl = await fetchPageBanner("earrings");
         setBannerImage(imageUrl);
       } catch (error) {
         setBannerImage(banner);

@@ -1,8 +1,8 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import product1 from "../../assets/default/homeproduct1.png";
-import product2 from "../../assets/default/homeproduct2.png";
-import product3 from "../../assets/default/homeproduct3.png";
+import product1 from "../../assets/default/new_arrival_static.jpg";
+import product2 from "../../assets/default/monthly_special_static.jpg";
+import product3 from "../../assets/default/jewel_set_static.jpg";
 import { Link } from "react-router-dom";
 import ImageWithFallback from "../ImageWithFallback";
 

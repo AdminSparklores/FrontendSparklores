@@ -2,7 +2,7 @@ import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { Search, User, ShoppingBag, Menu, LogOut } from "lucide-react";
 import logo from "../../assets/logo/sparklore_logo.png";
 import { useState, useEffect } from "react";
-import defaultBanner from "../../assets/default/navbar_jewelset_bg.png";
+import defaultBanner from "../../assets/default/image_placeholder.png";
 import product1 from "../../assets/default/homeproduct1.png";
 import { isLoggedIn, logout, fetchCart, updateCartItemQuantity, deleteCartItem, BASE_URL, fetchProduct, fetchCharm, fetchPageBanner } from "../../utils/api.js";
 import Snackbar from '../snackbar.jsx';

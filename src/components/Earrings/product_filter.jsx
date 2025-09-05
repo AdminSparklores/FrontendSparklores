@@ -39,9 +39,6 @@ export default function EarringGrid() {
   const [snackbarType, setSnackbarType] = useState('success');
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
-  // Hover logic for showing the second image
-  const [hoveredProductId, setHoveredProductId] = useState(null);
-
   // Helper function to get the first image URL from a product
   const getFirstProductImage = (product) => {
     if (product.images && product.images.length > 0) {
@@ -371,11 +368,8 @@ export default function EarringGrid() {
               const { displayPrice, oldPrice, discountLabel } = getDiscounted(product);
               const showBestSeller = product.isBestSeller;
               const showDiscount = !!discountLabel;
-              // HOVER LOGIC
-              const isHovered = hoveredProductId === product.id;
-              const imageList = product.images && product.images.length > 0 ? product.images : [{ image_url: product.image }];
-              const showImageIdx = isHovered && imageList.length > 1 ? 1 : 0;
-              const currentImage = imageList[showImageIdx] ? imageList[showImageIdx].image_url : '../../assets/default/banner_home.jpeg';
+              // Always use the first image
+              const currentImage = getFirstProductImage(product);
 
               return (
                 <div
@@ -384,8 +378,6 @@ export default function EarringGrid() {
                     product.stock === 0 ? 'opacity-70' : 'cursor-pointer'
                   }`}
                   onClick={() => product.stock > 0 && handleProductClick(product.id)}
-                  onMouseEnter={() => setHoveredProductId(product.id)}
-                  onMouseLeave={() => setHoveredProductId(null)}
                 >
                   <div className="relative">
                     <ImageWithFallback
