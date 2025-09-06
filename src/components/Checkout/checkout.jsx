@@ -425,7 +425,7 @@ const CheckoutPage = () => {
         destination_code: destinationCode,     // ✅ kode_kota_jnt (e.g., "TPK")
         receiver_area: receiverArea,          // ✅ kode_jnt_receiver_area (e.g., "TPK001")
         item_name: cartItems.map(item => item.name).join(','),
-        cod: totalCOD.toString(),             // Total with shipping
+        cod: '',             // disable cod bro wkwk
         goodsvalue: productTotal.toString()   // Product value only
       };
 
