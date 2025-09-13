@@ -3,6 +3,52 @@ import { Link } from "react-router-dom";
 import { ShoppingCart } from 'lucide-react';
 // const EMPTY_CART_IMAGE = "https://i.pinimg.com/736x/2e/ac/fa/2eacfa305d7715bdcd86bb4956209038.jpg";
 
+// Calculate charm discount based on the number of charms
+const calculateCharmDiscount = (charmCount) => {
+  switch (charmCount) {
+    case 1:
+      return 5000;
+    case 2:
+      return 10000;
+    case 3:
+      return 30000;
+    case 4:
+      return 30000;
+    case 5:
+      return 30000;
+    default:
+      return 0;
+  }
+};
+
+// Get discount explanation text
+const getDiscountExplanation = (charmCount, discountAmount) => {
+  if (discountAmount === 0) return null;
+  
+  const explanations = {
+    1: "Discount: -5,000 IDR for 1 charm",
+    2: "Discount: -5,000 IDR per charm (total -10,000 IDR)",
+    3: "Discount: -30,000 IDR for 3 charms bundle",
+    4: "Discount: -30,000 IDR for 4 charms bundle",
+    5: "Discount: -30,000 IDR for 5 charms bundle"
+  };
+  
+  return explanations[charmCount] || `Discount: -${discountAmount.toLocaleString('id-ID')} IDR`;
+};
+
+// Calculate item price with charm discount
+const calculateItemPriceWithDiscount = (item) => {
+  const basePrice = item.price * item.quantity;
+  
+  // Apply charm discount if item has charms
+  if (item.charms && item.charms.length > 0) {
+    const discount = calculateCharmDiscount(item.charms.length);
+    return Math.max(0, basePrice - discount);
+  }
+  
+  return basePrice;
+};
+
 const CartDrawer = ({
   open,
   onClose,
@@ -24,6 +70,16 @@ const CartDrawer = ({
   setShowSnackbar,
 }) => {
   if (!open) return null;
+
+  // Calculate total with charm discounts
+  const calculateTotalWithDiscounts = () => {
+    return cartItems.reduce((total, item) => {
+      if (item.selected) {
+        return total + calculateItemPriceWithDiscount(item);
+      }
+      return total;
+    }, 0);
+  };
 
   return (
     <div
@@ -77,79 +133,111 @@ const CartDrawer = ({
 
         {!cartError && !isLoadingCart && cartItems.length > 0 && (
           <div className="space-y-8">
-            {[...cartItems].reverse().map((item) => (
-              <div key={item.id} className="flex flex-col gap-2">
-                <div className="flex gap-4">
-                  <input 
-                    type="checkbox" 
-                    className="custom-checkbox" 
-                    checked={item.selected}
-                    onChange={() => toggleItemSelection(item.id)}
-                  />
-                  <img 
-                    src={item.image} 
-                    alt={item.name} 
-                    className="w-[6rem] h-[6rem] object-cover rounded-md" 
-                  />
-                  <div className="flex-1">
-                    <div className="flex justify-between">
-                      <h3 className="font-semibold text-gray-800">{item.name}</h3>
-                    </div>
-                    <div className="flex flex-col">
-                      <p className="text-[#b87777] font-semibold">
-                        {formatPrice(item.price * item.quantity)}
-                      </p>
-                      {item.originalPrice && (
-                        <div className="flex gap-2">
-                          <p className="text-gray-400 text-sm line-through">
-                            {formatPrice(item.originalPrice * item.quantity)}
+            {[...cartItems].reverse().map((item) => {
+              const hasCharms = item.charms && item.charms.length > 0;
+              const basePrice = item.price * item.quantity;
+              const finalPrice = Math.round(calculateItemPriceWithDiscount(item));
+              const discountAmount = hasCharms ? calculateCharmDiscount(item.charms.length) : 0;
+              const discountExplanation = hasCharms ? getDiscountExplanation(item.charms.length, discountAmount) : null;
+
+              return (
+                <div key={item.id} className="flex flex-col gap-2">
+                  <div className="flex gap-4">
+                    <input 
+                      type="checkbox" 
+                      className="custom-checkbox" 
+                      checked={item.selected}
+                      onChange={() => toggleItemSelection(item.id)}
+                    />
+                    <img 
+                      src={item.image} 
+                      alt={item.name} 
+                      className="w-[6rem] h-[6rem] object-cover rounded-md" 
+                    />
+                    <div className="flex-1">
+                      <div className="flex justify-between">
+                        <h3 className="font-semibold text-gray-800">{item.name}</h3>
+                      </div>
+                      <div className="flex flex-col">
+                        {/* Show discounted price if applicable */}
+                        {hasCharms && discountAmount > 0 ? (
+                          <div className="space-y-1">
+                            <p className="text-[#b87777] font-semibold">
+                              {formatPrice(finalPrice)}
+                            </p>
+                            <div className="flex gap-2 items-center">
+                              <p className="text-gray-400 text-sm line-through">
+                                {formatPrice(basePrice)}
+                              </p>
+                              <span className="text-xs bg-green-600 text-white px-1 rounded">
+                                -{formatPrice(discountAmount).replace('Rp', '').trim()}
+                              </span>
+                            </div>
+                            {discountExplanation && (
+                              <p className="text-xs text-green-600">
+                                {discountExplanation}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-[#b87777] font-semibold">
+                            {formatPrice(basePrice)}
                           </p>
-                          <span className="text-xs bg-[#c3a46f] text-white px-1 rounded">
-                            {item.discountLabel || `${item.discount}% OFF`}
-                          </span>
+                        )}
+                        
+                        {/* Original discount logic (if any) */}
+                        {item.originalPrice && !hasCharms && (
+                          <div className="flex gap-2">
+                            <p className="text-gray-400 text-sm line-through">
+                              {formatPrice(item.originalPrice * item.quantity)}
+                            </p>
+                            <span className="text-xs bg-[#c3a46f] text-white px-1 rounded">
+                              {item.discountLabel || `${item.discount}% OFF`}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      {item.charms && item.charms.length > 0 && (
+                        <div className="text-sm mt-2">
+                          <p className="font-medium">Charm Selection ({item.charms.length} charm{item.charms.length > 1 ? 's' : ''})</p>
+                          <div className="flex gap-1 mt-1">
+                            {item.charms.map((charm, index) => (
+                              <img 
+                                key={index} 
+                                src={charm} 
+                                className="w-6 h-6 border rounded-sm" 
+                                alt={`charm ${index}`} 
+                              />
+                            ))}
+                          </div>
                         </div>
                       )}
-                    </div>
-                    {item.charms && item.charms.length > 0 && (
-                      <div className="text-sm mt-2">
-                        <p className="font-medium">Charm Selection</p>
-                        <div className="flex gap-1 mt-1">
-                          {item.charms.map((charm, index) => (
-                            <img 
-                              key={index} 
-                              src={charm} 
-                              className="w-6 h-6 border rounded-sm" 
-                              alt={`charm ${index}`} 
-                            />
-                          ))}
+                      {item.message && (
+                        <div className="text-sm mt-2">
+                          <p className="font-medium text-start text-gray-600">Special Message</p>
+                          <p className="italic text-sm text-gray-600">"{item.message}"</p>
                         </div>
+                      )}
+                      <div className="flex items-center gap-2 mt-2">
+                        <button 
+                          className="border px-2 rounded text-gray-700"
+                          onClick={() => handleQuantityChange(item.id, -1)}
+                        >
+                          -
+                        </button>
+                        <span>{item.quantity}</span>
+                        <button 
+                          className="border px-2 rounded text-gray-700"
+                          onClick={() => handleQuantityChange(item.id, 1)}
+                        >
+                          +
+                        </button>
                       </div>
-                    )}
-                    {item.message && (
-                      <div className="text-sm mt-2">
-                        <p className="font-medium text-start text-gray-600">Special Message</p>
-                        <p className="italic text-sm text-gray-600">"{item.message}"</p>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2 mt-2">
-                      <button 
-                        className="border px-2 rounded text-gray-700"
-                        onClick={() => handleQuantityChange(item.id, -1)}
-                      >
-                        -
-                      </button>
-                      <span>{item.quantity}</span>
-                      <button 
-                        className="border px-2 rounded text-gray-700"
-                        onClick={() => handleQuantityChange(item.id, 1)}
-                      >
-                        +
-                      </button>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -169,7 +257,7 @@ const CartDrawer = ({
               <div className="flex gap-4 items-end">
                 <p className="text-lg font-medium">Total</p>
                 <p className="text-lg font-bold text-[#b87777]">
-                  {formatPrice(calculateTotal())}
+                  {formatPrice(calculateTotalWithDiscounts())}
                 </p>
               </div>
             </div>

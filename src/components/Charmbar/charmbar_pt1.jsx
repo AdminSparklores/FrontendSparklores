@@ -20,6 +20,18 @@ const formatIDR = (amount) => {
   }).format(Math.round(amount));
 };
 
+const useIsIOS = () => {
+  const [isIOS, setIsIOS] = useState(false);
+  
+  useEffect(() => {
+    // This detection is reliable for iOS devices (iPhone, iPad, iPod)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    setIsIOS(isIOS);
+  }, []); // Empty dependency array means this runs only once on mount
+  
+  return isIOS;
+};
+
 export default function CharmCustomizerFull() {
   const necklaceRef = useRef(null);
   const braceletRef = useRef(null);
@@ -43,6 +55,7 @@ export default function CharmCustomizerFull() {
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarType, setSnackbarType] = useState('success');
+  const isIOS = useIsIOS();
 
   // --- Metal sound effect ---
   const metalAudioRef = useRef(null);
@@ -139,7 +152,23 @@ export default function CharmCustomizerFull() {
         stock: product.stock,
         category: product.category,
         is_charm_spreadable: product.is_charm_spreadable ?? false,
+        is_charm_max3: product.is_charm_max3 ?? false, // <-- NEW LINE
+        is_charm_max5: product.is_charm_max5 ?? false, // <-- NEW LINE
       }));
+  };
+
+  // Get available charm counts based on product restrictions
+  const getAvailableCharmCounts = () => {
+    const counts = [0]; // Chain only is always available
+    if (selectedBaseProduct?.is_charm_max3) {
+      counts.push(1, 2, 3);
+    } else if (selectedBaseProduct?.is_charm_max5) {
+      counts.push(1, 2, 3, 4, 5);
+    } else {
+      // Default to all options if no specific limit is set
+      counts.push(1, 2, 3, 4, 5);
+    }
+    return counts;
   };
 
   // Group charms by category, then by label
@@ -257,31 +286,34 @@ export default function CharmCustomizerFull() {
   const category = selectedBaseProduct?.category || 'necklace';
   const isCharmSpreadable = selectedBaseProduct?.is_charm_spreadable === true;
 
+  // ---- iOS ADJUSTMENTS: Lift charm positions slightly for better visual alignment ----
+  const iosOffset = isIOS ? -0.06 : 0; // <-- NEW LINE: Uses the detected isIOS state
+
   // ---- NECKLACE POSITIONS ----
   // Default positions (is_charm_spreadable === false)
   const necklaceDefaultPositions = {
-    1: [{ left: '52%', top: '82%', rotation: 0 }],
+    1: [{ left: '52%', top: '70%', rotation: 0 }],
     2: [
-      { left: '45%', top: '82%', rotation: 0 },
-      { left: '55%', top: '82%', rotation: 0 }
+      { left: '50%', top: '70%', rotation: 0 },
+      { left: '55%', top: '70%', rotation: 0 }
     ],
     3: [
-      { left: '42%', top: '81%', rotation: 30 },
-      { left: '52%', top: '82%', rotation: 0 },
-      { left: '62%', top: '81%', rotation: -35 }
+      { left: '45%', top: '69%', rotation: 30 },
+      { left: '52%', top: '70%', rotation: 0 },
+      { left: '59%', top: '69%', rotation: -35 }
     ],
     4: [
-      { left: '32%', top: '75%', rotation: 75 },
-      { left: '46%', top: '82%', rotation: 0 },
-      { left: '55%', top: '82%', rotation: 0 },
-      { left: '70%', top: '75%', rotation: -75 }
+      { left: '32%', top: '63%', rotation: 75 },
+      { left: '46%', top: '70%', rotation: 0 },
+      { left: '55%', top: '70%', rotation: 0 },
+      { left: '70%', top: '63%', rotation: -75 }
     ],
     5: [
-      { left: '43%', top: '81%', rotation: 20 },
-      { left: '52%', top: '82%', rotation: 0 },
-      { left: '60%', top: '81%', rotation: -20 },
-      { left: '70%', top: '75%', rotation: -75 },
-      { left: '32%', top: '75%', rotation: 73 }
+      { left: '43%', top: '69%', rotation: 20 },
+      { left: '52%', top: '70%', rotation: 0 },
+      { left: '60%', top: '69%', rotation: -20 },
+      { left: '70%', top: '63%', rotation: -75 },
+      { left: '32%', top: '63%', rotation: 73 }
     ]
   };
   // Spread positions (is_charm_spreadable === true)
@@ -364,6 +396,22 @@ export default function CharmCustomizerFull() {
       { left: '53%', top: '57%', rotation: -20 }
     ]
   };
+
+   // ---- APPLY IOS OFFSET TO EACH POSITION ----
+  const applyIosOffset = (positions) => {
+    if (!isIOS) return positions; // <-- NEW LINE: Only apply if on iOS
+    const adjusted = {};
+    Object.keys(positions).forEach(key => {
+      adjusted[key] = positions[key].map(pos => ({
+        ...pos,
+        top: `${Math.max(20, parseFloat(pos.top) + iosOffset * 100)}%` // <-- NEW LINE: Adjusts the top value
+      }));
+    });
+    return adjusted;
+  };
+
+  const adjustedNecklaceDefault = applyIosOffset(necklaceDefaultPositions);
+  const adjustedBraceletDefault = applyIosOffset(braceletDefaultPositions);
 
   // ---- SELECT THE POSITION BY CATEGORY ----
   let posList;
@@ -601,7 +649,8 @@ export default function CharmCustomizerFull() {
             Chain only
           </button>
           {/* --- CHAIN ONLY/0 CHARMS BUTTON END --- */}
-          {[1, 2, 3, 4, 5].map((num) => (
+          {/* Dynamically render charm count buttons based on product limits */}
+          {getAvailableCharmCounts().filter(count => count > 0).map((num) => (
             <button
               key={num}
               onClick={() => {

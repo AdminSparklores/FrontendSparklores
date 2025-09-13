@@ -504,6 +504,9 @@ export const addToCart = async (productId, data) => {
     },
     body: JSON.stringify(postData)
   });
+  console.log("ini yang dikirim ke api/cart/add/",JSON.stringify(postData));
+  console.log("Add to cart response:", postResp); // Debug log
+
 
   if (!postResp.ok) {
     let msg = "Failed to add item to cart";

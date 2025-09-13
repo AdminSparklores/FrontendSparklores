@@ -16,12 +16,58 @@ const formatIDR = (amount) => {
   }).format(Math.round(amount));
 };
 
+// Custom hook to detect iOS
+const useIsIOS = () => {
+  useEffect(() => {
+    // This detection is reliable for iOS devices (iPhone, iPad, iPod)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    return () => {}; // no cleanup needed
+  }, []);
+
+  // Return true if iOS device
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+};
+
+// Calculate charm discount based on the number of charms selected
+const calculateCharmDiscount = (charmCount) => {
+  switch (charmCount) {
+    case 1:
+      return 5000;
+    case 2:
+      return 10000;
+    case 3:
+      return 30000;
+    case 4:
+      return 30000;
+    case 5:
+      return 30000;
+    default:
+      return 0;
+  }
+};
+
+// Get discount explanation text
+const getDiscountExplanation = (charmCount, discountAmount) => {
+  if (discountAmount === 0) return null;
+  
+  const explanations = {
+    1: "Discount applied: -5,000 IDR for 1 charm",
+    2: "Discount applied: -5,000 IDR per charm (total -10,000 IDR)",
+    3: "Discount applied: -30,000 IDR for 3 charms bundle",
+    4: "Discount applied: -30,000 IDR for 4 charms bundle",
+    5: "Discount applied: -30,000 IDR for 5 charms bundle"
+  };
+  
+  return explanations[charmCount] || `Discount applied: -${formatIDR(discountAmount).replace('Rp', '').trim()}`;
+};
+
 const ProductDetailCharmBar = () => {
   const { productId } = useParams();
   const navigate = useNavigate();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const isIOS = useIsIOS();
 
   // Charm customizer state
   const [baseImage, setBaseImage] = useState('');
@@ -117,6 +163,22 @@ const ProductDetailCharmBar = () => {
     fetchData();
   }, [productId]);
 
+  // Get available charm counts based on product restrictions
+  const getAvailableCharmCounts = () => {
+    const counts = [0]; // Chain only is always available
+    
+    if (product.is_charm_max3) {
+      counts.push(1, 2, 3);
+    } else if (product.is_charm_max5) {
+      counts.push(1, 2, 3, 4, 5);
+    } else {
+      // Default to all options if no specific limit is set
+      counts.push(1, 2, 3, 4, 5);
+    }
+    
+    return counts;
+  };
+
   // getCharmPosition is now based on product?.is_charm_spreadable and per-category positioning
   const getCharmPosition = (index, total) => {
     const baseSize = '17%';
@@ -128,31 +190,34 @@ const ProductDetailCharmBar = () => {
       transform: 'translate(-50%, -50%) rotate(0deg)'
     };
 
+    // ---- iOS ADJUSTMENTS: Lift charm positions slightly for better visual alignment ----
+    const iosOffset = isIOS ? -0.06 : 0; // -6% offset to lift charms up (adjust as needed)
+
     // ---- NECKLACE POSITIONS ----
     // Default positions (is_charm_spreadable === false)
     const necklaceDefaultPositions = {
-      1: [{ left: '52%', top: '82%', rotation: 0 }],
+      1: [{ left: '52%', top: '70%', rotation: 0 }],
       2: [
-        { left: '45%', top: '82%', rotation: 0 },
-        { left: '55%', top: '82%', rotation: 0 }
+        { left: '50%', top: '70%', rotation: 0 },
+        { left: '55%', top: '70%', rotation: 0 }
       ],
       3: [
-        { left: '42%', top: '81%', rotation: 30 },
-        { left: '52%', top: '82%', rotation: 0 },
-        { left: '62%', top: '81%', rotation: -35 }
+        { left: '45%', top: '69%', rotation: 30 },
+        { left: '52%', top: '70%', rotation: 0 },
+        { left: '59%', top: '69%', rotation: -35 }
       ],
       4: [
-        { left: '32%', top: '75%', rotation: 75 },
-        { left: '46%', top: '82%', rotation: 0 },
-        { left: '55%', top: '82%', rotation: 0 },
-        { left: '70%', top: '75%', rotation: -75 }
+        { left: '32%', top: '63%', rotation: 75 },
+        { left: '46%', top: '70%', rotation: 0 },
+        { left: '55%', top: '70%', rotation: 0 },
+        { left: '70%', top: '63%', rotation: -75 }
       ],
       5: [
-        { left: '43%', top: '81%', rotation: 20 },
-        { left: '52%', top: '82%', rotation: 0 },
-        { left: '60%', top: '81%', rotation: -20 },
-        { left: '70%', top: '75%', rotation: -75 },
-        { left: '32%', top: '75%', rotation: 73 }
+        { left: '43%', top: '69%', rotation: 20 },
+        { left: '52%', top: '70%', rotation: 0 },
+        { left: '60%', top: '69%', rotation: -20 },
+        { left: '70%', top: '63%', rotation: -75 },
+        { left: '32%', top: '63%', rotation: 73 }
       ]
     };
     // Spread positions (is_charm_spreadable === true)
@@ -236,6 +301,23 @@ const ProductDetailCharmBar = () => {
       ]
     };
 
+    // ---- APPLY IOS OFFSET TO EACH POSITION ----
+    const applyIosOffset = (positions) => {
+      if (!isIOS) return positions;
+
+      const adjusted = {};
+      Object.keys(positions).forEach(key => {
+        adjusted[key] = positions[key].map(pos => ({
+          ...pos,
+          top: `${Math.max(20, parseFloat(pos.top) + iosOffset * 100)}%` // Adjust top: e.g., 82% → 76%
+        }));
+      });
+      return adjusted;
+    };
+
+    const adjustedNecklaceDefault = applyIosOffset(necklaceDefaultPositions);
+    const adjustedBraceletDefault = applyIosOffset(braceletDefaultPositions);
+
     // ---- SELECT THE POSITION BY CATEGORY ----
     const isSpreadable = product.is_charm_spreadable;
     let posList;
@@ -290,15 +372,35 @@ const ProductDetailCharmBar = () => {
     return grouped;
   };
 
-  // Calculate total price
+  // Calculate total price with discount
   const calculateTotalPrice = () => {
     let total = parseFloat(product?.price) || 0;
+    
+    // Add charm prices
     for (let i = 1; i <= charmCount; i++) {
       const charmPrice = parseFloat(selectedCharms[i]?.price);
       if (!isNaN(charmPrice)) {
         total += charmPrice;
       }
     }
+    
+    // Apply discount based on number of charms selected
+    const discount = calculateCharmDiscount(charmCount);
+    return Math.max(0, total - discount);
+  };
+
+  // Calculate base price (without discount)
+  const calculateBasePrice = () => {
+    let total = parseFloat(product?.price) || 0;
+    
+    // Add charm prices
+    for (let i = 1; i <= charmCount; i++) {
+      const charmPrice = parseFloat(selectedCharms[i]?.price);
+      if (!isNaN(charmPrice)) {
+        total += charmPrice;
+      }
+    }
+    
     return total;
   };
 
@@ -374,6 +476,11 @@ const ProductDetailCharmBar = () => {
   }
 
   const groupedCharms = groupCharmsByCategoryAndLabel();
+  const availableCharmCounts = getAvailableCharmCounts();
+  const discountAmount = calculateCharmDiscount(charmCount);
+  const basePrice = calculateBasePrice();
+  const finalPrice = calculateTotalPrice();
+  const discountExplanation = getDiscountExplanation(charmCount, discountAmount);
 
   return (
     <div className="bg-[#fdf9f0] py-[2rem]" id="product-detail-charm-bar" tabIndex={-1}>
@@ -433,7 +540,7 @@ const ProductDetailCharmBar = () => {
             Chain only
           </button>
           {/* --- CHAIN ONLY/0 CHARMS BUTTON END --- */}
-          {[1, 2, 3, 4, 5].map((num) => (
+          {availableCharmCounts.filter(count => count > 0).map((num) => (
             <button
               key={num}
               onClick={() => {
@@ -450,7 +557,6 @@ const ProductDetailCharmBar = () => {
             </button>
           ))}
         </div>
-
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="bg-white rounded p-4 relative overflow-hidden" style={{ width: '100%', maxWidth: '500px',maxHeight: '500px', aspectRatio: '1/1' }}>
             <div className="relative w-full h-full flex items-center justify-center">
@@ -501,8 +607,25 @@ const ProductDetailCharmBar = () => {
           </div>
 
           <div className="flex-1" style={{ width: '100%', maxWidth: '500px',maxHeight: '500px', aspectRatio: '1/1' }}>
-            <div className="text-2xl font-semibold mb-4">
-              {formatIDR(calculateTotalPrice())}
+            <div className="mb-4">
+              {/* Show original price with strikethrough if there's a discount */}
+              {discountAmount > 0 && (
+                <div className="text-lg text-gray-500 line-through">
+                  {formatIDR(basePrice)}
+                </div>
+              )}
+              
+              {/* Final price */}
+              <div className="text-2xl font-semibold">
+                {formatIDR(finalPrice)}
+              </div>
+              
+              {/* Discount explanation */}
+              {discountExplanation && (
+                <div className="text-sm text-green-600 mt-1">
+                  {discountExplanation}
+                </div>
+              )}
             </div>
 
             {/* --- CHAIN ONLY/0 CHARMS TABS HIDE START --- */}

@@ -250,15 +250,42 @@ const CheckoutPage = () => {
     fetchItemDetails();
   }, [location.state]);
 
-  // Calculate prices
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  // Calculate prices - use rounded values for consistency
+  const subtotal = cartItems.reduce((sum, item) => sum + (Math.round(item.originalPrice) * item.quantity), 0);
   const discount = cartItems.reduce((sum, item) => {
     if (item.discount && item.originalPrice) {
-      return sum + ((item.originalPrice - item.price) * item.quantity);
+      const originalPriceRounded = Math.round(item.originalPrice);
+      const priceRounded = Math.round(item.price);
+      return sum + ((originalPriceRounded - priceRounded) * item.quantity);
     }
     return sum;
   }, 0);
-  const total = subtotal + shippingFee;
+
+  // Calculate charm-based discount
+  const calculateCharmDiscount = () => {
+    const totalCharms = cartItems.reduce((total, item) => {
+      return total + (item.charms ? item.charms.length : 0);
+    }, 0);
+    
+    let discountAmount = 0;
+    
+    if (totalCharms === 1) {
+      discountAmount = 5000;
+    } else if (totalCharms === 2) {
+      discountAmount = 10000;
+    } else if (totalCharms >= 3 && totalCharms <= 5) {
+      const perCharmDiscount = [0, 0, 0, 10000, 7500, 6000][totalCharms];
+      discountAmount = totalCharms * perCharmDiscount;
+    }
+    
+    return discountAmount;
+  };
+
+  const charmDiscount = calculateCharmDiscount();
+  const totalDiscount = discount + charmDiscount;
+
+  // Calculate total using rounded values for consistency
+  const total = subtotal + Math.round(shippingFee) - totalDiscount;
 
   // Format currency for display
   const formatCurrency = (amount) => {
@@ -363,6 +390,8 @@ const CheckoutPage = () => {
         },
         body: JSON.stringify(payload)
       });
+
+      console.log('ini yang dikirim ke api/selective_checkout/',JSON.stringify(payload));
 
       console.log('Response from /selective_checkout/:', response);
 
@@ -485,88 +514,7 @@ const CheckoutPage = () => {
     }
   };
 
-  // Process payment with Midtrans
-  // const processPayment = async () => {
-  //   setIsProcessingPayment(true);
-  //   setPaymentError(null);
-
-  //   try {
-  //     // First create the order
-  //     const orderData = await createOrder();
-      
-  //     // Prepare item details for Midtrans
-  //     const itemDetails = cartItems.map(item => {
-  //       let prefix = '';
-  //       if (item.source_type === 'product') prefix = 'PID-';
-  //       else if (item.source_type === 'gift_set') prefix = 'GSID-';
-  //       else if (item.source_type === 'charms_only') prefix = 'CID-';
-        
-  //       return {
-  //         id: `${prefix}${item.id}`,
-  //         name: item.name,
-  //         price: item.price,
-  //         quantity: item.quantity
-  //       };
-  //     });
-
-  //     // Add shipping as an item if shipping fee > 0
-  //     if (shippingFee > 0) {
-  //       itemDetails.push({
-  //         id: 'SHIPPING',
-  //         name: 'Shipping Fee',
-  //         price: shippingFee,
-  //         quantity: 1
-  //       });
-  //     }
-
-  //     // Prepare payload for Midtrans
-  //     const payload = {
-  //       order_id: orderData.order_id.toString(),
-  //       gross_amount: orderData.total_price + shippingFee,
-  //       email: shippingAddress.email,
-  //       first_name: shippingAddress.first_name,
-  //       last_name: shippingAddress.last_name,
-  //       phone: shippingAddress.phone,
-  //       address: shippingAddress.address,
-  //       city: shippingAddress.city,
-  //       postal_code: shippingAddress.postal_code,
-  //       country: "IDN",
-  //       item_details: itemDetails
-  //     };
-
-  //     console.log('Sending to /api/midtrans/token/:', payload);
-
-  //     const response = await fetch(`${BASE_URL}/api/midtrans/token/`, {
-  //       method: 'POST',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //         'Authorization': `Bearer ${getAuthData()?.token}`
-  //       },
-  //       body: JSON.stringify(payload)
-  //     });
-
-  //     console.log('Response from /api/midtrans/token/:', response);
-
-  //     if (!response.ok) {
-  //       const errorData = await response.json().catch(() => ({}));
-  //       console.error('Error response from /api/midtrans/token/:', errorData);
-  //       throw new Error(errorData.message || "Failed to process payment");
-  //     }
-
-  //     const paymentData = await response.json();
-  //     console.log('Data from /api/midtrans/token/:', paymentData);
-      
-  //     // Redirect to Midtrans payment page
-  //     window.location.href = paymentData.redirect_url;
-      
-  //   } catch (error) {
-  //     console.error('Error in processPayment:', error);
-  //     setPaymentError(error.message);
-  //   } finally {
-  //     setIsProcessingPayment(false);
-  //   }
-  // };
-
+ 
   useEffect(() => {
     const script = document.createElement('script');
     // Force production URL since sandbox is giving 404 errors
@@ -581,291 +529,106 @@ const CheckoutPage = () => {
     };
   }, []);
 
-  // const processPayment = async () => {
-  //   setIsProcessingPayment(true);
-  //   setPaymentError(null);
-  //   setIsRedirectingToPayment(false);
 
 
-  //   try {
-  //     // First create the order
-  //     const orderData = await createOrder();
-      
-  //     // Prepare item details for Midtrans
-  //     const itemDetails = cartItems.map(item => {
-  //       let prefix = '';
-  //       if (item.source_type === 'product') prefix = 'PID-';
-  //       else if (item.source_type === 'gift_set') prefix = 'GSID-';
-  //       else if (item.source_type === 'charms_only') prefix = 'CID-';
-        
-  //       // Truncate name to 50 characters max for Midtrans
-  //       const truncatedName = item.name.length > 50 
-  //         ? `${item.name.substring(0, 47)}...` 
-  //         : item.name;
-        
-  //       // Ensure price is an integer (Midtrans requirement)
-  //       const price = Math.round(item.price);
-        
-  //       return {
-  //         id: `${prefix}${item.id}`,
-  //         name: truncatedName,
-  //         price: price,
-  //         quantity: item.quantity
-  //       };
-  //     });
+const processPayment = async () => {
+  setIsProcessingPayment(true);
+  setPaymentError(null);
 
-  //     // Add shipping as an item if shipping fee > 0
-  //     if (shippingFee > 0) {
-  //       itemDetails.push({
-  //         id: 'SHIPPING',
-  //         name: 'Shipping',
-  //         price: Math.round(shippingFee),
-  //         quantity: 1
-  //       });
-  //     }
+  try {
+    setIsShowingLoader(true);
+    setShowConfirmModal(false);
 
-  //     // Calculate the exact total from items
-  //     const itemsTotal = itemDetails.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    let orderData = orderDataRef.current;
+    let token = midtransToken;
 
-  //     // Prepare payload for Midtrans
-  //     const payload = {
-  //       order_id: orderData.order_id.toString(),
-  //       gross_amount: itemsTotal, // Use calculated total
-  //       email: shippingAddress.email,
-  //       first_name: shippingAddress.first_name,
-  //       last_name: shippingAddress.last_name,
-  //       phone: shippingAddress.phone,
-  //       address: shippingAddress.address,
-  //       city: shippingAddress.city,
-  //       postal_code: shippingAddress.postal_code,
-  //       country: "IDN",
-  //       item_details: itemDetails
-  //     };
+    // Step 1: Only create order & fetch token if not already done
+    if (!orderData || !token) {
+      // Create order if not already created
+      if (!orderData) {
+        orderData = await createOrder();
+        orderDataRef.current = orderData;
+      }
 
-  //     console.log('Sending to /api/midtrans/token/:', payload);
+      // Calculate rounded values for all items
+      const itemDetails = cartItems.map(item => {
+        let prefix = '';
+        if (item.source_type === 'product') prefix = 'PID-';
+        else if (item.source_type === 'gift_set') prefix = 'GSID-';
+        else if (item.source_type === 'charms_only') prefix = 'CID-';
 
-  //     const response = await fetch(`${BASE_URL}/api/midtrans/token/`, {
-  //       method: 'POST',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //         'Authorization': `Bearer ${getAuthData()?.token}`
-  //       },
-  //       body: JSON.stringify(payload)
-  //     });
+        const truncatedName = item.name.length > 50 
+          ? `${item.name.substring(0, 47)}...` 
+          : item.name;
 
-  //     if (!response.ok) {
-  //       const errorData = await response.json().catch(() => ({}));
-  //       console.error('Error response from /api/midtrans/token/:', errorData);
-  //       throw new Error(errorData.error || errorData.message || "Failed to process payment");
-  //     }
+        // Use the same rounded price as in the total calculation
+        const price = Math.round(item.price);
 
-  //     const paymentData = await response.json();
-  //     console.log('Data from /api/midtrans/token/:', paymentData);
-
-  //     // Set redirecting state and navigate to loading page
-  //     setIsRedirectingToPayment(true);
-  //     navigate('/payment-processing', { state: { orderId: orderData.order_id } });
-      
-  //     // Redirect to Midtrans payment page
-  //     // window.location.href = paymentData.redirect_url;
-  //     window.open(paymentData.redirect_url, '_blank');
-      
-  //   } catch (error) {
-  //     console.error('Error in processPayment:', error);
-  //     setPaymentError(error.message || "Failed to process payment. Please try again.");
-  //   } finally {
-  //     setIsProcessingPayment(false);
-  //   }
-  // };
-
-  // Validation function for all required fields
-  
-  // const processPayment = async () => {
-  //   setIsProcessingPayment(true);
-  //   setPaymentError(null);
-
-  //   try {
-  //     setIsShowingLoader(true);
-  //     setShowConfirmModal(false);
-  //     // First create the order
-  //     const orderData = await createOrder();
-  //     orderDataRef.current = orderData;
-      
-  //     // Prepare item details for Midtrans
-  //     const itemDetails = cartItems.map(item => {
-  //       let prefix = '';
-  //       if (item.source_type === 'product') prefix = 'PID-';
-  //       else if (item.source_type === 'gift_set') prefix = 'GSID-';
-  //       else if (item.source_type === 'charms_only') prefix = 'CID-';
-        
-  //       // Truncate name to 50 characters max for Midtrans
-  //       const truncatedName = item.name.length > 50 
-  //         ? `${item.name.substring(0, 47)}...` 
-  //         : item.name;
-        
-  //       // Ensure price is an integer (Midtrans requirement)
-  //       const price = Math.round(item.price);
-        
-  //       return {
-  //         id: `${prefix}${item.id}`,
-  //         name: truncatedName,
-  //         price: price,
-  //         quantity: item.quantity
-  //       };
-  //     });
-
-  //     // Add shipping as an item if shipping fee > 0
-  //     if (shippingFee > 0) {
-  //       itemDetails.push({
-  //         id: 'SHIPPING',
-  //         name: 'Shipping',
-  //         price: Math.round(shippingFee),
-  //         quantity: 1
-  //       });
-  //     }
-
-  //     // Calculate the exact total from items
-  //     const itemsTotal = itemDetails.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-
-  //     // Prepare payload for Midtrans
-  //     const payload = {
-  //       order_id: orderData.order_id.toString(),
-  //       gross_amount: itemsTotal, // Use calculated total
-  //       email: shippingAddress.email,
-  //       first_name: shippingAddress.first_name,
-  //       last_name: shippingAddress.last_name,
-  //       phone: shippingAddress.phone,
-  //       address: shippingAddress.address,
-  //       city: shippingAddress.city,
-  //       postal_code: shippingAddress.postal_code,
-  //       country: "IDN",
-  //       item_details: itemDetails
-  //     };
-
-  //     console.log('Sending to /api/midtrans/token/:', payload);
-
-  //     const response = await fetch(`${BASE_URL}/api/midtrans/token/`, {
-  //       method: 'POST',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //         'Authorization': `Bearer ${getAuthData()?.token}`
-  //       },
-  //       body: JSON.stringify(payload)
-  //     });
-
-  //     if (!response.ok) {
-  //       const errorData = await response.json().catch(() => ({}));
-  //       console.error('Error response from /api/midtrans/token/:', errorData);
-  //       throw new Error(errorData.error || errorData.message || "Failed to process payment");
-  //     }
-
-  //     const paymentData = await response.json();
-  //     console.log('Data from /api/midtrans/token/:', paymentData);
-
-  //     // Check if snap.js is loaded
-  //     if (typeof window.snap === 'undefined') {
-  //       throw new Error('Payment gateway failed to load');
-  //     }
-
-  //     console.log('Midtrans token:', paymentData.token);
-    
-  //   // Force production environment
-  //   window.snap.pay(paymentData.token, {
-  //     onSuccess: (result) => {
-  //       console.log('Payment success', result);
-  //       navigate('/payment-success', { state: { orderId: orderData.order_id } });
-  //     },
-  //     onPending: (result) => {
-  //       console.log('Payment pending', result);
-  //       navigate('/payment-pending', { state: { orderId: orderData.order_id } });
-  //     },
-  //     onError: (error) => {
-  //       console.log('Payment error', error);
-  //       setPaymentError('Payment failed. Please try again.');
-  //       setIsShowingLoader(false);
-  //     },
-  //     onClose: () => {
-  //       console.log('User closed Midtrans popup');
-  //       setIsShowingLoader(false);
-  //       setShowCancelConfirmation(true);
-  //     }
-  //   });
-
-  //   } catch (error) {
-  //     console.error('Payment process error:', error);
-  //     setPaymentError(error.message || "Something went wrong.");
-  //     setIsShowingLoader(false);
-  //   } finally {
-  //     setIsProcessingPayment(false);
-  //   }
-  // };
-
-  const processPayment = async () => {
-    setIsProcessingPayment(true);
-    setPaymentError(null);
-
-    try {
-      setIsShowingLoader(true);
-      setShowConfirmModal(false);
-
-      let orderData = orderDataRef.current;
-      let token = midtransToken;
-
-      // Step 1: Only create order & fetch token if not already done
-      if (!orderData || !token) {
-        // Create order if not already created
-        if (!orderData) {
-          orderData = await createOrder();
-          orderDataRef.current = orderData;
-        }
-
-        // Fetch Midtrans token if not already fetched
-        const itemDetails = cartItems.map(item => {
-          let prefix = '';
-          if (item.source_type === 'product') prefix = 'PID-';
-          else if (item.source_type === 'gift_set') prefix = 'GSID-';
-          else if (item.source_type === 'charms_only') prefix = 'CID-';
-
-          const truncatedName = item.name.length > 50 
-            ? `${item.name.substring(0, 47)}...` 
-            : item.name;
-
-          const price = Math.round(item.price);
-
-          return {
-            id: `${prefix}${item.id}`,
-            name: truncatedName,
-            price: price,
-            quantity: item.quantity
-          };
-        });
-
-        if (shippingFee > 0) {
-          itemDetails.push({
-            id: 'SHIPPING',
-            name: 'Shipping',
-            price: Math.round(shippingFee),
-            quantity: 1
-          });
-        }
-
-        const itemsTotal = itemDetails.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-
-        const payload = {
-          order_id: orderData.order_id.toString(),
-          gross_amount: itemsTotal,
-          email: shippingAddress.email,
-          first_name: shippingAddress.first_name,
-          last_name: shippingAddress.last_name,
-          phone: shippingAddress.phone,
-          address: shippingAddress.address,
-          city: shippingAddress.city,
-          postal_code: shippingAddress.postal_code,
-          country: "IDN",
-          item_details: itemDetails,
-          callback_url: window.location.origin + "/payment-callback", // or your domain
-          finish_redirect_url: window.location.origin + "/payment-callback"
+        return {
+          id: `${prefix}${item.id}`,
+          name: truncatedName,
+          price: price,
+          quantity: item.quantity
         };
+      });
+
+      // Add shipping as a separate item
+      if (shippingFee > 0) {
+        itemDetails.push({
+          id: 'SHIPPING',
+          name: 'Shipping',
+          price: Math.round(shippingFee),
+          quantity: 1
+        });
+      }
+
+      // Add discount as a negative item to match the total
+      if (totalDiscount > 0) {
+        itemDetails.push({
+          id: 'DISCOUNT',
+          name: 'Discount',
+          price: -totalDiscount, // This should match the totalDiscount calculation
+          quantity: 1
+        });
+      }
+
+      // Calculate the sum of all items
+      const itemsTotal = itemDetails.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      
+      // Use the same total that's displayed to the user
+      const gross_amount = total;
+      
+      console.log('Items total:', itemsTotal, 'Gross amount (total):', gross_amount);
+
+      // Final verification - they should match exactly
+      if (itemsTotal !== gross_amount) {
+        console.log('Adjusting for precision mismatch:', itemsTotal - gross_amount);
+        
+        // Adjust the discount item to fix any remaining mismatch
+        const discountItem = itemDetails.find(item => item.id === 'DISCOUNT');
+        if (discountItem) {
+          discountItem.price -= (itemsTotal - gross_amount);
+          console.log('Adjusted discount to:', discountItem.price);
+        }
+      }
+
+      const payload = {
+        order_id: orderData.order_id.toString(),
+        gross_amount: gross_amount,
+        email: shippingAddress.email,
+        first_name: shippingAddress.first_name,
+        last_name: shippingAddress.last_name,
+        phone: shippingAddress.receiver_phone || '',
+        address: shippingAddress.address,
+        city: shippingAddress.city,
+        postal_code: shippingAddress.postal_code,
+        country: "IDN",
+        item_details: itemDetails,
+        callback_url: window.location.origin + "/payment-callback",
+        finish_redirect_url: window.location.origin + "/payment-callback"
+      };
+
+        console.log('payload to /api/midtrans/token/:', payload);
 
         const response = await fetch(`${BASE_URL}/api/midtrans/token/`, {
           method: 'POST',
@@ -876,8 +639,11 @@ const CheckoutPage = () => {
           body: JSON.stringify(payload)
         });
 
+        console.log('Response from /api/midtrans/token/:', response);
+
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
+          console.error('Error response details:', errorData);
           throw new Error(errorData.error || errorData.message || "Failed to process payment");
         }
 
@@ -886,6 +652,7 @@ const CheckoutPage = () => {
         setMidtransToken(token); // Cache token
       }
 
+      // Rest of your payment processing code remains the same...
       // Step 2: Use cached token to open Midtrans popup
       if (typeof window.snap === 'undefined') {
         throw new Error('Payment gateway failed to load');
@@ -903,23 +670,13 @@ const CheckoutPage = () => {
         },
         onPending: async (result) => {
           console.log('Payment pending', result);
-          
-          // ✅ Create JNT order so shipment is ready
-          // const awbNumber = await createJNTOrder(orderData.order_id);
-
-          // ✅ Do NOT navigate — just close loader and let user stay
           setIsShowingLoader(false);
           setShowCancelConfirmation(true);
-
-          // Optional: Show a toast or modal to inform user
           alert(
             `Your order is pending payment. Please complete the bank transfer.\n` +
             `Order ID: ${orderData.order_id}\n` +
             `Complete the payment to proceed with shipping by pressing the "Place My Order" button again.`
           );
-
-          // Optionally, you can open a modal instead of alert
-          // Or set a state like setPaymentStatus('pending')
         },
         onError: (error) => {
           console.log('Payment error', error);
@@ -930,7 +687,6 @@ const CheckoutPage = () => {
           console.log('User closed Midtrans popup');
           setIsShowingLoader(false);
           setShowCancelConfirmation(true);
-          // Do NOT clear token here — let user retry
         }
       });
 
@@ -940,7 +696,7 @@ const CheckoutPage = () => {
       setIsShowingLoader(false);
     } finally {
       setIsProcessingPayment(false);
-    };
+    }
   };
   
   
@@ -1498,19 +1254,42 @@ const CheckoutPage = () => {
                   <span>Subtotal</span>
                   <span>{formatCurrency(subtotal)}</span>
                 </div>
-                
                 {discount > 0 && (
                   <div className="flex justify-between">
-                    <span>Discount</span>
+                    <span>Product Discount</span>
                     <span className="text-green-600">-{formatCurrency(discount)}</span>
                   </div>
+                )}
+                
+                {/* Charm Discount Section */}
+                {charmDiscount > 0 && (
+                  <>
+                    <div className="flex justify-between">
+                      <span>Charm Discount</span>
+                      <span className="text-green-600">-{formatCurrency(charmDiscount)}</span>
+                    </div>
+                    <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mt-2">
+                      <p className="text-xs text-blue-800 font-medium">Discount Explanation:</p>
+                      <p className="text-xs text-blue-700 mt-1">
+                        You've selected {cartItems.reduce((total, item) => total + (item.charms ? item.charms.length : 0), 0)} charms.
+                        {(() => {
+                          const totalCharms = cartItems.reduce((total, item) => total + (item.charms ? item.charms.length : 0), 0);
+                          if (totalCharms === 1) return " You get a flat discount of Rp5,000.";
+                          if (totalCharms === 2) return " You get Rp5,000 off each charm (total Rp10,000).";
+                          if (totalCharms === 3) return " You get Rp10,000 off each charm (total Rp30,000).";
+                          if (totalCharms === 4) return " You get Rp7,500 off each charm (total Rp30,000).";
+                          if (totalCharms === 5) return " You get Rp6,000 off each charm (total Rp30,000).";
+                          return "";
+                        })()}
+                      </p>
+                    </div>
+                  </>
                 )}
                 
                 <div className="flex justify-between">
                   <span>Shipping</span>
                   <span>{shippingFee > 0 ? formatCurrency(shippingFee) : "Not calculated"}</span>
                 </div>
-                
                 <div className="flex justify-between font-semibold pt-2 border-t border-[#f2e9d5]">
                   <span>Total</span>
                   <span>{formatCurrency(total)}</span>
