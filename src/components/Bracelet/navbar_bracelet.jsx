@@ -528,7 +528,7 @@ const NavBar_Bracelet = () => {
         <div className="relative flex flex-col md:justify-between md:text-center text-white">
           {!isMobileView ? (
             <div className="hover:bg-[#fdfaf3] w-full">
-              <nav className="px-8 pb-[2rem] pt-[1rem] flex items-center justify-between">
+              <nav className="px-[9rem] pb-[2rem] pt-[1rem] flex items-center justify-between">
                 <div className="flex items-center">
                   <div className="p-[3rem]"></div>
                 </div>
