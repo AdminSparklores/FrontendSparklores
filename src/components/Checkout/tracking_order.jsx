@@ -237,10 +237,13 @@ const OrderTrackingPage = ({ trackingNumber }) => {
                 />
                 <div className="flex-1">
                   <div className="font-semibold text-base md:text-lg">
-                    {orderData.detail?.itemname || 'Custom Jewelry'}
+                    {orderDetails?.items?.[0]?.product_name || 
+                    orderDetails?.items?.[0]?.gift_set_name || 
+                    orderData.detail?.itemname || 
+                    'Custom Jewelry'}
                   </div>
                   <div className="text-xs text-[#b8ab96] font-medium mb-1">
-                    x{orderData.detail?.qty || 1}
+                    x{orderDetails?.items?.[0]?.quantity || orderData.detail?.qty || 1}
                   </div>
                   {/* Optional: Show item price if available, otherwise omit or estimate */}
                   {/* {orderData.detail?.actual_amount && (
@@ -248,10 +251,17 @@ const OrderTrackingPage = ({ trackingNumber }) => {
                       {formatPrice(orderData.detail.actual_amount)}
                     </div>
                   )} */}
-                  <div className="text-xs font-semibold">Note</div>
-                  <div className="italic text-xs text-[#b8ab96]">
-                    "{orderData.detail?.note || 'No note provided'}"
-                  </div>
+                  <div className="text-xs font-semibold">Notes</div>
+                  {orderDetails?.items?.map((item, index) => (
+                    <div key={index} className="italic text-xs text-[#b8ab96] mb-1">
+                      Item {index + 1}: "{item.message || 'No note provided'}"
+                    </div>
+                  ))}
+                  {(!orderDetails?.items || orderDetails.items.length === 0) && (
+                    <div className="italic text-xs text-[#b8ab96]">
+                      "{orderData.detail?.note || 'No note provided'}"
+                    </div>
+                  )}
                 </div>
               </div>
 
