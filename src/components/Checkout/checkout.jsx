@@ -251,7 +251,8 @@ const CheckoutPage = () => {
   }, [location.state]);
 
   // Calculate prices - use rounded values for consistency
-  const subtotal = cartItems.reduce((sum, item) => sum + (Math.round(item.originalPrice) * item.quantity), 0);
+  const tempSubtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const subtotal = Math.round(tempSubtotal);
   const discount = cartItems.reduce((sum, item) => {
     if (item.discount && item.originalPrice) {
       const originalPriceRounded = Math.round(item.originalPrice);
