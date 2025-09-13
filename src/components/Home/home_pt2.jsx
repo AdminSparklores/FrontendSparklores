@@ -132,14 +132,15 @@ const HomePart2 = () => {
 
   // No campaign or no items
   if (!campaign || !campaign.items || campaign.items.length === 0) {
-    return (
-      <div className="bg-[#F9F5EE] px-1 pb-2 md:px-10 md:pb-10 text-center pt-[1rem] md:pt-[8rem]">
-        <h2 className="text-2xl md:text-5xl mb-5 md:mb-0">SPECIAL OFFER</h2>
-        <div className="text-center py-10">
-          <p>No special offers available at the moment</p>
-        </div>
-      </div>
-    );
+    return null;
+    // (
+    //   <div className="bg-[#F9F5EE] px-1 pb-2 md:px-10 md:pb-10 text-center pt-[1rem] md:pt-[8rem]">
+    //     <h2 className="text-2xl md:text-5xl mb-5 md:mb-0">SPECIAL OFFER</h2>
+    //     <div className="text-center py-10">
+    //       <p>No special offers available at the moment</p>
+    //     </div>
+    //   </div>
+    // );
   }
 
   // Display the first campaign found

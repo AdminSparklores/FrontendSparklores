@@ -7,6 +7,7 @@ import product2 from "../../assets/default/homeproduct2.png";
 import { isLoggedIn, logout, fetchCart, updateCartItemQuantity, deleteCartItem, BASE_URL, fetchProduct, fetchCharm, getAuthData} from "../../utils/api.js";
 import Snackbar from '../snackbar.jsx';
 import CartDrawer from '../cartDrawer.jsx';
+import AdminDashboardButton from "../AdminDashboardButton.jsx";
 
 const fetchGiftSet = async (giftSetId) => {
   const response = await fetch(`${BASE_URL}/api/gift-sets/${giftSetId}/`);
@@ -547,14 +548,15 @@ const NavBar = () => {
                 className="w-5 h-5 cursor-pointer" 
                 onClick={handleCartClick} 
               />
-              {userDetails?.is_staff && (
+              {/* {userDetails?.is_staff && (
                 <Link 
                   to="/adminDashboard/dashboard" 
                   className="inline-block px-4 py-2 text-sm font-medium text-white bg-[#b87777] rounded shadow-md hover:bg-[#a06666] transition duration-200 focus:outline-none focus:ring-2 focus:ring-[#b87777] focus:ring-opacity-50"
                 >
                   Admin Dashboard
                 </Link>
-              )}
+              )} */}
+              <AdminDashboardButton />
             </div>
           </nav>
 
@@ -624,14 +626,15 @@ const NavBar = () => {
                 className="w-5 h-5 cursor-pointer" 
                 onClick={handleCartClick} 
               />
-              {userDetails?.is_staff && (
+              {/* {userDetails?.is_staff && (
                 <Link 
                   to="/adminDashboard/dashboard" 
                   className="inline-block px-4 py-2 text-sm font-medium text-white bg-[#b87777] rounded shadow-md hover:bg-[#a06666] transition duration-200 focus:outline-none focus:ring-2 focus:ring-[#b87777] focus:ring-opacity-50"
                 >
                   Admin
                 </Link>
-              )}
+              )} */}
+              <AdminDashboardButton />
               <Menu 
                 className="w-6 h-6 cursor-pointer" 
                 onClick={() => setDrawerOpen(true)}

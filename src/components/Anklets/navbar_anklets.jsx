@@ -6,7 +6,8 @@ import banner from "../../assets/default/navbar_anklets_bg.png";
 import product1 from "../../assets/default/homeproduct1.png";
 import { isLoggedIn, logout, fetchCart, updateCartItemQuantity, deleteCartItem, BASE_URL, fetchProduct, fetchCharm, fetchPageBanner } from "../../utils/api.js";
 import Snackbar from '../snackbar.jsx';
-import CartDrawer from '../cartDrawer.jsx'; // <-- import your reusable drawer
+import CartDrawer from '../cartDrawer.jsx';
+import AdminDashboardButton from "../AdminDashboardButton.jsx"; 
 
 const fetchGiftSet = async (giftSetId) => {
   const response = await fetch(`${BASE_URL}/api/gift-sets/${giftSetId}/`);
@@ -547,6 +548,7 @@ const NavBar_Anklets = () => {
                     className="w-5 h-5 cursor-pointer" 
                     onClick={handleCartClick} 
                   />
+                  <AdminDashboardButton /> 
                 </div>
               </nav>
 
@@ -616,6 +618,7 @@ const NavBar_Anklets = () => {
                     className="w-5 h-5 cursor-pointer" 
                     onClick={handleCartClick} 
                   />
+                  <AdminDashboardButton /> 
                   <Menu 
                     className="w-6 h-6 cursor-pointer" 
                     onClick={() => setDrawerOpen(true)}
