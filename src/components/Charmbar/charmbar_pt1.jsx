@@ -287,7 +287,7 @@ export default function CharmCustomizerFull() {
   const isCharmSpreadable = selectedBaseProduct?.is_charm_spreadable === true;
 
   // ---- iOS ADJUSTMENTS: Lift charm positions slightly for better visual alignment ----
-  const iosOffset = isIOS ? -0.35 : 0; // <-- NEW LINE: Uses the detected isIOS state
+  const iosOffset = isIOS ? -3 : 0; // move up by 2%
 
   // ---- NECKLACE POSITIONS ----
   // Default positions (is_charm_spreadable === false)
@@ -404,7 +404,7 @@ export default function CharmCustomizerFull() {
     Object.keys(positions).forEach(key => {
       adjusted[key] = positions[key].map(pos => ({
         ...pos,
-        top: `${Math.max(20, parseFloat(pos.top) + iosOffset * 100)}%` // <-- NEW LINE: Adjusts the top value
+        top: `${parseFloat(pos.top) + iosOffset}%`
       }));
     });
     return adjusted;
