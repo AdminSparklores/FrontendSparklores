@@ -191,7 +191,7 @@ const ProductDetailCharmBar = () => {
     };
 
     // ---- iOS ADJUSTMENTS: Lift charm positions slightly for better visual alignment ----
-    const iosOffset = isIOS ? -0.16 : 0; // -10% offset to lift charms up (adjust as needed)
+    const iosOffset = isIOS ? -0.25 : 0; // -10% offset to lift charms up (adjust as needed)
 
     // ---- NECKLACE POSITIONS ----
     // Default positions (is_charm_spreadable === false)
