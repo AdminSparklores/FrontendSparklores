@@ -323,12 +323,18 @@ const ProductDetailCharmBar = () => {
     let posList;
 
     if (product.category === "bracelet") {
-      posList = isSpreadable ? braceletSpreadPositions : braceletDefaultPositions;
+      posList = isSpreadable 
+        ? braceletSpreadPositions 
+        : (isIOS ? adjustedBraceletDefault : braceletDefaultPositions); // ✅ Use adjusted if iOS
     } else if (product.category === "necklace") {
-      posList = isSpreadable ? necklaceSpreadPositions : necklaceDefaultPositions;
+      posList = isSpreadable 
+        ? necklaceSpreadPositions 
+        : (isIOS ? adjustedNecklaceDefault : necklaceDefaultPositions); // ✅ Use adjusted if iOS
     } else {
       // fallback: use necklace logic for unknown category
-      posList = isSpreadable ? necklaceSpreadPositions : necklaceDefaultPositions;
+      posList = isSpreadable 
+        ? necklaceSpreadPositions 
+        : (isIOS ? adjustedNecklaceDefault : necklaceDefaultPositions);
     }
 
     const pos = (posList[total] && posList[total][index]) || { left: '50%', top: '50%', rotation: 0 };
