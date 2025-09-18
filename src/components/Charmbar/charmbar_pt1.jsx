@@ -373,7 +373,7 @@ export default function CharmCustomizerFull() {
     const isCharmSpreadable = selectedBaseProduct?.is_charm_spreadable === true;
 
     // ---- iOS ADJUSTMENTS: Lift charm positions slightly for better visual alignment ----
-    const iosOffset = isIOS ? -3 : 0;
+    const iosOffset = isIOS ? -2.5 : 0;
 
     // ---- NECKLACE POSITIONS ----
     const necklaceDefaultPositions = {
