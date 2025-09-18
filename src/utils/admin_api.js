@@ -146,6 +146,7 @@ export const getOrders = (startDate = null, endDate = null) => {
 // admin_api.js - Updated createLabels()
 
 // admin_api.js
+// admin_api.js - Updated createLabels()
 export const createLabels = async (orders) => {
   const authData = getAuthData();
   if (!authData || !authData.token) {
@@ -174,19 +175,43 @@ export const createLabels = async (orders) => {
         throw new Error("Invalid JSON response from server");
       }
 
-      if (!response.ok || !data.responseitems?.[0]?.success === "true") {
+      if (!response.ok) {
         const reason = data.responseitems?.[0]?.reason || data.error || "Unknown error";
-        throw new Error(reason);
+        return { error: `HTTP ${response.status}: ${reason}` };
       }
 
-      return data.responseitems[0].rotaprinturl;
+      const responseItem = data.responseitems?.[0];
+      if (!responseItem) {
+        return { error: "No response from shipping provider" };
+      }
+
+      if (responseItem.success === "true" && responseItem.rotaprinturl) {
+        return { url: responseItem.rotaprinturl };
+      } else {
+        // Handle different error codes with user-friendly messages
+        let errorMessage = responseItem.reason || "Unknown error";
+        
+        // Map JNT error codes to friendly messages
+        const errorMap = {
+          "S28": "Shipment already processed or canceled in JNT system",
+          "S10": "Billcode not found in JNT system",
+          "S99": "System error at JNT",
+          // Add more error codes as needed
+        };
+        
+        if (errorMap[responseItem.reason]) {
+          errorMessage = errorMap[responseItem.reason];
+        }
+        
+        return { error: errorMessage };
+      }
+    }).catch(error => {
+      console.error("Label creation error for billcode:", order.billcode, error);
+      return { error: error.message || "Network error" };
     });
   });
 
-  return Promise.all(labelPromises).catch(error => {
-    console.error("Failed to create JNT labels:", error);
-    throw new Error(`Label creation failed: ${error.message}`);
-  });
+  return Promise.all(labelPromises);
 };
 
 // NEW: Create merged PDF labels using order_ids

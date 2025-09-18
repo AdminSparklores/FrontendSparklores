@@ -12,8 +12,14 @@ const ORDER_STATUS = [
   { value: "all", label: "All" },
   { value: "awaiting_shipment", label: "Awaiting Shipment" },
   { value: "collection", label: "Collection" },
-  { value: "on_shipment", label: "On Shipment" },
+  { value: "on_shipping", label: "On Shipping" },
   { value: "shipped", label: "Shipped" },
+  { value: "pending", label: "Pending" },
+  { value: "packing", label: "Packing" },
+  { value: "delivery", label: "Delivery" },
+  { value: "done", label: "Done" },
+  { value: "not_accepted", label: "Not Accepted" },
+  { value: "cancelled", label: "Cancelled" },
 ];
 
 // Pagination component
@@ -158,11 +164,29 @@ export default function AdminOrderDashboard() {
       case "collection":
         statusMatch = status === "collection";
         break;
-      case "on_shipment":
-        statusMatch = status === "on_shipment";
+      case "on_shipping":
+        statusMatch = status === "on_shipping";
         break;
       case "shipped":
         statusMatch = status === "shipped";
+        break;
+      case "pending":
+        statusMatch = status === "pending";
+        break;
+      case "packing":
+        statusMatch = status === "packing";
+        break;
+      case "delivery":
+        statusMatch = status === "delivery";
+        break;
+      case "done":
+        statusMatch = status === "done";
+        break;
+      case "not_accepted":
+        statusMatch = status === "not_accepted";
+        break;
+      case "cancelled":
+        statusMatch = status === "cancelled";
         break;
       default:
         statusMatch = true;
@@ -259,109 +283,224 @@ export default function AdminOrderDashboard() {
   };
 
   // Validate if orders can be moved to Collection
-const validateOrdersForCollection = (selectedOrders) => {
-  const invalidOrders = selectedOrders.filter(order => {
-    // Check if billcode exists
-    if (!order.billcode) return true;
+  const validateOrdersForCollection = (selectedOrders) => {
+    const invalidOrders = selectedOrders.filter(order => {
+      // Check if billcode exists
+      if (!order.billcode) return true;
 
-    // Check if billcode is canceled
-    // Assume: if order.jnt_status includes "cancel" or is marked canceled, block it
-    // You may adjust this condition based on actual field
-    const isCanceled = order.jnt_status?.toLowerCase().includes('cancel') ||
-                       order.fulfillment_status === 'canceled' ||
-                       order.billcode_status?.toLowerCase() === 'canceled';
+      // Check if billcode is canceled
+      const isCanceled = order.jnt_status?.toLowerCase().includes('cancel') ||
+                        order.fulfillment_status === 'canceled' ||
+                        order.billcode_status?.toLowerCase() === 'canceled';
 
-    return isCanceled;
-  });
+      return isCanceled;
+    });
 
-  return invalidOrders;
-};
+    return invalidOrders;
+  };
 
   // Trigger label creation - BOTH types simultaneously
   // Updated: handleCreateLabels with validation
-const handleCreateLabels = async () => {
-  if (selectedIds.length === 0) {
-    alert("Please select at least one order to create labels");
-    return;
-  }
+  // INI YANG UDH BISA SEBELUM DITAMBAHIN TABS LAINNYA
+// const handleCreateLabels = async () => {
+//   if (selectedIds.length === 0) {
+//     alert("Please select at least one order to create labels");
+//     return;
+//   }
 
-  const selectedOrders = orders.filter(order => selectedIds.includes(order.id));
+//   const selectedOrders = orders.filter(order => selectedIds.includes(order.id));
 
-  // Validate all selected orders
-  const invalidOrders = validateOrdersForCollection(selectedOrders);
+//   // Validate all selected orders
+//   const invalidOrders = validateOrdersForCollection(selectedOrders);
 
-  if (invalidOrders.length > 0) {
-    const failedOrderIds = invalidOrders.map(o => `#${o.id}`).join(", ");
-    const reasons = invalidOrders.map(o => {
-      if (!o.billcode) return `Order #${o.id}: No billcode found`;
-      return `Order #${o.id}: Billcode is canceled or invalid`;
-    }).join("; ");
+//   if (invalidOrders.length > 0) {
+//     const failedOrderIds = invalidOrders.map(o => `#${o.id}`).join(", ");
+//     const reasons = invalidOrders.map(o => {
+//       if (!o.billcode) return `Order #${o.id}: No billcode found`;
+//       return `Order #${o.id}: Billcode is canceled or invalid`;
+//     }).join("; ");
 
-    setResultModalData({
-      type: 'error',
-      title: 'Cannot Move to Collection',
-      message: `We couldn't move all selected orders to Collection because some don’t have a valid shipping label or have already been canceled.
+//     setResultModalData({
+//       type: 'error',
+//       title: 'Cannot Move to Collection',
+//       message: `We couldn't move all selected orders to Collection because some don’t have a valid shipping label or have already been canceled.
 
-    Orders affected: ${failedOrderIds}
+//     Orders affected: ${failedOrderIds}
 
-    Please deselect these orders and try again with only valid ones.`
-    });
-    setShowResultModal(true);
-    return;
-  }
+//     Please deselect these orders and try again with only valid ones.`
+//     });
+//     setShowResultModal(true);
+//     return;
+//   }
 
-  try {
-    setIsCreatingLabels(true);
+//   try {
+//     setIsCreatingLabels(true);
     
-    // Call both APIs simultaneously
-    const [statusUpdateResult, jntLabelsResult] = await Promise.allSettled([
-      createMergedLabels(selectedIds),
-      createLabels(selectedOrders)
-    ]);
+//     // Call both APIs simultaneously
+//     const [statusUpdateResult, jntLabelsResult] = await Promise.allSettled([
+//       createMergedLabels(selectedIds),
+//       createLabels(selectedOrders)
+//     ]);
 
-    // Handle status update response
-    if (statusUpdateResult.status === 'rejected') {
-      console.error("Status update failed:", statusUpdateResult.reason);
-      setResultModalData({
-        type: 'error',
-        title: 'Status Update Failed',
-        message: `Failed to update order status: ${statusUpdateResult.reason.message || 'Unknown error'}`
-      });
-      setShowResultModal(true);
+//     // Handle status update response
+//     if (statusUpdateResult.status === 'rejected') {
+//       console.error("Status update failed:", statusUpdateResult.reason);
+//       setResultModalData({
+//         type: 'error',
+//         title: 'Status Update Failed',
+//         message: `Failed to update order status: ${statusUpdateResult.reason.message || 'Unknown error'}`
+//       });
+//       setShowResultModal(true);
+//     }
+
+//     // Handle JNT labels response
+//     if (jntLabelsResult.status === 'rejected') {
+//       console.error("JNT label creation failed:", jntLabelsResult.reason);
+//       setResultModalData({
+//         type: 'error',
+//         title: 'Label Creation Failed',
+//         message: `Failed to create shipping labels: ${jntLabelsResult.reason.message || 'Unknown error'}`
+//       });
+//       setShowResultModal(true);
+//     } else {
+//       setGeneratedPdfUrl(jntLabelsResult.value);
+//       setShowPrintConfirm(true);
+//     }
+
+//     // Refresh orders
+//     const updatedOrders = await getOrders();
+//     setOrders(updatedOrders);
+//     setAllOrders(updatedOrders);
+//     setSelectedIds([]);
+
+//   } catch (error) {
+//     console.error("Unexpected error:", error);
+//     setResultModalData({
+//       type: 'error',
+//       title: 'Unexpected Error',
+//       message: `An unexpected error occurred: ${error.message}`
+//     });
+//     setShowResultModal(true);
+//   } finally {
+//     setIsCreatingLabels(false);
+//   }
+// };
+
+  const handleCreateLabels = async () => {
+    if (selectedIds.length === 0) {
+      alert("Please select at least one order to create labels");
+      return;
     }
 
-    // Handle JNT labels response
-    if (jntLabelsResult.status === 'rejected') {
-      console.error("JNT label creation failed:", jntLabelsResult.reason);
+    const selectedOrders = orders.filter(order => selectedIds.includes(order.id));
+
+    // Validate all selected orders
+    const invalidOrders = validateOrdersForCollection(selectedOrders);
+
+    if (invalidOrders.length > 0) {
+      const failedOrderIds = invalidOrders.map(o => `#${o.id}`).join(", ");
+      const reasons = invalidOrders.map(o => {
+        if (!o.billcode) return `Order #${o.id}: No billcode found`;
+        return `Order #${o.id}: Billcode is canceled or invalid`;
+      }).join("; ");
+
       setResultModalData({
         type: 'error',
-        title: 'Label Creation Failed',
-        message: `Failed to create shipping labels: ${jntLabelsResult.reason.message || 'Unknown error'}`
+        title: 'Cannot Move to Collection',
+        message: `We couldn't move all selected orders to Collection because some don't have a valid shipping label or have already been canceled.
+
+      Orders affected: ${failedOrderIds}
+
+      Please deselect these orders and try again with only valid ones.`
       });
       setShowResultModal(true);
-    } else {
-      setGeneratedPdfUrl(jntLabelsResult.value);
-      setShowPrintConfirm(true);
+      return;
     }
 
-    // Refresh orders
-    const updatedOrders = await getOrders();
-    setOrders(updatedOrders);
-    setAllOrders(updatedOrders);
-    setSelectedIds([]);
+    try {
+      setIsCreatingLabels(true);
+      
+      // Call both APIs simultaneously
+      const [statusUpdateResult, jntLabelsResult] = await Promise.allSettled([
+        createMergedLabels(selectedIds),
+        createLabels(selectedOrders)
+      ]);
 
-  } catch (error) {
-    console.error("Unexpected error:", error);
-    setResultModalData({
-      type: 'error',
-      title: 'Unexpected Error',
-      message: `An unexpected error occurred: ${error.message}`
-    });
-    setShowResultModal(true);
-  } finally {
-    setIsCreatingLabels(false);
-  }
-};
+      // Handle status update response
+      if (statusUpdateResult.status === 'rejected') {
+        console.error("Status update failed:", statusUpdateResult.reason);
+        setResultModalData({
+          type: 'error',
+          title: 'Status Update Failed',
+          message: `Failed to update order status: ${statusUpdateResult.reason.message || 'Unknown error'}`
+        });
+        setShowResultModal(true);
+      }
+
+      // Handle JNT labels response - UPDATED for new response format
+      let pdfUrls = [];
+      let failedOrders = [];
+      
+      if (jntLabelsResult.status === 'fulfilled') {
+        if (Array.isArray(jntLabelsResult.value)) {
+          jntLabelsResult.value.forEach((result, index) => {
+            if (result && result.url) {
+              pdfUrls.push(result.url);
+            } else if (result && result.error) {
+              failedOrders.push({
+                orderId: selectedOrders[index]?.id,
+                reason: result.error
+              });
+            }
+          });
+        }
+        
+        if (pdfUrls.length > 0) {
+          setGeneratedPdfUrl(pdfUrls);
+          setShowPrintConfirm(true);
+        }
+      } else if (jntLabelsResult.status === 'rejected') {
+        console.error("JNT label creation failed:", jntLabelsResult.reason);
+        setResultModalData({
+          type: 'error',
+          title: 'Label Creation Failed',
+          message: `Failed to create shipping labels: ${jntLabelsResult.reason.message || 'Unknown error'}`
+        });
+        setShowResultModal(true);
+      }
+
+      // Show partial failure message if some orders failed
+      if (failedOrders.length > 0) {
+        const failedMessage = failedOrders.map(f => 
+          `Order #${f.orderId}: ${f.reason || 'Unknown error'}`
+        ).join('\n');
+        
+        setResultModalData({
+          type: 'error',
+          title: 'Partial Label Creation Failure',
+          message: `Some labels could not be created:\n\n${failedMessage}`
+        });
+        setShowResultModal(true);
+      }
+
+      // Refresh orders
+      const updatedOrders = await getOrders();
+      setOrders(updatedOrders);
+      setAllOrders(updatedOrders);
+      setSelectedIds([]);
+
+    } catch (error) {
+      console.error("Unexpected error:", error);
+      setResultModalData({
+        type: 'error',
+        title: 'Unexpected Error',
+        message: `An unexpected error occurred: ${error.message}`
+      });
+      setShowResultModal(true);
+    } finally {
+      setIsCreatingLabels(false);
+    }
+  };
 
   // Handle print now action
   const handlePrintNow = () => {
@@ -414,6 +553,47 @@ const handleCreateLabels = async () => {
   };
 
   // Print receipts function for collection tab
+  // const handlePrintReceipts = async () => {
+  //   if (selectedIds.length === 0) {
+  //     alert("Please select at least one order to print receipts");
+  //     return;
+  //   }
+
+  //   try {
+  //     setIsCreatingLabels(true);
+      
+  //     // Get selected orders with their billcodes
+  //     const selectedOrders = orders.filter(order => selectedIds.includes(order.id));
+      
+  //     // Call the JNT print API for each selected order
+  //     const jntLabelsResult = await createLabels(selectedOrders);
+
+  //     // Handle JNT labels response
+  //     if (Array.isArray(jntLabelsResult) && jntLabelsResult.length > 0) {
+  //       setGeneratedPdfUrl(jntLabelsResult);
+  //       setShowPrintConfirm(true);
+  //     } else {
+  //       setResultModalData({
+  //         type: 'error',
+  //         title: 'Print Failed',
+  //         message: 'Failed to generate receipts. Please try again.'
+  //       });
+  //       setShowResultModal(true);
+  //     }
+
+  //   } catch (error) {
+  //     console.error("Print receipts error:", error);
+  //     setResultModalData({
+  //       type: 'error',
+  //       title: 'Print Error',
+  //       message: `Failed to print receipts: ${error.message || 'Unknown error'}`
+  //     });
+  //     setShowResultModal(true);
+  //   } finally {
+  //     setIsCreatingLabels(false);
+  //   }
+  // };
+
   const handlePrintReceipts = async () => {
     if (selectedIds.length === 0) {
       alert("Please select at least one order to print receipts");
@@ -426,18 +606,57 @@ const handleCreateLabels = async () => {
       // Get selected orders with their billcodes
       const selectedOrders = orders.filter(order => selectedIds.includes(order.id));
       
+      console.log("Selected orders for printing:", selectedOrders);
+      console.log("Billcodes:", selectedOrders.map(order => order.billcode));
+      
       // Call the JNT print API for each selected order
       const jntLabelsResult = await createLabels(selectedOrders);
+      
+      console.log("JNT Labels Result:", jntLabelsResult);
 
       // Handle JNT labels response
-      if (Array.isArray(jntLabelsResult) && jntLabelsResult.length > 0) {
-        setGeneratedPdfUrl(jntLabelsResult);
+      let pdfUrls = [];
+      let failedOrders = [];
+      
+      if (Array.isArray(jntLabelsResult)) {
+        jntLabelsResult.forEach((result, index) => {
+          if (result && result.url) {
+            pdfUrls.push(result.url);
+          } else if (result && result.error) {
+            failedOrders.push({
+              orderId: selectedOrders[index]?.id,
+              reason: result.error
+            });
+          }
+        });
+      }
+
+      console.log("PDF URLs:", pdfUrls);
+      console.log("Failed orders:", failedOrders);
+
+      if (pdfUrls.length > 0) {
+        setGeneratedPdfUrl(pdfUrls);
         setShowPrintConfirm(true);
-      } else {
+      }
+
+      if (failedOrders.length > 0) {
+        const failedMessage = failedOrders.map(f => 
+          `Order #${f.orderId}: ${f.reason || 'Unknown error'}`
+        ).join('\n');
+        
+        setResultModalData({
+          type: 'error',
+          title: 'Partial Print Failure',
+          message: `Some receipts could not be printed:\n\n${failedMessage}`
+        });
+        setShowResultModal(true);
+      }
+
+      if (pdfUrls.length === 0 && failedOrders.length === 0) {
         setResultModalData({
           type: 'error',
           title: 'Print Failed',
-          message: 'Failed to generate receipts. Please try again.'
+          message: 'Failed to generate any receipts. Please try again or contact support.'
         });
         setShowResultModal(true);
       }
@@ -546,6 +765,15 @@ const handleCreateLabels = async () => {
                   disabled={isCreatingLabels}
                 >
                   {isCreatingLabels ? 'Printing...' : 'Print Receipts'}
+                </button>
+              )}
+              {/* Add more status-specific actions here if needed */}
+              {["packing", "pending"].includes(statusFilter) && (
+                <button
+                  onClick={() => {/* Add your custom action */}}
+                  className="bg-[#e5cfa4] px-6 py-2 rounded text-white font-bold"
+                >
+                  Process Selected
                 </button>
               )}
             </div>
@@ -701,8 +929,8 @@ const handleCreateLabels = async () => {
       )}
       
       
-      {/* Print Confirmation Dialog */}
-      {showPrintConfirm && (
+      {/* Print Confirmation Dialog yang dulu punya*/}
+      {/* {showPrintConfirm && (
       <div className="fixed inset-0 bg-black/30 z-[100] flex items-center justify-center">
         <div className="bg-white rounded-xl p-6 max-w-2xl max-h-96 overflow-y-auto">
           <h3 className="font-bold text-lg mb-4">Labels Ready</h3>
@@ -738,6 +966,53 @@ const handleCreateLabels = async () => {
           </div>
         </div>
       </div>
+      )} */}
+
+      {/* Print Confirmation Dialog */}
+      {showPrintConfirm && generatedPdfUrl && (
+        <div className="fixed inset-0 bg-black/30 z-[100] flex items-center justify-center">
+          <div className="bg-white rounded-xl p-6 max-w-2xl max-h-96 overflow-y-auto">
+            <h3 className="font-bold text-lg mb-4">Labels Ready</h3>
+            
+            {generatedPdfUrl.length === 0 ? (
+              <p className="mb-4 text-sm text-red-600">
+                No labels available for printing.
+              </p>
+            ) : (
+              <>
+                <p className="mb-4 text-sm text-gray-700">
+                  Click the links below to open each label in a new tab.
+                </p>
+                <div className="space-y-2 mb-4">
+                  {generatedPdfUrl.map((url, i) => (
+                    <div key={i}>
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline text-sm"
+                      >
+                        📄 Open Shipping Label {i + 1}
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            
+            <div className="flex justify-end">
+              <button
+                onClick={() => {
+                  setShowPrintConfirm(false);
+                  setGeneratedPdfUrl(null);
+                }}
+                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     
       </AdminLayout>

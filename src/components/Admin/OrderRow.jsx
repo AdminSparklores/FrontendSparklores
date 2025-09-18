@@ -38,6 +38,21 @@ export default function OrderRow({
 
   const paymentStatus = getPaymentStatus();
 
+  // Determine if cancel button should be shown
+  const shouldShowCancelButton = () => {
+    // For Awaiting Shipment tab
+    if (status === "awaiting_shipment") {
+      return order.fulfillment_status === "pending" || order.fulfillment_status === "awaiting_shipment";
+    }
+    
+    // For Collection tab - allow cancellation of collection orders
+    if (status === "collection") {
+      return order.fulfillment_status === "collection";
+    }
+    
+    return false;
+  };
+
   return (
     <>
       <tr className="border-b hover:bg-[#f8f4ed] transition">
@@ -94,9 +109,8 @@ export default function OrderRow({
           <div className="flex items-center gap-2 text-center">
             <StatusBadge status={order.fulfillment_status} />
 
-            {/* Show Cancel Button only in Awaiting Shipment tab and for eligible statuses */}
-            {(order.fulfillment_status === "pending" || order.fulfillment_status === "awaiting_shipment") && 
-            status === "awaiting_shipment" && (
+            {/* Show Cancel Button for eligible statuses in both Awaiting Shipment and Collection tabs */}
+            {shouldShowCancelButton() && (
               <button
                 onClick={() => handleCancelOrder(order.id)}
                 className="px-3 py-1 text-xs font-semibold rounded-lg 
