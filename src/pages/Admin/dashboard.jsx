@@ -14,11 +14,9 @@ const ORDER_STATUS = [
   { value: "collection", label: "Collection" },
   { value: "on_shipping", label: "On Shipping" },
   { value: "shipped", label: "Shipped" },
-  { value: "pending", label: "Pending" },
   { value: "packing", label: "Packing" },
   { value: "delivery", label: "Delivery" },
   { value: "done", label: "Done" },
-  { value: "not_accepted", label: "Not Accepted" },
   { value: "cancelled", label: "Cancelled" },
 ];
 

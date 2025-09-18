@@ -14,7 +14,6 @@ export default function OrderTable({
     "awaiting_shipment", 
     "collection",
     "packing",
-    "pending"
   ].includes(status);
 
   return (
