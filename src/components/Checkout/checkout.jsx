@@ -673,11 +673,11 @@ const processPayment = async () => {
           // console.log('Payment pending', result);
           setIsShowingLoader(false);
           setShowCancelConfirmation(true);
-          alert(
-            `Your order is pending payment. Please complete the bank transfer.\n` +
-            `Order ID: ${orderData.order_id}\n` +
-            `Complete the payment to proceed with shipping by pressing the "Place My Order" button again.`
-          );
+          // alert(
+          //   `Your order is pending payment. Please complete the bank transfer.\n` +
+          //   `Order ID: ${orderData.order_id}\n` +
+          //   `Complete the payment to proceed with shipping by pressing the "Place My Order" button again.`
+          // );
         },
         onError: (error) => {
           // console.log('Payment error', error);
@@ -1304,7 +1304,11 @@ const processPayment = async () => {
             onClick={handlePlaceOrder}
             disabled={!isFormValid() || isProcessingPayment}
           >
-            {isProcessingPayment ? 'Processing...' : 'Place My Order'}
+             {isProcessingPayment 
+              ? 'Processing...' 
+              : midtransToken 
+                ? 'Continue Payment' 
+                : 'Place My Order'}
           </button>
         </div>
       </div>
