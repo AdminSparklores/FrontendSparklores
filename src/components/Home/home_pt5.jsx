@@ -17,7 +17,7 @@ const VideoCarousel = () => {
         const data = await response.json();
         setVideos(data);
       } catch (err) {
-        console.error("Error fetching videos:", err);
+        // console.error("Error fetching videos:", err);
       } finally {
         setLoading(false);
       }

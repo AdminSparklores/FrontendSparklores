@@ -28,17 +28,17 @@ const OrderTrackingPage = ({ trackingNumber }) => {
         // First fetch the tracking data
         const trackingData = await trackOrder(trackingNumber);
         setOrderData(trackingData);
-        console.log("Fetched tracking data:", trackingData);
+        // console.log("Fetched tracking data:", trackingData);
         
         // Then fetch the order details using the order ID from tracking data
         if (trackingData.orderid) {
-          console.log("Fetching order details for order ID:", trackingData.orderid);
+          // console.log("Fetching order details for order ID:", trackingData.orderid);
           try {
             const details = await fetchOrderDetailsTrack(trackingData.orderid);
             setOrderDetails(details);
-            console.log("Fetched order details:", details);
+            // console.log("Fetched order details:", details);
           } catch (err) {
-            console.error("Failed to fetch order details:", err);
+            // console.error("Failed to fetch order details:", err);
             setOrderDetailsError("Order details unavailable - authentication required");
             // Continue even if order details fail - we'll use tracking data
           }

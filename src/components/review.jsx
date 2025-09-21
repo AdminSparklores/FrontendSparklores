@@ -158,16 +158,16 @@ const ReviewPage = () => {
   setSubmitSuccess(false);
 
   try {
-    console.log("Order items (raw):", order.items);
+    // console.log("Order items (raw):", order.items);
     
     // Debug: Let's see the full structure of each order item
     order.items.forEach((item, index) => {
-      console.log(`Item ${index} full structure:`, JSON.stringify(item, null, 2));
+      // console.log(`Item ${index} full structure:`, JSON.stringify(item, null, 2));
       if (item.charms && item.charms.length > 0) {
-        console.log(`Item ${index} charms:`, item.charms);
+        // console.log(`Item ${index} charms:`, item.charms);
         item.charms.forEach((charm, charmIndex) => {
-          console.log(`  Charm ${charmIndex}:`, charm);
-          console.log(`  Charm keys:`, Object.keys(charm));
+          // console.log(`  Charm ${charmIndex}:`, charm);
+          // console.log(`  Charm keys:`, Object.keys(charm));
         });
       }
     });
@@ -186,16 +186,16 @@ const ReviewPage = () => {
       .filter(item => item.charms && item.charms.length > 0)
       .flatMap(item => {
         return item.charms.map(charm => {
-          console.log('Processing charm:', charm);
-          console.log('Using charm.charm (actual charm ID):', charm.charm);
+          // console.log('Processing charm:', charm);
+          // console.log('Using charm.charm (actual charm ID):', charm.charm);
           // Based on the example format, we need the actual charm ID (433)
           return charm.charm || charm.charm_id;
         }).filter(id => id !== null);
       });
 
-    console.log("Submitting product_ids:", productIds);
-    console.log("Submitting charm_ids:", charmIds);
-    console.log("Submitting gift_set_ids:", giftSetIds);
+    // console.log("Submitting product_ids:", productIds);
+    // console.log("Submitting charm_ids:", charmIds);
+    // console.log("Submitting gift_set_ids:", giftSetIds);
 
     // ✅ If there's an image, use FormData; otherwise use JSON
     if (form.image) {
@@ -214,7 +214,7 @@ const ReviewPage = () => {
 
       // Debug: log actual payload
       for (let [key, value] of formData.entries()) {
-        console.log("FormData entry:", key, value);
+        // console.log("FormData entry:", key, value);
       }
 
       await submitReview(formData);
@@ -229,7 +229,7 @@ const ReviewPage = () => {
         gift_set_ids: giftSetIds
       };
 
-      console.log("JSON payload:", jsonData);
+      // console.log("JSON payload:", jsonData);
       await submitReviewJSON(jsonData);
     }
 
@@ -241,7 +241,7 @@ const ReviewPage = () => {
     });
 
   } catch (err) {
-    console.error("Review submission error:", err);
+    // console.error("Review submission error:", err);
     setError(err.message || "Failed to submit review. Please try again.");
   } finally {
     setSubmitting(false);

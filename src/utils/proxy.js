@@ -1,7 +1,7 @@
 export default async function handler(req, res) {
   const { path } = req.query;
-  console.log("REQ.QUERY.PATH:", path);
-    console.log("Full target URL:", targetUrl);
+  // console.log("REQ.QUERY.PATH:", path);
+    // console.log("Full target URL:", targetUrl);
     res.setHeader('Access-Control-Allow-Origin', '*');
   
   // Validate the path exists
@@ -11,7 +11,7 @@ export default async function handler(req, res) {
 
   // Construct the target URL
   const targetUrl = `http://sparkloreofficial.com/${path.replace(/^\/+/, '')}`;
-  console.log('Proxying to:', targetUrl); // For debugging
+  // console.log('Proxying to:', targetUrl); // For debugging
   
 
   try {
@@ -23,8 +23,8 @@ export default async function handler(req, res) {
         });
 
     const text = await response.text();
-    console.log("RESPONSE STATUS:", response.status);
-    console.log("RESPONSE TEXT:", text); // Log 404 page to confirm source
+    // console.log("RESPONSE STATUS:", response.status);
+    // console.log("RESPONSE TEXT:", text); // Log 404 page to confirm source
 
     res.status(response.status).send(text);
 
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
     res.status(response.status).send(data);
     
   } catch (error) {
-    console.error('Proxy error:', error);
+    // console.error('Proxy error:', error);
     res.status(500).json({ 
       error: 'Failed to proxy request',
       details: error.message,

@@ -7,7 +7,7 @@ let baseURL = import.meta.env.VITE_API_BASE_URL;
 
 // Validasi: pastikan BASE_URL string dan tidak undefined
 if (!baseURL || typeof baseURL !== 'string') {
-  console.error('VITE_API_BASE_URL is not set or not a string:', baseURL);
+  // console.error('VITE_API_BASE_URL is not set or not a string:', baseURL);
   baseURL = 'https://sparkloreofficial.com'; // fallback
 }
 
@@ -69,7 +69,7 @@ export const requestOTP = async (email) => {
 };
 
 export const verifyOTP = async (email, code) => {
-  console.log('Verifying OTP for:', email, code);
+  // console.log('Verifying OTP for:', email, code);
   try {
     const response = await fetch(`${BASE_URL}/auth/verify-otp/`, {
       method: 'POST',
@@ -80,7 +80,7 @@ export const verifyOTP = async (email, code) => {
     });
 
     const data = await response.json();
-    console.log('Verify OTP response:', data); // Add this line
+    // console.log('Verify OTP response:', data); // Add this line
 
     if (!response.ok) {
       throw new Error(data.error || 'Failed to verify OTP');
@@ -88,7 +88,7 @@ export const verifyOTP = async (email, code) => {
     
     // Store the authentication data
     storeAuthData(data);
-    console.log('Auth data stored:', getAuthData()); // Add this line
+    // console.log('Auth data stored:', getAuthData()); // Add this line
 
     // Fetch and return user details
     const userDetails = await fetchUserDetails();
@@ -96,7 +96,7 @@ export const verifyOTP = async (email, code) => {
 
     return data;
   } catch (error) {
-    console.error('Verify OTP error:', error);
+    // console.error('Verify OTP error:', error);
     throw error;
   }
 };
@@ -225,7 +225,7 @@ export const updateCartItemQuantity = async (itemId, quantity, increment = false
   }
 
   // DEBUG: Log what you send
-  console.log("PATCH cart update body:", requestBody);
+  // console.log("PATCH cart update body:", requestBody);
 
   const response = await fetch(`${BASE_URL}/api/cart/${itemId}/update_item/`, {
     method: 'PATCH',
@@ -239,7 +239,7 @@ export const updateCartItemQuantity = async (itemId, quantity, increment = false
   if (!response.ok) {
     let errorText = "";
     try { errorText = await response.text(); } catch {}
-    console.error("Failed to update cart item quantity. Status:", response.status, "Body:", errorText, "Request:", requestBody);
+    // console.error("Failed to update cart item quantity. Status:", response.status, "Body:", errorText, "Request:", requestBody);
     throw new Error(`Failed to update cart item quantity. ${errorText}`);
   }
 
@@ -504,8 +504,8 @@ export const addToCart = async (productId, data) => {
     },
     body: JSON.stringify(postData)
   });
-  console.log("ini yang dikirim ke api/cart/add/",JSON.stringify(postData));
-  console.log("Add to cart response:", postResp); // Debug log
+  // console.log("ini yang dikirim ke api/cart/add/",JSON.stringify(postData));
+  // console.log("Add to cart response:", postResp); // Debug log
 
 
   if (!postResp.ok) {
@@ -574,7 +574,7 @@ export const subscribeToNewsletter = async (email) => {
 
     return { success: true, data };
   } catch (error) {
-    console.error('Newsletter subscription error:', error);
+    // console.error('Newsletter subscription error:', error);
     throw error;
   }
 };
@@ -618,7 +618,7 @@ export const fetchPageBanner = async (page) => {
       throw new Error(`No banner found for page: ${page}`);
     }
   } catch (error) {
-    console.error("Error fetching page banner:", error);
+    // console.error("Error fetching page banner:", error);
     throw error; // Rethrow the error for handling in the component
   }
 };
@@ -636,7 +636,7 @@ export const fetchRecentGalleryImages = async () => {
     const recentImages = data.slice(-6); // Assuming the API returns images in chronological order
     return recentImages; // Return the array of recent images
   } catch (error) {
-    console.error("Error fetching recent gallery images:", error);
+    // console.error("Error fetching recent gallery images:", error);
     throw error; // Rethrow the error for handling in the component
   }
 };
@@ -657,11 +657,11 @@ export const trackOrder = async (awb) => {
     if (!response.ok) {
       throw new Error('Failed to track order');
     }
-    console.log('Track order response:', response); // Debug log
+    // console.log('Track order response:', response); // Debug log
 
     return await response.json();
   } catch (error) {
-    console.error('Error tracking order:', error);
+    // console.error('Error tracking order:', error);
     throw error;
   }
 };
@@ -735,11 +735,11 @@ export const fetchOrderDetailsTrack = async (orderId) => {
 // Original FormData version with better error handling
 export const submitReview = async (formData) => {
   try {
-    console.log("Sending FormData to backend...");
+    // console.log("Sending FormData to backend...");
     
     // Debug: log all FormData entries
     for (let [key, value] of formData.entries()) {
-      console.log("FormData entry:", key, value);
+      // console.log("FormData entry:", key, value);
     }
     
     const response = await fetch(`${BASE_URL}/api/api/review/submit/`, {
@@ -754,11 +754,11 @@ export const submitReview = async (formData) => {
         // Try to parse JSON error if backend returns structured response
         const errorData = await response.json();
         errorMsg = errorData.error || errorData.message || errorMsg;
-        console.error("Backend error response:", errorData);
+        // console.error("Backend error response:", errorData);
       } catch {
         // If not JSON, fallback to plain text
         const errorText = await response.text();
-        console.error("Backend error text:", errorText);
+        // console.error("Backend error text:", errorText);
         if (errorText) errorMsg = errorText;
       }
 
@@ -768,7 +768,7 @@ export const submitReview = async (formData) => {
     // ✅ Return parsed JSON from backend
     return await response.json();
   } catch (err) {
-    console.error("Error submitting review:", err);
+    // console.error("Error submitting review:", err);
     throw err;
   }
 };
@@ -776,7 +776,7 @@ export const submitReview = async (formData) => {
 // New JSON version for when no image is uploaded
 export const submitReviewJSON = async (jsonData) => {
   try {
-    console.log("Sending JSON data to backend:", jsonData);
+    // console.log("Sending JSON data to backend:", jsonData);
     
     const response = await fetch(`${BASE_URL}/api/api/review/submit/`, {
       method: "POST",
@@ -792,10 +792,10 @@ export const submitReviewJSON = async (jsonData) => {
       try {
         const errorData = await response.json();
         errorMsg = errorData.error || errorData.message || errorMsg;
-        console.error("Backend error response:", errorData);
+        // console.error("Backend error response:", errorData);
       } catch {
         const errorText = await response.text();
-        console.error("Backend error text:", errorText);
+        // console.error("Backend error text:", errorText);
         if (errorText) errorMsg = errorText;
       }
 
@@ -804,7 +804,7 @@ export const submitReviewJSON = async (jsonData) => {
 
     return await response.json();
   } catch (err) {
-    console.error("Error submitting review:", err);
+    // console.error("Error submitting review:", err);
     throw err;
   }
 };
@@ -855,7 +855,7 @@ export const fetchJNTLocations = async () => {
 
     return await response.json();
   } catch (error) {
-    console.error('Error fetching JNT locations:', error);
+    // console.error('Error fetching JNT locations:', error);
     throw error;
   }
 };

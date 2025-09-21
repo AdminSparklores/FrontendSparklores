@@ -376,7 +376,7 @@ const NavBar_ForHer = () => {
       setSnackbarMessage(error.message || 'Failed to update quantity');
       setSnackbarType('error');
       setShowSnackbar(true);
-      console.error("Quantity update error:", error);
+      // console.error("Quantity update error:", error);
     }
   };
 

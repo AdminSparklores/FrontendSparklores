@@ -99,7 +99,7 @@ export default function AdminGiftSets() {
       setGiftSets(sortedGiftSets);
       setTotalPages(Math.ceil(sortedGiftSets.length / ITEMS_PER_PAGE));
     } catch (error) {
-      console.error("Error saving gift set:", error);
+      // console.error("Error saving gift set:", error);
     } finally {
       setLoading(false);
     }

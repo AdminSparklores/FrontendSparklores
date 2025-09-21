@@ -63,7 +63,7 @@ const CheckoutPage = () => {
         setJntLocations(locations);
         setFilteredLocations(locations); // Initialize filtered locations
       } catch (error) {
-        console.error('Failed to load JNT locations:', error);
+        // console.error('Failed to load JNT locations:', error);
         setLocationsError(error.message);
       } finally {
         setIsLoadingLocations(false);
@@ -184,7 +184,7 @@ const CheckoutPage = () => {
                   try {
                     productDetails = await fetchProduct(item.productId || item.id);
                   } catch (error) {
-                    console.error(`Failed to fetch product ${item.productId}:`, error);
+                    // console.error(`Failed to fetch product ${item.productId}:`, error);
                     productDetails = {
                       name: item.name || 'Product',
                       images: item.image ? [{ image_url: item.image }] : []
@@ -222,7 +222,7 @@ const CheckoutPage = () => {
                   source_type: item.source_type
                 };
               } catch (error) {
-                console.error('Error processing item:', item.id, error);
+                // console.error('Error processing item:', item.id, error);
                 return {
                   ...item,
                   name: item.name || 'Product',
@@ -241,7 +241,7 @@ const CheckoutPage = () => {
           setCartItems(enhancedItems);
         }
       } catch (error) {
-        console.error("Error fetching item details:", error);
+        // console.error("Error fetching item details:", error);
       } finally {
         setIsLoading(false);
       }
@@ -322,7 +322,7 @@ const CheckoutPage = () => {
         // productType: "EZ"
       };
 
-      console.log('Sending to /api/jnt/tariff/:', payload);
+      // console.log('Sending to /api/jnt/tariff/:', payload);
 
       const response = await fetch(`${BASE_URL}/api/jnt/tariff/`, {
         method: 'POST',
@@ -333,16 +333,16 @@ const CheckoutPage = () => {
         body: JSON.stringify(payload)
       });
 
-      console.log('Response from /api/jnt/tariff/:', response);
+      // console.log('Response from /api/jnt/tariff/:', response);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('Error response from /api/jnt/tariff/:', errorData);
+        // console.error('Error response from /api/jnt/tariff/:', errorData);
         throw new Error(errorData.message || "Failed to calculate shipping fee");
       }
 
       const data = await response.json();
-      console.log('Data from /api/jnt/tariff/:', data);
+      // console.log('Data from /api/jnt/tariff/:', data);
 
       if (data.is_success === "true") {
         const costData = JSON.parse(data.content);
@@ -355,7 +355,7 @@ const CheckoutPage = () => {
         throw new Error(data.message || "Failed to calculate shipping fee");
       }
     } catch (error) {
-      console.error('Error in checkShippingFee:', error);
+      // console.error('Error in checkShippingFee:', error);
       setShippingError(error.message);
       setShippingFee(0);
     } finally {
@@ -381,7 +381,7 @@ const CheckoutPage = () => {
         shipping_cost: shippingFee
       };
 
-      console.log('Sending to api/selective_checkout/:', payload);
+      // console.log('Sending to api/selective_checkout/:', payload);
 
       const response = await fetch(`${BASE_URL}/api/selective_checkout/`, {
         method: 'POST',
@@ -392,24 +392,24 @@ const CheckoutPage = () => {
         body: JSON.stringify(payload)
       });
 
-      console.log('ini yang dikirim ke api/selective_checkout/',JSON.stringify(payload));
+      // console.log('ini yang dikirim ke api/selective_checkout/',JSON.stringify(payload));
 
-      console.log('Response from /selective_checkout/:', response);
+      // console.log('Response from /selective_checkout/:', response);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('Error response from /selective_checkout/:', errorData);
+        // console.error('Error response from /selective_checkout/:', errorData);
         throw new Error(errorData.message || "Failed to create order");
       }
 
       const data = await response.json();
-      console.log('Data from /selective_checkout/:', data);
+      // console.log('Data from /selective_checkout/:', data);
       
       setOrderId(data.order_id);
       setTotalPrice(data.total_price);
       return data;
     } catch (error) {
-      console.error('Error in createOrder:', error);
+      // console.error('Error in createOrder:', error);
       setPaymentError(error.message);
       throw error;
     }
@@ -459,7 +459,7 @@ const CheckoutPage = () => {
         goodsvalue: productTotal.toString()   // Product value only
       };
 
-      console.log('Sending to /api/jnt/order/:', jntPayload);
+      // console.log('Sending to /api/jnt/order/:', jntPayload);
 
       const response = await fetch(`${BASE_URL}/api/jnt/order/`, {
         method: 'POST',
@@ -470,15 +470,15 @@ const CheckoutPage = () => {
         body: JSON.stringify(jntPayload)
       });
 
-      console.log('Response from /api/jnt/order/:', response);
+      // console.log('Response from /api/jnt/order/:', response);
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('Error response from /api/jnt/order/:', errorData);
+        // console.error('Error response from /api/jnt/order/:', errorData);
         throw new Error(errorData.message || "Failed to create JNT order");
       }
 
       const data = await response.json();
-      console.log('Data from /api/jnt/order/:', data);
+      // console.log('Data from /api/jnt/order/:', data);
 
       if (data.success && data.detail && data.detail.length > 0) {
         const orderDetail = data.detail[0];
@@ -489,7 +489,7 @@ const CheckoutPage = () => {
 
         if (orderDetail.status === "Error") {
           const reason = orderDetail.reason || "Unknown error";
-          console.error('JNT order creation failed:', reason);
+          // console.error('JNT order creation failed:', reason);
 
           // Friendly Indonesian error messages
           if (reason.includes("Kecamatan Penerima Error")) {
@@ -509,7 +509,7 @@ const CheckoutPage = () => {
       setPaymentError("Respons tidak valid dari JNT.");
       return null;
     } catch (error) {
-      console.error('Error in createJNTOrder:', error);
+      // console.error('Error in createJNTOrder:', error);
       setPaymentError("Gagal terhubung ke layanan pengiriman. Kontak Kami untuk tindak lanjut konfirmasi pengiriman ke sparkloremanagement@gmail.com");
       return null;
     }
@@ -599,17 +599,17 @@ const processPayment = async () => {
       // Use the same total that's displayed to the user
       const gross_amount = total;
       
-      console.log('Items total:', itemsTotal, 'Gross amount (total):', gross_amount);
+      // console.log('Items total:', itemsTotal, 'Gross amount (total):', gross_amount);
 
       // Final verification - they should match exactly
       if (itemsTotal !== gross_amount) {
-        console.log('Adjusting for precision mismatch:', itemsTotal - gross_amount);
+        // console.log('Adjusting for precision mismatch:', itemsTotal - gross_amount);
         
         // Adjust the discount item to fix any remaining mismatch
         const discountItem = itemDetails.find(item => item.id === 'DISCOUNT');
         if (discountItem) {
           discountItem.price -= (itemsTotal - gross_amount);
-          console.log('Adjusted discount to:', discountItem.price);
+          // console.log('Adjusted discount to:', discountItem.price);
         }
       }
 
@@ -629,7 +629,7 @@ const processPayment = async () => {
         finish_redirect_url: window.location.origin + "/payment-callback"
       };
 
-        console.log('payload to /api/midtrans/token/:', payload);
+        // console.log('payload to /api/midtrans/token/:', payload);
 
         const response = await fetch(`${BASE_URL}/api/midtrans/token/`, {
           method: 'POST',
@@ -640,11 +640,11 @@ const processPayment = async () => {
           body: JSON.stringify(payload)
         });
 
-        console.log('Response from /api/midtrans/token/:', response);
+        // console.log('Response from /api/midtrans/token/:', response);
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          console.error('Error response details:', errorData);
+          // console.error('Error response details:', errorData);
           throw new Error(errorData.error || errorData.message || "Failed to process payment");
         }
 
@@ -659,7 +659,7 @@ const processPayment = async () => {
         throw new Error('Payment gateway failed to load');
       }
 
-      console.log('Reusing Midtrans token:', token);
+      // console.log('Reusing Midtrans token:', token);
 
       window.snap.pay(token, {
         onSuccess: async (result) => {
@@ -670,7 +670,7 @@ const processPayment = async () => {
           });
         },
         onPending: async (result) => {
-          console.log('Payment pending', result);
+          // console.log('Payment pending', result);
           setIsShowingLoader(false);
           setShowCancelConfirmation(true);
           alert(
@@ -680,19 +680,19 @@ const processPayment = async () => {
           );
         },
         onError: (error) => {
-          console.log('Payment error', error);
+          // console.log('Payment error', error);
           setPaymentError('Payment failed. Please try again.');
           setIsShowingLoader(false);
         },
         onClose: () => {
-          console.log('User closed Midtrans popup');
+          // console.log('User closed Midtrans popup');
           setIsShowingLoader(false);
           setShowCancelConfirmation(true);
         }
       });
 
     } catch (error) {
-      console.error('Payment process error:', error);
+      // console.error('Payment process error:', error);
       setPaymentError(error.message || "Something went wrong.");
       setIsShowingLoader(false);
     } finally {

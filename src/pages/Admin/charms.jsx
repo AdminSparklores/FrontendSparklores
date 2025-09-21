@@ -76,7 +76,7 @@ export default function AdminCharms() {
     try {
       if (data.id) {
         for (let [key, value] of formData.entries()) {
-          console.log(key, value);
+          // console.log(key, value);
         }
         await updateCharm(data.id, formData, true); // PATCH
       } else {
@@ -96,7 +96,7 @@ export default function AdminCharms() {
       setCharms(sortedCharms);
       setTotalPages(Math.ceil(sortedCharms.length / ITEMS_PER_PAGE));
     } catch (error) {
-      console.error("Error saving charm:", error);
+      // console.error("Error saving charm:", error);
     } finally {
       setLoading(false);
     }

@@ -42,7 +42,7 @@ export default function ProductGrid() {
     };
 
     fetchGiftSets();
-    console.log(giftSets);
+    // console.log(giftSets);
   }, []);
 
   const handleAddToCart = async (giftSetId, e) => {

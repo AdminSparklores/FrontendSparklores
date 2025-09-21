@@ -14,7 +14,7 @@ const JewelryGallery = () => {
         const recentImages = await fetchRecentGalleryImages(); // Fetch recent images
         setImages(recentImages);
       } catch (error) {
-        console.error("Error fetching images:", error);
+        // console.error("Error fetching images:", error);
         setError(error.message);
       } finally {
         setIsLoading(false);

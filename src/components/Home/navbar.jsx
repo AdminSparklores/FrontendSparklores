@@ -361,7 +361,7 @@ const NavBar = () => {
         const data = await response.json();
         setUserDetails(data);
       } catch (error) {
-        console.error('Error fetching user details:', error);
+        // console.error('Error fetching user details:', error);
         // Optional: handle error (e.g., show snackbar or logout if unauthorized)
       }
     };
@@ -421,7 +421,7 @@ const NavBar = () => {
       setSnackbarMessage(error.message || 'Failed to update quantity');
       setSnackbarType('error');
       setShowSnackbar(true);
-      console.error("Quantity update error:", error);
+      // console.error("Quantity update error:", error);
     }
   };
 

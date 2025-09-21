@@ -5,12 +5,12 @@ const BASE = `${BASE_URL}/api`
 async function handleResponse(response) {
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    console.error("API Error:", { 
-      status: response.status,
-      statusText: response.statusText,
-      url: response.url,
-      error 
-    });
+    // console.error("API Error:", { 
+    //   status: response.status,
+    //   statusText: response.statusText,
+    //   url: response.url,
+    //   error 
+    // });
     throw { status: response.status, ...error };
   }
   if (response.status === 204) return {};
@@ -162,11 +162,11 @@ export const createLabels = async (orders) => {
       },
       body: JSON.stringify({ billcode: order.billcode }),
     }).then(async (response) => {
-      console.log("📬 Raw response URL:", `${BASE}/jnt/print/`);
-      console.log("📤 Sent payload:", { billcode: order.billcode });
-      console.log("📥 Response status:", response.status);
+      // console.log("📬 Raw response URL:", `${BASE}/jnt/print/`);
+      // console.log("📤 Sent payload:", { billcode: order.billcode });
+      // console.log("📥 Response status:", response.status);
       const text = await response.text();
-      console.log("📄 Raw response text:", text);
+      // console.log("📄 Raw response text:", text);
 
       let data;
       try {
@@ -206,7 +206,7 @@ export const createLabels = async (orders) => {
         return { error: errorMessage };
       }
     }).catch(error => {
-      console.error("Label creation error for billcode:", order.billcode, error);
+      // console.error("Label creation error for billcode:", order.billcode, error);
       return { error: error.message || "Network error" };
     });
   });
@@ -239,11 +239,11 @@ export const createMergedLabels = (orderIds) => {
     return response.blob();
   })
   .then(blob => {
-    console.log("✅ Successfully received merged PDF blob");
+    // console.log("✅ Successfully received merged PDF blob");
     return blob;
   })
   .catch(error => {
-    console.error("Failed to create merged labels:", error);
+    // console.error("Failed to create merged labels:", error);
     throw new Error(`Create labels failed: ${error.message}`);
   });
 };
@@ -271,7 +271,7 @@ export const createMergedLabels = (orderIds) => {
 export const cancelJntOrder = async (orderId, reason) => {
   const authData = getAuthData();
   if (!authData || !authData.token) {
-    console.error('Authentication error: No auth token found');
+    // console.error('Authentication error: No auth token found');
     throw new Error("Not authenticated");
   }
 
@@ -284,7 +284,7 @@ export const cancelJntOrder = async (orderId, reason) => {
   };
 
   try {
-    console.log('Sending JNT cancel request:', payload);
+    // console.log('Sending JNT cancel request:', payload);
 
     const response = await fetch(`${BASE}/jnt/cancel/`, {
       method: "POST",
@@ -303,15 +303,15 @@ export const cancelJntOrder = async (orderId, reason) => {
     try {
       result = await response.json();
     } catch (jsonError) {
-      console.error("Failed to parse JSON response:", await response.text());
+      // console.error("Failed to parse JSON response:", await response.text());
       throw new Error("Invalid response from server");
     }
 
-    console.log('JNT cancel response:', result);
+    // console.log('JNT cancel response:', result);
 
     if (!result.success) {
       const errorMsg = result.desc || result.detail?.[0]?.reason || "Unknown error";
-      console.error('JNT API error:', errorMsg);
+      // console.error('JNT API error:', errorMsg);
       throw new Error(errorMsg);
     }
 
@@ -323,14 +323,14 @@ export const cancelJntOrder = async (orderId, reason) => {
 
     if (orderResult.status !== "Sukses") {
       const reason = orderResult.reason || "Cancellation failed";
-      console.error('Order cancellation failed:', reason);
+      // console.error('Order cancellation failed:', reason);
       throw new Error(reason);
     }
 
     return result;
   } catch (error) {
     if (error.name === "TypeError" || error.message.includes("fetch")) {
-      console.error("Network error:", error);
+      // console.error("Network error:", error);
       throw new Error("Network error: Unable to reach the server. Please check your connection.");
     }
     throw error;

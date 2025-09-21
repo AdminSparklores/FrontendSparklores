@@ -9,7 +9,7 @@ const PaymentCallback = () => {
     const orderId = params.get('order_id');
     const transactionStatus = params.get('transaction_status');
 
-    console.log('Midtrans callback received:', { orderId, transactionStatus });
+    // console.log('Midtrans callback received:', { orderId, transactionStatus });
 
     if (orderId) {
       // Only redirect if it's success (or maybe pending, depending on your flow)

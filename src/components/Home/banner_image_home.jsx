@@ -11,7 +11,7 @@ const BannerHome = () => {
         const imageUrl = await fetchPageBanner("homepage"); // Fetch banner for homepage
         setBannerImage(imageUrl);
       } catch (error) {
-        console.error("Error fetching banner image:", error);
+        // console.error("Error fetching banner image:", error);
         // Optionally set a default image in case of an error
         setBannerImage("../../assets/default/banner_home.jpeg"); // Replace with your actual default image path
       }

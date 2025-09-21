@@ -46,7 +46,7 @@ const AdminDashboardButton = () => {
           setIsStaff(false);
         }
       } catch (error) {
-        console.error('Error fetching user details for admin check:', error);
+        // console.error('Error fetching user details for admin check:', error);
         setIsStaff(false);
       } finally {
         setIsLoading(false);

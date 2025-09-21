@@ -59,7 +59,7 @@ const Footer = () => {
         setEmail("");
       }
     } catch (error) {
-      console.error("Subscription error:", error);
+      // console.error("Subscription error:", error);
       showSnackbar(error.message || "Failed to subscribe. Please try again later.", "error");
     } finally {
       setIsLoading(false);

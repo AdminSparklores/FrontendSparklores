@@ -13,7 +13,7 @@ const BannerHome = () => {
         const imageUrl = await fetchPageBanner("gift_sets"); // Fetch banner for giftsets
         setBannerImage(imageUrl);
       } catch (error) {
-        console.error("Error fetching banner image:", error);
+        // console.error("Error fetching banner image:", error);
         // Optionally set a default image in case of an error
         setBannerImage(banner); // Replace with your actual default image path
       }

@@ -25,7 +25,7 @@ export default function AdminRouteGuard({ children }) {
 
         setIsAuthorized(true);
       } catch (error) {
-        console.error('Admin access check failed:', error);
+        // console.error('Admin access check failed:', error);
         navigate('/');
       } finally {
         setIsLoading(false);

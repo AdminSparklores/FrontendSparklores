@@ -199,7 +199,7 @@ const ProductDetail = (props) => {
       setSnackbarType('success');
       setShowSnackbar(true);
     } catch (error) {
-      console.error('Error adding to cart:', error);
+      // console.error('Error adding to cart:', error);
       setSnackbarMessage(error.message || 'Failed to add to cart');
       setSnackbarType('error');
       setShowSnackbar(true);

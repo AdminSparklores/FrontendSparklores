@@ -132,7 +132,7 @@ export default function AdminOrderDashboard() {
       setAllOrders(ordersData);
       setOrders(ordersData);
     } catch (error) {
-      console.error("Failed to fetch orders:", error);
+      // console.error("Failed to fetch orders:", error);
       setResultModalData({
         type: 'error',
         title: 'Fetch Error',
@@ -426,7 +426,7 @@ export default function AdminOrderDashboard() {
 
       // Handle status update response
       if (statusUpdateResult.status === 'rejected') {
-        console.error("Status update failed:", statusUpdateResult.reason);
+        // console.error("Status update failed:", statusUpdateResult.reason);
         setResultModalData({
           type: 'error',
           title: 'Status Update Failed',
@@ -458,7 +458,7 @@ export default function AdminOrderDashboard() {
           setShowPrintConfirm(true);
         }
       } else if (jntLabelsResult.status === 'rejected') {
-        console.error("JNT label creation failed:", jntLabelsResult.reason);
+        // console.error("JNT label creation failed:", jntLabelsResult.reason);
         setResultModalData({
           type: 'error',
           title: 'Label Creation Failed',
@@ -488,7 +488,7 @@ export default function AdminOrderDashboard() {
       setSelectedIds([]);
 
     } catch (error) {
-      console.error("Unexpected error:", error);
+      // console.error("Unexpected error:", error);
       setResultModalData({
         type: 'error',
         title: 'Unexpected Error',
@@ -604,13 +604,13 @@ export default function AdminOrderDashboard() {
       // Get selected orders with their billcodes
       const selectedOrders = orders.filter(order => selectedIds.includes(order.id));
       
-      console.log("Selected orders for printing:", selectedOrders);
-      console.log("Billcodes:", selectedOrders.map(order => order.billcode));
+      // console.log("Selected orders for printing:", selectedOrders);
+      // console.log("Billcodes:", selectedOrders.map(order => order.billcode));
       
       // Call the JNT print API for each selected order
       const jntLabelsResult = await createLabels(selectedOrders);
       
-      console.log("JNT Labels Result:", jntLabelsResult);
+      // console.log("JNT Labels Result:", jntLabelsResult);
 
       // Handle JNT labels response
       let pdfUrls = [];
@@ -629,8 +629,8 @@ export default function AdminOrderDashboard() {
         });
       }
 
-      console.log("PDF URLs:", pdfUrls);
-      console.log("Failed orders:", failedOrders);
+      // console.log("PDF URLs:", pdfUrls);
+      // console.log("Failed orders:", failedOrders);
 
       if (pdfUrls.length > 0) {
         setGeneratedPdfUrl(pdfUrls);
@@ -660,7 +660,7 @@ export default function AdminOrderDashboard() {
       }
 
     } catch (error) {
-      console.error("Print receipts error:", error);
+      // console.error("Print receipts error:", error);
       setResultModalData({
         type: 'error',
         title: 'Print Error',
@@ -876,7 +876,7 @@ export default function AdminOrderDashboard() {
                       setOrders(updatedOrders);
                       setSelectedIds(selectedIds.filter(id => id !== cancelData.orderId));
                     } catch (error) {
-                      console.error("Cancellation failed:", error);
+                      // console.error("Cancellation failed:", error);
 
                       let title = "Cancellation Failed";
                       let message = error.message;
