@@ -10,6 +10,7 @@ const links = [
   { name: "Discount Campaign", to: "/adminDashboard/discount", icon: "📢" },
   { name: "Footer Gallery", to: "/adminDashboard/photoGallery", icon: "📸" },
   { name: "Page Banners", to: "/adminDashboard/pageBanner", icon: "📷" },
+  { name: "Statistics", to: "/adminDashboard/statistics", icon: "📷" },
 
 
 ];

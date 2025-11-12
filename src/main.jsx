@@ -42,6 +42,7 @@ import AdminDashboardAndOrder from './pages/Admin/dashboard.jsx'
 import AdminDiscount from './pages/Admin/discount_campaign.jsx'
 import AdminBanner from './pages/Admin/page_banner.jsx'
 import AdminGallery from './pages/Admin/photo_gallery.jsx'
+import AdminStatistics from './pages/Admin/statistics.jsx'
 import PaymentProcessing from './pages/PaymentProcessing.jsx'
 import PaymentCallback from './pages/payment_callback.jsx'
 
@@ -88,6 +89,9 @@ const router = createBrowserRouter([
   { path: "/adminDashboard/discount", element: <AdminDiscount /> },
   { path: "/adminDashboard/photoGallery", element: <AdminGallery /> },
   { path: "/adminDashboard/pageBanner", element: <AdminBanner /> },
+  { path: "adminDashboard/statistics", element: <AdminStatistics /> },
+
+  
 
   {path:"*", element: <NotFound/>},
   
