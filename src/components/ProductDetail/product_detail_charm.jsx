@@ -329,7 +329,16 @@ const ProductDetailCharm = () => {
               <p className="mb-1 font-medium">Charm Details</p>
               <ul className="list-disc pl-5 text-[#4d4a45]">
                 <li>Category: {charm.category.replace(/_/g, ' ')}</li>
-                <li>Material: {charm.label || 'Not specified'}</li>
+                <li>
+                  Material: {
+                    charm.label === "silver"
+                      ? "Silver Titanium"
+                      : charm.label === "gold"
+                      ? "Titanium Gold Plated"
+                      : charm.label || "Not specified"
+                  }
+                </li>
+
                 <li>Stock: {charm.stock} available</li>
                 <li>Rating: {charm.rating}/5</li>
               </ul>
