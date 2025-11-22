@@ -251,8 +251,11 @@ export default function SearchProduct() {
           currentItems.map((item) => {
             // Hover logic for showing the second image
             const isHovered = hoveredItemId === `${item.itemType}-${item.id}`;
-            const showImageIdx = isHovered && item.images.length > 1 ? 1 : 0;
-            const currentImage = item.images[showImageIdx] || "/assets/default/banner_home.jpeg";
+            const images = Array.isArray(item.images)
+              ? item.images
+              : [item.image || "/assets/default/banner_home.jpeg"];
+            const showImageIdx = isHovered && images.length > 1 ? 1 : 0;
+            const currentImage = images[showImageIdx] || "/assets/default/banner_home.jpeg";
 
             return (
               <div
